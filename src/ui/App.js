@@ -20,11 +20,29 @@ import React from 'react';
 import Game from './Game';
 import { DndProvider } from 'react-dnd';
 import HTML5Backend from 'react-dnd-html5-backend';
+import TouchBackend from 'react-dnd-touch-backend';
+
+const multiBackends = (...backendFactories) =>
+  function(manager) {
+    const backends = backendFactories.map(b => b(manager));
+    return {
+      setup: (...args) =>
+        backends.forEach(b => b.setup.apply(b, args)),
+      teardown: (...args) =>
+        backends.forEach(b => b.teardown.apply(b, args)),
+      connectDropTarget: (...args) =>
+        backends.forEach(b => b.connectDropTarget.apply(b, args)),
+      connectDragPreview: (...args) =>
+        backends.forEach(b => b.connectDragPreview.apply(b, args)),
+      connectDragSource: (...args) =>
+        backends.forEach(b => b.connectDragSource.apply(b, args)),
+    };
+  };
 
 function App() {
   return (
     <main>
-      <DndProvider backend={HTML5Backend}>
+      <DndProvider backend={multiBackends(HTML5Backend, TouchBackend)}>
         <Game />
       </DndProvider>
     </main>

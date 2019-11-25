@@ -1,8 +1,8 @@
-# Chess App ([Play it here](https://mhonert.github.io/chess))
+# Chess App ([Try it here!](https://mhonert.github.io/chess))
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
-A chess app using React for the UI and Web Workers to calculate AI moves in the background.
+A chess web app using React for the UI and Web Workers to calculate AI moves in the background.
 
 ![Screenshot](chess_screenshot.png)
 
@@ -12,12 +12,12 @@ A chess app using React for the UI and Web Workers to calculate AI moves in the 
 * Move chess pieces using Drag'n'Drop
 * Chess engine using minimax algorithm with alpha-beta-pruning
 * Responsive board size adjustment
+* Support for touch devices (e.g. tablets and smartphones)
 
 ## Planned features
 * Save the game (e.g. in local storage)
 * Undo a move
 * Check for threefold repetition rule
-* Support for touch devices (e.g. for Tablets and Smartphones)
 
 ## Planned engine improvements
 * Performance improvements
@@ -28,7 +28,7 @@ A chess app using React for the UI and Web Workers to calculate AI moves in the 
 * Mitigate the horizon effect
 
 ## Built With
-* [React](https://reactjs.org/) - to build the user interface
+* [React](https://reactjs.org/) - for the user interface
 * [React DnD](https://github.com/react-dnd/react-dnd) - for Drag and Drop support
 * [styled-components](https://www.styled-components.com/) - to style React components in JS
 * [workerize-loader](https://github.com/developit/workerize-loader) - to move a module into a Web Worker
