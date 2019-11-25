@@ -1,30 +1,32 @@
-# Chess App ([Try it here!](https://mhonert.github.io/chess))
+# Chess App ([Play it here!](https://mhonert.github.io/chess))
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Website mhonert.github.io./chess](https://img.shields.io/website-up-down-green-red/http/mhonert.github.io/chess)](https://mhonert.github.io/chess)
 
-A chess web app using React for the UI and Web Workers to calculate AI moves in the background.
+
+A Chess App written in React with an intuitive Drag'n'Drop user interface and mobile support.
+
 
 ![Screenshot](chess_screenshot.png)
 
 
 ## Features
-* Play against a computer opponent with 3 difficulty levels
-* Move chess pieces using Drag'n'Drop
-* Support for touch devices (e.g. tablets and smartphones)
-* Responsive design
+- [X] Computer opponent with 3 difficulty levels
+- [X] Drag'n'Drop support to move chess pieces
+- [X] Touch support for mobile devices
+- [X] Responsive design
 
 ## Planned features
-* Save the game (e.g. in local storage)
-* Undo a move
-* Check for threefold repetition rule
+- [ ] Save the game (e.g. in local storage)
+- [ ] Check for threefold repetition rule
+- [ ] Undoing moves
 
 ## Planned engine improvements
-* Performance improvements
-  * Use more efficient board representation and move generation algorithms
-  * Implement chess engine in [AssemblyScript](https://docs.assemblyscript.org/)
-* Improve position evaluation
-* Use an opening database and endgame tables
-* Mitigate the horizon effect
+- [ ] More efficient board representation and move generation algorithms
+- [ ] Implement chess engine in [AssemblyScript](https://docs.assemblyscript.org/)
+- [ ] Improve position evaluation
+- [ ] Use opening database and endgame tables
+- [ ] Mitigate the horizon effect
 
 ## Built With
 * [React](https://reactjs.org/) - for the user interface
