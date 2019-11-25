@@ -30,7 +30,6 @@ const BoardGrid = styled.div`
 
     border-right: 1px solid salmon;
     
-    
     // always keep board size rectangular and maximized to the smaller axis
     @media (min-aspect-ratio: 99/100) {
           width: 100vh;

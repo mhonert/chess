@@ -26,6 +26,11 @@ const MenuBar = styled.div`
   flex-direction: column;
   margin: 1rem;
   text-align: center;
+  
+  // center menubar below board, if window width is < window height
+  @media (max-aspect-ratio: 100/99) {
+      width: 100%;
+  }
 `;
 
 const MenuItem = styled.div`
@@ -95,7 +100,7 @@ const GameResult = styled(MenuItem)`
 
 const colorName = color => (color === WHITE ? 'White' : 'Black');
 
-const SideBar = ({
+const GameMenu = ({
   isAiThinking,
   gameEnded,
   winningPlayerColor,
@@ -149,4 +154,4 @@ const SideBar = ({
   );
 };
 
-export default SideBar;
+export default GameMenu;

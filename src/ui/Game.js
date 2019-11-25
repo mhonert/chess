@@ -30,7 +30,7 @@ import {
 import { __, WHITE } from '../engine/board';
 import { B, K, N, P, pieces, Q, R } from '../engine/pieces';
 import Board from './Board';
-import SideBar from './SideBar';
+import GameMenu from './GameMenu';
 
 const engine = engineWorker();
 
@@ -204,7 +204,7 @@ const Game = () => {
         updatePossibleMoves={updatePossibleMoves}
         clearPossibleMoves={clearPossibleMoves}
       />
-      <SideBar
+      <GameMenu
         isAiThinking={isAiThinking}
         gameEnded={gameEnded}
         winningPlayerColor={winningPlayer}

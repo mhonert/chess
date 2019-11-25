@@ -10,9 +10,8 @@ A chess web app using React for the UI and Web Workers to calculate AI moves in 
 ## Features
 * Play against a computer opponent with 3 difficulty levels
 * Move chess pieces using Drag'n'Drop
-* Chess engine using minimax algorithm with alpha-beta-pruning
-* Responsive board size adjustment
 * Support for touch devices (e.g. tablets and smartphones)
+* Responsive design
 
 ## Planned features
 * Save the game (e.g. in local storage)
