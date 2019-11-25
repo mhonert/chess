@@ -11,22 +11,22 @@ A Chess App written in React with an intuitive Drag'n'Drop user interface and mo
 
 
 ## Features
-- [X] Computer opponent with 3 difficulty levels
-- [X] Drag'n'Drop support to move chess pieces
-- [X] Touch support for mobile devices
-- [X] Responsive design
+- Computer opponent with 3 difficulty levels
+- Drag'n'Drop support to move chess pieces
+- Touch support for mobile devices
+- Responsive design
 
 ## Planned features
-- [ ] Save the game (e.g. in local storage)
-- [ ] Check for threefold repetition rule
-- [ ] Undoing moves
+- Save game in local storage
+- Check for threefold repetition rule
+- Undo the last move
 
 ## Planned engine improvements
-- [ ] More efficient board representation and move generation algorithms
-- [ ] Implement chess engine in [AssemblyScript](https://docs.assemblyscript.org/)
-- [ ] Improve position evaluation
-- [ ] Use opening database and endgame tables
-- [ ] Mitigate the horizon effect
+- More efficient board representation and move generation algorithm
+- Implement chess engine in [AssemblyScript](https://docs.assemblyscript.org/)
+- Improve position evaluation
+- Use opening database and endgame tables
+- Mitigate the horizon effect
 
 ## Built With
 * [React](https://reactjs.org/) - for the user interface
