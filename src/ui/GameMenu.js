@@ -26,10 +26,10 @@ const MenuBar = styled.div`
   flex-direction: column;
   margin: 1rem;
   text-align: center;
-  
+
   // center menubar below board, if window width is < window height
   @media (max-aspect-ratio: 100/99) {
-      width: 100%;
+    width: 100%;
   }
 `;
 
@@ -59,12 +59,11 @@ const GameButton = styled.button`
 
 const Label = styled.label`
   position: absolute;
-  left: 33%;
-  font-weight: bold;
-  font-size: 0.9rem;
-  //color: #6c6c6c;
-  color: salmon;
-  top: 1.2rem;
+  top: 1.3rem;
+  width: 100%;
+  text-align: center;
+  font-size: 0.8rem;
+  color: gray;
 `;
 
 const ThinkingIndicator = styled(MenuItem)`
