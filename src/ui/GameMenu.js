@@ -34,6 +34,7 @@ const MenuBar = styled.div`
 `;
 
 const MenuItem = styled.div`
+  position: relative;
   display: ${props => (props.hidden ? 'none' : 'flex')};
   align-self: center;
   padding-bottom: 0.5rem;
@@ -54,6 +55,16 @@ const GameButton = styled.button`
     color: white;
     cursor: pointer;
   }
+`;
+
+const Label = styled.label`
+  position: absolute;
+  left: 33%;
+  font-weight: bold;
+  font-size: 0.9rem;
+  //color: #6c6c6c;
+  color: salmon;
+  top: 1.2rem;
 `;
 
 const ThinkingIndicator = styled(MenuItem)`
@@ -126,16 +137,16 @@ const GameMenu = ({
         </GameButton>
       </MenuItem>
       <MenuItem hidden={isAiThinking}>
-        <label>
-          <input
-            type="range"
-            min="3"
-            max="5"
-            title="Difficulty"
-            value={searchDepth}
-            onChange={e => setSearchDepth(e.target.value)}
-          />
-        </label>
+        <Label htmlFor="game-menu_difficulty-slider">Difficulty</Label>
+        <input
+          id="game-menu_difficulty-slider"
+          type="range"
+          min="3"
+          max="5"
+          title="Difficulty"
+          value={searchDepth}
+          onChange={e => setSearchDepth(e.target.value)}
+        />
       </MenuItem>
 
       {isAiThinking && (
