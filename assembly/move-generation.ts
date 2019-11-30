@@ -314,25 +314,11 @@ function generateRookMoves(moves: Array<i32>, board: Array<i32>, activeColor: i3
 };
 
 
-// const isValidQueenMove = (
-//   board,
-//   activeColor,
-//   piece,
-//   start,
-//   end,
-//   ignoreCheck = false
-// ) => {
-//   return (
-//     isValidBishopMove(board, activeColor, piece, start, end, ignoreCheck) ||
-//     isValidRookMove(board, activeColor, piece, start, end, ignoreCheck)
-//   );
-// };
-//
-// const generateQueenMoves = (board, activeColor, piece, start) => {
-//   return generateBishopMoves(board, activeColor, piece, start).concat(
-//     generateRookMoves(board, activeColor, piece, start)
-//   );
-// };
+function generateQueenMoves(moves: Array<i32>, board: Array<i32>, activeColor: i32, piece: i32, start: i32): void {
+  generateBishopMoves(moves, board, activeColor, piece, start);
+  generateRookMoves(moves, board, activeColor, piece, start);
+};
+
 //
 // const KING_DIRECTIONS = ORTHOGONAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
 //
@@ -680,6 +666,12 @@ export function generateMoves(board: Array<i32>, activeColor: i32): Array<i32> {
       case -ROOK:
         generateRookMoves(moves, board, activeColor, item, i);
         continue;
+
+      case QUEEN:
+      case -QUEEN:
+        generateQueenMoves(moves, board, activeColor, item, i);
+        continue;
+
     }
   }
 

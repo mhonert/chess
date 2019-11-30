@@ -372,6 +372,7 @@ describe("Black bishop moves", () => {
 
 });
 
+
 describe("White rook moves", () => {
 
   it("Generates moves", () => {
@@ -460,6 +461,136 @@ describe("Black rook moves", () => {
     expect(moves).toContain(encodeMove(ROOK, 55, 56));
     expect(moves).toContain(encodeMove(ROOK, 55, 45));
     expect(moves).toContain(encodeMove(ROOK, 55, 65));
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
+});
+
+
+describe("White queen moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(QUEEN, 55);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(27);
+    expect(moves).toContain(encodeMove(QUEEN, 55, 25));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 51));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 58));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 95));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 22));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 28));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 88));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 91));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(QUEEN, 55);
+    addPiece(board, PAWN, 54);
+    addPiece(board, PAWN, 56);
+    addPiece(board, PAWN, 45);
+    addPiece(board, PAWN, 65);
+    addPiece(board, PAWN, 44);
+    addPiece(board, PAWN, 46);
+    addPiece(board, PAWN, 64);
+    addPiece(board, PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(QUEEN, 55);
+    addPiece(board, -PAWN, 54);
+    addPiece(board, -PAWN, 56);
+    addPiece(board, -PAWN, 45);
+    addPiece(board, -PAWN, 65);
+    addPiece(board, -PAWN, 44);
+    addPiece(board, -PAWN, 46);
+    addPiece(board, -PAWN, 64);
+    addPiece(board, -PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(QUEEN, 55, 54));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 56));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 45));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 65));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 44));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 46));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 64));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 66));
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
+});
+
+
+describe("Black queen moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(-QUEEN, 55);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(27);
+    expect(moves).toContain(encodeMove(QUEEN, 55, 25));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 51));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 58));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 95));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 22));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 28));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 88));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 91));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(-QUEEN, 55);
+    addPiece(board, -PAWN, 54);
+    addPiece(board, -PAWN, 56);
+    addPiece(board, -PAWN, 45);
+    addPiece(board, -PAWN, 65);
+    addPiece(board, -PAWN, 44);
+    addPiece(board, -PAWN, 46);
+    addPiece(board, -PAWN, 64);
+    addPiece(board, -PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(-QUEEN, 55);
+    addPiece(board, PAWN, 54);
+    addPiece(board, PAWN, 56);
+    addPiece(board, PAWN, 45);
+    addPiece(board, PAWN, 65);
+    addPiece(board, PAWN, 44);
+    addPiece(board, PAWN, 46);
+    addPiece(board, PAWN, 64);
+    addPiece(board, PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(QUEEN, 55, 54));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 56));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 45));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 65));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 44));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 46));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 64));
+    expect(moves).toContain(encodeMove(QUEEN, 55, 66));
   });
 
   it("Exclude moves that put own king in check", () => {
