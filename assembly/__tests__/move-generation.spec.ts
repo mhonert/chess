@@ -223,7 +223,7 @@ describe("White knight moves", () => {
 describe("Black knight moves", () => {
 
   it("Generates moves for base position", () => {
-    const board: Array<i32> = boardWithOnePiece(KNIGHT, 22);
+    const board: Array<i32> = boardWithOnePiece(-KNIGHT, 22);
 
     const moves = filterMoves(22, generateMoves(board, BLACK));
 
@@ -234,7 +234,7 @@ describe("Black knight moves", () => {
   });
 
   it("Generates moves for all directions", () => {
-    const board: Array<i32> = boardWithOnePiece(KNIGHT, 53);
+    const board: Array<i32> = boardWithOnePiece(-KNIGHT, 53);
 
     const moves = filterMoves(53, generateMoves(board, BLACK));
 
@@ -261,9 +261,9 @@ describe("Black knight moves", () => {
 
   it("Is blocked by own pieces", () => {
     const board: Array<i32> = boardWithOnePiece(-KNIGHT, 22);
-    addPiece(board,  PAWN, 41);
-    addPiece(board,  PAWN, 43);
-    addPiece(board,  BISHOP, 34);
+    addPiece(board,  -PAWN, 41);
+    addPiece(board,  -PAWN, 43);
+    addPiece(board,  -BISHOP, 34);
 
     const moves = filterMoves(22, generateMoves(board, BLACK));
 
@@ -273,6 +273,103 @@ describe("Black knight moves", () => {
   it("Exclude moves that put own king in check", () => {
     todo("King in check?")
   });
+});
+
+
+describe("White bishop moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(BISHOP, 55);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(13);
+    expect(moves).toContain(encodeMove(BISHOP, 55, 22));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 28));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 88));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 91));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(BISHOP, 55);
+    addPiece(board, PAWN, 44);
+    addPiece(board, PAWN, 46);
+    addPiece(board, PAWN, 64);
+    addPiece(board, PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(BISHOP, 55);
+    addPiece(board, -PAWN, 44);
+    addPiece(board, -PAWN, 46);
+    addPiece(board, -PAWN, 64);
+    addPiece(board, -PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(4);
+    expect(moves).toContain(encodeMove(BISHOP, 55, 44));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 46));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 64));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 66));
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
+});
+
+describe("Black bishop moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(-BISHOP, 55);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(13);
+    expect(moves).toContain(encodeMove(BISHOP, 55, 22));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 28));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 88));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 91));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(-BISHOP, 55);
+    addPiece(board, -PAWN, 44);
+    addPiece(board, -PAWN, 46);
+    addPiece(board, -PAWN, 64);
+    addPiece(board, -PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(-BISHOP, 55);
+    addPiece(board, PAWN, 44);
+    addPiece(board, PAWN, 46);
+    addPiece(board, PAWN, 64);
+    addPiece(board, PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(4);
+    expect(moves).toContain(encodeMove(BISHOP, 55, 44));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 46));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 64));
+    expect(moves).toContain(encodeMove(BISHOP, 55, 66));
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
 });
 
 // Test helper functions
