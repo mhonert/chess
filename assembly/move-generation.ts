@@ -34,7 +34,7 @@ import {
   whiteLeftRookMoved,
   whiteRightRookMoved
 } from './board';
-import { BISHOP, KNIGHT, PAWN, pieces, QUEEN, ROOK } from './pieces';
+import { BISHOP, KING, KNIGHT, PAWN, pieces, QUEEN, ROOK } from './pieces';
 
 
 function generatePawnMoves(moves: Array<i32>, board: Array<i32>, activeColor: i32, piece: i32, start: i32): void {
@@ -319,128 +319,103 @@ function generateQueenMoves(moves: Array<i32>, board: Array<i32>, activeColor: i
   generateRookMoves(moves, board, activeColor, piece, start);
 };
 
-//
-// const KING_DIRECTIONS = ORTHOGONAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
-//
-// const isValidKingMove = (
-//   board,
-//   activeColor,
-//   piece,
-//   start,
-//   end,
-//   ignoreCheck = false
-// ) => {
-//   if (board[end] == BOARD_BORDER) {
-//     return false;
-//   }
-//
-//   const pieceColor = Math.sign(board[start]);
-//   if (activeColor != pieceColor) {
-//     return false;
-//   }
-//
-//   const targetPieceColor = Math.sign(board[end]);
-//
-//   if (pieceColor == targetPieceColor) {
-//     return false;
-//   }
-//
-//   // White: Small castle
-//   if (!whiteKingMoved(board)) {
-//     if (
-//       !whiteRightRookMoved(board) &&
-//       activeColor == WHITE &&
-//       start == 95 &&
-//       end == 97 &&
-//       board[96] == 0 &&
-//       board[97] == 0 &&
-//       !isAttacked(board, -activeColor, 95) &&
-//       !isAttacked(board, -activeColor, 96) &&
-//       !isAttacked(board, -activeColor, 97)
-//     ) {
-//       return true;
-//     }
-//
-//     // White: Big castle
-//     if (
-//       !whiteLeftRookMoved(board) &&
-//       activeColor == WHITE &&
-//       start == 95 &&
-//       end == 93 &&
-//       board[94] == 0 &&
-//       board[93] == 0 &&
-//       board[92] == 0 &&
-//       !isAttacked(board, -activeColor, 95) &&
-//       !isAttacked(board, -activeColor, 94) &&
-//       !isAttacked(board, -activeColor, 93) &&
-//       !isAttacked(board, -activeColor, 92)
-//     ) {
-//       return true;
-//     }
-//   }
-//
-//   if (!blackKingMoved(board)) {
-//     // Black: Small castle
-//     if (
-//       !blackRightRookMoved(board) &&
-//       activeColor == BLACK &&
-//       start == 25 &&
-//       end == 27 &&
-//       board[26] == 0 &&
-//       board[27] == 0 &&
-//       !isAttacked(board, -activeColor, 25) &&
-//       !isAttacked(board, -activeColor, 26) &&
-//       !isAttacked(board, -activeColor, 27)
-//     ) {
-//       return true;
-//     }
-//
-//     // Black: Big castle
-//     if (
-//       !blackLeftRookMoved(board) &&
-//       activeColor == BLACK &&
-//       start == 25 &&
-//       end == 23 &&
-//       board[24] == 0 &&
-//       board[23] == 0 &&
-//       board[22] == 0 &&
-//       !isAttacked(board, -activeColor, 25) &&
-//       !isAttacked(board, -activeColor, 24) &&
-//       !isAttacked(board, -activeColor, 23) &&
-//       !isAttacked(board, -activeColor, 22)
-//     ) {
-//       return true;
-//     }
-//   }
-//
-//   const validDirection = KING_DIRECTIONS.some(dir => start + dir == end);
-//
-//   return (
-//     validDirection &&
-//     (ignoreCheck ||
-//       !moveResultsInCheck(board, { piece, start, end }, activeColor))
-//   );
-// };
-//
-// const generateKingMoves = (board, activeColor, piece, start) => {
-//   const moves = KING_DIRECTIONS.filter(offset =>
-//     isValidKingMove(board, activeColor, piece, start, start + offset)
-//   ).map(offset => ({ piece, start, end: start + offset }));
-//
-//   if (
-//     (activeColor == WHITE && start == 95) ||
-//     (activeColor == BLACK && start == 25)
-//   ) {
-//     if (isValidKingMove(board, activeColor, piece, start, start + 2)) {
-//       moves.push({ piece, start, end: start + 2 });
-//     }
-//     if (isValidKingMove(board, activeColor, piece, start, start - 2)) {
-//       moves.push({ piece, start, end: start - 2 });
-//     }
-//   }
-//
-//   return moves;
-// };
+
+const KING_DIRECTIONS: Array<i32> = ORTHOGONAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
+const WHITE_KING_START = 95;
+const BLACK_KING_START = 25;
+
+function isValidKingMove(
+  board: Array<i32>,
+  activeColor: i32,
+  piece: i32,
+  start: i32,
+  end: i32,
+  ignoreCheck: bool = false
+): bool {
+  if (board[end] == BOARD_BORDER) {
+    return false;
+  }
+
+  const pieceColor = sign(board[start]);
+  if (activeColor != pieceColor) {
+    return false;
+  }
+
+  const targetPieceColor = sign(board[end]);
+
+  if (pieceColor == targetPieceColor) {
+    return false;
+  }
+
+  // if (
+  //   !ignoreCheck &&
+  //   moveResultsInCheck(board, { piece, start, end }, activeColor)
+  // ) {
+  //   return false;
+  // }
+
+  return true;
+};
+
+function isValidWhiteSmallCastlingMove(board: Array<i32>): bool {
+  return (board[WHITE_KING_START + 1] == 0 && board[WHITE_KING_START + 2] == 0)
+  // !isAttacked(board, -activeColor, 95) &&
+  // !isAttacked(board, -activeColor, 96) &&
+  // !isAttacked(board, -activeColor, 97)
+}
+
+function isValidWhiteBigCastlingMove(board: Array<i32>): bool {
+  return board[WHITE_KING_START - 1] == 0 && board[WHITE_KING_START - 2] == 0 && board[WHITE_KING_START - 3] == 0; /*&&
+  !isAttacked(board, -activeColor, 95) &&
+  !isAttacked(board, -activeColor, 94) &&
+  !isAttacked(board, -activeColor, 93) &&
+  !isAttacked(board, -activeColor, 92) */
+}
+
+function isValidBlackSmallCastlingMove(board: Array<i32>): bool {
+  return board[BLACK_KING_START + 1] == 0 && board[BLACK_KING_START + 2] == 0; /*&&
+      !isAttacked(board, -activeColor, 25) &&
+      !isAttacked(board, -activeColor, 26) &&
+      !isAttacked(board, -activeColor, 27) */
+}
+
+function isValidBlackBigCastlingMove(board: Array<i32>): bool {
+  return board[BLACK_KING_START - 1] == 0 && board[BLACK_KING_START - 2] == 0 && board[BLACK_KING_START - 3] == 0; /* &&
+  !isAttacked(board, -activeColor, 25) &&
+  !isAttacked(board, -activeColor, 24) &&
+  !isAttacked(board, -activeColor, 23) &&
+  !isAttacked(board, -activeColor, 22) */
+
+}
+
+function generateKingMoves(moves: Array<i32>, board: Array<i32>, activeColor: i32, piece: i32, start: i32): void {
+  for (let i = 0; i < KING_DIRECTIONS.length; i++) {
+    const end = start + KING_DIRECTIONS[i];
+    if (isValidKingMove(board, activeColor, piece, start, end, false)) {
+      moves.push(encodeMove(piece, start, end));
+    }
+  }
+
+  if (activeColor == WHITE && start == WHITE_KING_START && !whiteKingMoved(board)) {
+    if (!whiteRightRookMoved(board) && isValidWhiteSmallCastlingMove(board)) {
+      moves.push(encodeMove(piece, start, start + 2));
+    }
+
+    if (!whiteLeftRookMoved(board) && isValidWhiteBigCastlingMove(board)) {
+      moves.push(encodeMove(piece, start, start - 3));
+    }
+
+  } else if (activeColor == BLACK && start == BLACK_KING_START && !blackKingMoved(board)) {
+    if (!blackRightRookMoved(board) && isValidBlackSmallCastlingMove(board)) {
+      moves.push(encodeMove(piece, start, start + 2));
+    }
+
+    if (!blackLeftRookMoved(board) && isValidBlackBigCastlingMove(board)) {
+      moves.push(encodeMove(piece, start, start - 3));
+    }
+  }
+};
+
 //
 // export const performMove = (board, move) => {
 //   const { piece, start, end } = move;
@@ -670,6 +645,11 @@ export function generateMoves(board: Array<i32>, activeColor: i32): Array<i32> {
       case QUEEN:
       case -QUEEN:
         generateQueenMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case KING:
+      case -KING:
+        generateKingMoves(moves, board, activeColor, item, i);
         continue;
 
     }

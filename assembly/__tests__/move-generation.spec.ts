@@ -11,11 +11,11 @@ import {
   BLACK,
   EN_PASSANT_BITMASKS,
   isEnPassentPossible,
-  setBlackKingMoved,
-  setEnPassentPossible,
+  setBlackKingMoved, setBlackLeftRookMoved, setBlackRightRookMoved,
+  setEnPassentPossible, setWhiteKingMoved, setWhiteLeftRookMoved, setWhiteRightRookMoved,
   WHITE
 } from '../board';
-import { B, BISHOP, K, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
+import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 
 
 function emptyBoard(): Array<i32> {
@@ -598,6 +598,231 @@ describe("Black queen moves", () => {
   });
 
 });
+
+
+describe("White king moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 55);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 54));
+    expect(moves).toContain(encodeMove(KING, 55, 56));
+    expect(moves).toContain(encodeMove(KING, 55, 45));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+    expect(moves).toContain(encodeMove(KING, 55, 44));
+    expect(moves).toContain(encodeMove(KING, 55, 46));
+    expect(moves).toContain(encodeMove(KING, 55, 64));
+    expect(moves).toContain(encodeMove(KING, 55, 66));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 55);
+    addPiece(board, PAWN, 54);
+    addPiece(board, PAWN, 56);
+    addPiece(board, PAWN, 45);
+    addPiece(board, PAWN, 65);
+    addPiece(board, PAWN, 44);
+    addPiece(board, PAWN, 46);
+    addPiece(board, PAWN, 64);
+    addPiece(board, PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces diagonally", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 55);
+    addPiece(board, -BISHOP, 44);
+    addPiece(board, -BISHOP, 46);
+    addPiece(board, -BISHOP, 64);
+    addPiece(board, -BISHOP, 66);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 44));
+    expect(moves).toContain(encodeMove(KING, 55, 46));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+    expect(moves).toContain(encodeMove(KING, 55, 66));
+  });
+
+  it("Can attack opponent pieces orthogonally", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 55);
+    addPiece(board, -ROOK, 54);
+    addPiece(board, -ROOK, 56);
+    addPiece(board, -ROOK, 45);
+    addPiece(board, -ROOK, 65);
+
+    const moves = filterMoves(55, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 54));
+    expect(moves).toContain(encodeMove(KING, 55, 56));
+    expect(moves).toContain(encodeMove(KING, 55, 45));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+  });
+
+  it("Generates castling moves", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 95);
+    addPiece(board, ROOK, 91);
+    addPiece(board, ROOK, 98);
+
+    const moves = filterMoves(95, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(7);
+    expect(moves).toContain(encodeMove(KING, 95, 92));
+    expect(moves).toContain(encodeMove(KING, 95, 97));
+  });
+
+  it("Does not generate castling move if king already moved", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 95);
+    setWhiteKingMoved(board);
+    addPiece(board, ROOK, 91);
+    addPiece(board, ROOK, 98);
+
+    const moves = filterMoves(95, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(5, "Only standard moves without castling");
+  });
+
+  it("Does not generate castling move if rook already moved", () => {
+    const board: Array<i32> = boardWithOnePiece(KING, 95);
+    addPiece(board, ROOK, 91);
+    addPiece(board, ROOK, 98);
+    setWhiteLeftRookMoved(board);
+    setWhiteRightRookMoved(board);
+
+    const moves = filterMoves(95, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(5, "Only standard moves without castling");
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
+  it("Does not generate castling move if any involved field is under attack", () => {
+    todo("King in check?")
+  });
+
+});
+
+
+describe("Black king moves", () => {
+
+  it("Generates moves", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 55);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 54));
+    expect(moves).toContain(encodeMove(KING, 55, 56));
+    expect(moves).toContain(encodeMove(KING, 55, 45));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+    expect(moves).toContain(encodeMove(KING, 55, 44));
+    expect(moves).toContain(encodeMove(KING, 55, 46));
+    expect(moves).toContain(encodeMove(KING, 55, 64));
+    expect(moves).toContain(encodeMove(KING, 55, 66));
+  });
+
+  it("Is blocked by own pieces", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 55);
+    addPiece(board, -PAWN, 54);
+    addPiece(board, -PAWN, 56);
+    addPiece(board, -PAWN, 45);
+    addPiece(board, -PAWN, 65);
+    addPiece(board, -PAWN, 44);
+    addPiece(board, -PAWN, 46);
+    addPiece(board, -PAWN, 64);
+    addPiece(board, -PAWN, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(0);
+  });
+
+  it("Can attack opponent pieces diagonally", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 55);
+    addPiece(board, BISHOP, 44);
+    addPiece(board, BISHOP, 46);
+    addPiece(board, BISHOP, 64);
+    addPiece(board, BISHOP, 66);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 44));
+    expect(moves).toContain(encodeMove(KING, 55, 46));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+    expect(moves).toContain(encodeMove(KING, 55, 66));
+  });
+
+  it("Can attack opponent pieces orthogonally", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 55);
+    addPiece(board, ROOK, 54);
+    addPiece(board, ROOK, 56);
+    addPiece(board, ROOK, 45);
+    addPiece(board, ROOK, 65);
+
+    const moves = filterMoves(55, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(8);
+    expect(moves).toContain(encodeMove(KING, 55, 54));
+    expect(moves).toContain(encodeMove(KING, 55, 56));
+    expect(moves).toContain(encodeMove(KING, 55, 45));
+    expect(moves).toContain(encodeMove(KING, 55, 65));
+  });
+
+  it("Generates castling moves", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 25);
+    addPiece(board, -ROOK, 21);
+    addPiece(board, -ROOK, 28);
+
+    const moves = filterMoves(25, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(7);
+    expect(moves).toContain(encodeMove(KING, 25, 22));
+    expect(moves).toContain(encodeMove(KING, 25, 27));
+  });
+
+  it("Does not generate castling move if king already moved", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 25);
+    setBlackKingMoved(board);
+    addPiece(board, -ROOK, 21);
+    addPiece(board, -ROOK, 28);
+
+    const moves = filterMoves(25, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(5, "Only standard moves without castling");
+  });
+
+  it("Does not generate castling move if rook already moved", () => {
+    const board: Array<i32> = boardWithOnePiece(-KING, 25);
+    addPiece(board, -ROOK, 91);
+    addPiece(board, -ROOK, 98);
+    setBlackLeftRookMoved(board);
+    setBlackRightRookMoved(board);
+
+    const moves = filterMoves(25, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(5, "Only standard moves without castling");
+  });
+
+  it("Exclude moves that put own king in check", () => {
+    todo("King in check?")
+  });
+
+  it("Does not generate castling move if any involved field is under attack", () => {
+    todo("King in check?")
+  });
+
+});
+
 
 // Test helper functions
 
