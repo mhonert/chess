@@ -497,29 +497,27 @@ const generateKingMoves = (board, activeColor, piece, start) => {
   return moves;
 };
 
-export const performMove = (board, move) => {
-  const { piece, start, end } = move;
+export const performMove = (board, { piece, start, end }) => {
+  const pieceId = Math.abs(piece);
   const pieceColor = Math.sign(board[start]);
 
   let removedFigure = board[end];
 
   board[start] = 0;
-  if (piece.id === 1 && board[end] === 0) {
+  if (pieceId === 1 && board[end] === 0) {
     if (Math.abs(start - end) === 9) {
       // En passant
       removedFigure = board[start + pieceColor];
       board[start + pieceColor] = 0;
-      move.enPassant = true;
     } else if (Math.abs(start - end) === 11) {
       // En passant
       removedFigure = board[start - pieceColor];
       board[start - pieceColor] = 0;
-      move.enPassant = true;
     }
   }
-  board[end] = piece.id * pieceColor;
+  board[end] = piece;
 
-  if (piece.id === 6) {
+  if (pieceId === 6) {
     if (pieceColor === WHITE) {
       setWhiteKingMoved(board);
     } else {
@@ -548,7 +546,7 @@ export const performMove = (board, move) => {
     }
   }
 
-  if (piece.id === 4) {
+  if (pieceId === 4) {
     if (start === 91) {
       setWhiteLeftRookMoved(board);
     } else if (start === 98) {
@@ -562,7 +560,7 @@ export const performMove = (board, move) => {
 
   clearEnPassentPossible(board);
 
-  if (piece.id === 1 && Math.abs(start - end) === 20) {
+  if (pieceId === 1 && Math.abs(start - end) === 20) {
     setEnPassentPossible(board, start, pieceColor);
   }
 

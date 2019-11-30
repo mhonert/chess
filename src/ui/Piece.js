@@ -51,6 +51,8 @@ const blackImages = [
   blackKing
 ];
 
+const pieceNames = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King' ]
+
 const PieceContainer = styled.div`
   // Workaround for wrong Drag'n'Drop preview image rendering in Chrome (see https://github.com/react-dnd/react-dnd/issues/832)
   -webkit-transform: translate3d(0, 0, 0);
@@ -68,20 +70,18 @@ const PieceImage = styled.img`
 `;
 
 const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
+  const pieceId = Math.abs(piece);
   const img =
-    color === 'black' ? blackImages[piece.id - 1] : whiteImages[piece.id - 1];
+    color === 'black' ? blackImages[pieceId - 1] : whiteImages[pieceId - 1];
 
   const [{ isDragging }, drag] = useDrag({
     item: {
       type: 'PIECE',
-      piece,
+      pieceId,
       boardIndex
     },
     begin: monitor => onPickup(boardIndex),
     end: dropResult => onDrop(boardIndex),
-    // previewOptions: {
-    //   captureDraggingState: true
-    // },
     collect: monitor => ({
       isDragging: !!monitor.isDragging()
     })
@@ -91,7 +91,7 @@ const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
     <PieceContainer ref={drag}>
       <PieceImage
         src={img}
-        alt={piece.name}
+        alt={pieceNames[pieceId - 1]}
         className={isDragging ? 'dragging' : ''}
       />
     </PieceContainer>

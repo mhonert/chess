@@ -60,7 +60,8 @@ const piecesSortedById = Object.values(pieces)
 
 
 export const getPieceById = (pieceId) => {
-  return piecesSortedById[pieceId - 1];
+   // return piecesSortedById[pieceId - 1];
+  return pieceId;
 }
 
 export const P = pieces.PAWN.id;

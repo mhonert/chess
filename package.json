@@ -15,12 +15,16 @@
     "styled-components": "^4.4.1"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
-    "test": "react-scripts test",
+    "jsstart": "react-scripts start",
+    "jsbuild": "react-scripts build",
+    "start": "npm run asbuild && npm run jsstart",
+    "build": "npm run asbuild && npm run jsbuild",
+    "jstest": "react-scripts test",
+    "test": "asp",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "asbuild": "asc assembly/index.ts -b public/as-api.wasm"
   },
   "eslintConfig": {
     "extends": "react-app"
@@ -38,6 +42,10 @@
     ]
   },
   "devDependencies": {
+    "@as-pect/assembly": "^2.6.0",
+    "@as-pect/cli": "^2.6.0",
+    "@as-pect/core": "^2.6.0",
+    "assemblyscript": "^0.8.1",
     "babel-plugin-macros": "^2.7.1",
     "gh-pages": "^2.1.1",
     "husky": "^3.1.0",

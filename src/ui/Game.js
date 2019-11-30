@@ -28,7 +28,7 @@ import {
   performMove
 } from '../engine/move-generation';
 import { __, WHITE } from '../engine/board';
-import { B, K, N, P, pieces, Q, R } from '../engine/pieces';
+import { B, K, N, P, Q, R } from '../engine/pieces';
 import Board from './Board';
 import GameMenu from './GameMenu';
 
@@ -46,7 +46,7 @@ const initialBoard = [
     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-    __,  P,  P,  P,  P,  P,  P,  P,  P, __,
+    __,  P, -P, -P, -P, -P, -P, -P, -P, __,
     __,  R,  N,  B,  Q,  K,  B,  N,  R, __,
     __, __, __, __, __, __, __, __, __, __,
     __, __, __, __, __, __, __, __, __, __, initialState
@@ -126,6 +126,7 @@ const Game = () => {
   };
 
   const handlePlayerMove = (piece, start, end) => {
+    const pieceId = Math.abs(piece);
     if (gameEnded || isAiThinking) {
       return;
     }
@@ -136,22 +137,22 @@ const Game = () => {
 
     setLastMove({ start, end });
 
-    if (piece.name === 'Pawn' && activePlayer === WHITE && end < 29) {
+    if (pieceId === 1 && activePlayer === WHITE && end < 29) {
       // Promotion
       const choice = prompt('Choose promotion (Q, R, B, K)', 'Q');
       switch (choice.toUpperCase()) {
         case 'R':
-          piece = pieces.ROOK;
+          piece = 4;
           break;
         case 'B':
-          piece = pieces.BISHOP;
+          piece = 3;
           break;
         case 'K':
-          piece = pieces.KNIGHT;
+          piece = 2;
           break;
         case 'Q':
         default:
-          piece = pieces.QUEEN;
+          piece = 5;
           break;
       }
     }

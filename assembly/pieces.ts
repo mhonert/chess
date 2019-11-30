@@ -16,31 +16,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import waApi from './wa-engine';
+export const PAWN: i32 = 1;
+export const KNIGHT: i32 = 2;
+export const BISHOP: i32 = 3;
+export const ROOK: i32 = 4;
+export const QUEEN: i32 = 5;
+export const KING: i32 = 6;
 
+// Pieces start with index 1 (see constants above)
+export const PIECE_VALUES: Array<i32> = [0, 1, 3, 3, 5, 9, 10];
 
-export async function calculateMove(board, playerColor, depth) {
-  console.log('Start calculation of move ...');
+export const pieces: Array<i32> = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
 
-  const api = await waApi;
-
-  const boardPtr = api.__retain(api.__allocArray(api.INT32ARRAY_ID, board));
-
-  const moveEncoded = api.calculateMove(boardPtr, playerColor, depth);
-
-  const piece = moveEncoded & 0xF;
-  const start = (moveEncoded >> 4) & 0xFF;
-  const end = (moveEncoded >> 12);
-  console.log("Encoded move: ", moveEncoded);
-  console.log('Calculation finished, move ', piece, ' from ', start, ' to ', end);
-
-  api.__release(boardPtr);
-
-  // api.freeArray(boardPtr);
-
-  return {
-    start: start,
-    end: end,
-    piece: piece * playerColor
-  };
-}
+export const P = PAWN;
+export const N = KNIGHT;
+export const B = BISHOP;
+export const R = ROOK;
+export const Q = QUEEN;
+export const K = KING;

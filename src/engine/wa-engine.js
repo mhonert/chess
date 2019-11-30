@@ -16,31 +16,10 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import waApi from './wa-engine';
+import {instantiateStreaming} from "assemblyscript/lib/loader";
+export default instantiateStreaming(
+    fetch('./as-api.wasm')
+);
 
 
-export async function calculateMove(board, playerColor, depth) {
-  console.log('Start calculation of move ...');
 
-  const api = await waApi;
-
-  const boardPtr = api.__retain(api.__allocArray(api.INT32ARRAY_ID, board));
-
-  const moveEncoded = api.calculateMove(boardPtr, playerColor, depth);
-
-  const piece = moveEncoded & 0xF;
-  const start = (moveEncoded >> 4) & 0xFF;
-  const end = (moveEncoded >> 12);
-  console.log("Encoded move: ", moveEncoded);
-  console.log('Calculation finished, move ', piece, ' from ', start, ' to ', end);
-
-  api.__release(boardPtr);
-
-  // api.freeArray(boardPtr);
-
-  return {
-    start: start,
-    end: end,
-    piece: piece * playerColor
-  };
-}

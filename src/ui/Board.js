@@ -20,7 +20,6 @@ import React from 'react';
 import { __ } from '../engine/board';
 import Field from './Field';
 import Piece from './Piece';
-import { getPieceById } from '../engine/pieces';
 import styled from 'styled-components/macro';
 
 const BoardGrid = styled.div`
@@ -66,7 +65,7 @@ const Board = ({board, lastMove, currentPieceMoves, handlePlayerMove, updatePoss
               <Piece
                 boardIndex={idx}
                 color={item < 0 ? 'black' : 'white'}
-                piece={getPieceById(Math.abs(item))}
+                piece={item}
                 onPickup={updatePossibleMoves}
                 onDrop={clearPossibleMoves}
               />
