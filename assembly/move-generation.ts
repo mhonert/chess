@@ -34,7 +34,7 @@ import {
   whiteLeftRookMoved,
   whiteRightRookMoved
 } from './board';
-import { BISHOP, KNIGHT, pieces, QUEEN, ROOK } from './pieces';
+import { BISHOP, KNIGHT, PAWN, pieces, QUEEN, ROOK } from './pieces';
 
 
 function generatePawnMoves(moves: Array<i32>, board: Array<i32>, activeColor: i32, piece: i32, start: i32): void {
@@ -191,9 +191,9 @@ function generateKnightMoves(moves: Array<i32>, board: Array<i32>, activeColor: 
   }
 };
 
-const DIAGONAL_DIRECTIONS: Array<i32> = [9, 11, -9, -11];
 
-const MAX_DIAGONAL_DISTANCE: i32 = 7; // maximum diagonal distance between two fields on the board
+const DIAGONAL_DIRECTIONS: Array<i32> = [9, 11, -9, -11];
+const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
 
 function isValidBishopMove(
   board: Array<i32>,
@@ -232,7 +232,7 @@ function generateBishopMoves(moves: Array<i32>, board: Array<i32>, activeColor: 
   for (let i: i32 = 0; i < DIAGONAL_DIRECTIONS.length; i++) {
     const direction = DIAGONAL_DIRECTIONS[i];
 
-    for (let distance: i32 = 1; distance <= MAX_DIAGONAL_DISTANCE; distance++) {
+    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
       const end = start + direction * distance;
 
       if (isValidBishopMove(board, activeColor, piece, start, end, false)) {
@@ -252,74 +252,68 @@ function generateBishopMoves(moves: Array<i32>, board: Array<i32>, activeColor: 
   }
 };
 
-//
-// const ORTHOGONAL_DIRECTIONS = [1, 10, -1, -10];
-//
-// const isValidRookMove = (
-//   board,
-//   activeColor,
-//   piece,
-//   start,
-//   end,
-//   ignoreCheck = false
-// ) => {
-//   if (board[end] == BOARD_BORDER) {
-//     return false;
-//   }
-//
-//   const pieceColor = Math.sign(board[start]);
-//   if (activeColor != pieceColor) {
-//     return false;
-//   }
-//
-//   const targetPieceColor = Math.sign(board[end]);
-//
-//   if (pieceColor == targetPieceColor) {
-//     return false;
-//   }
-//
-//   if (
-//     !ignoreCheck &&
-//     moveResultsInCheck(board, { piece, start, end }, activeColor)
-//   ) {
-//     return false;
-//   }
-//
-//   return ORTHOGONAL_DIRECTIONS.some(dir => {
-//     for (let i = 1; i <= 7; i++) {
-//       // Target reached?
-//       if (end == start + dir * i) {
-//         return true;
-//       }
-//
-//       // Obstacle in the way?
-//       if (board[start + dir * i] != 0) {
-//         return false;
-//       }
-//     }
-//
-//     return false;
-//   });
-// };
-//
-// const generateRookMoves = (board, activeColor, piece, start) => {
-//   return ORTHOGONAL_DIRECTIONS.flatMap(offset => {
-//     const moves = [];
-//     for (let i = 1; i <= 7; i++) {
-//       if (
-//         !isValidRookMove(board, activeColor, piece, start, start + offset * i)
-//       ) {
-//         if (board[start + offset * i] == 0) {
-//           continue;
-//         }
-//         return moves;
-//       }
-//       moves.push({ piece, start, end: start + offset * i });
-//     }
-//     return moves;
-//   });
-// };
-//
+
+const ORTHOGONAL_DIRECTIONS: Array<i32> = [1, 10, -1, -10];
+
+function isValidRookMove(
+  board: Array<i32>,
+  activeColor: i32,
+  piece: i32,
+  start: i32,
+  end: i32,
+  ignoreCheck: bool = false
+): bool {
+  if (board[end] == BOARD_BORDER) {
+    return false;
+  }
+
+  const pieceColor = sign(board[start]);
+  if (activeColor != pieceColor) {
+    return false;
+  }
+
+  const targetPieceColor = sign(board[end]);
+
+  if (pieceColor == targetPieceColor) {
+    return false;
+  }
+
+  // if (
+  //   !ignoreCheck &&
+  //   moveResultsInCheck(board, { piece, start, end }, activeColor)
+  // ) {
+  //   return false;
+  // }
+
+  return true;
+};
+
+
+function generateRookMoves(moves: Array<i32>, board: Array<i32>, activeColor: i32, piece: i32, start: i32): void {
+  for (let i: i32 = 0; i < ORTHOGONAL_DIRECTIONS.length; i++) {
+    const direction = ORTHOGONAL_DIRECTIONS[i];
+
+    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
+      const end = start + direction * distance;
+
+      if (isValidRookMove(board, activeColor, piece, start, end, false)) {
+        moves.push(encodeMove(piece, start, end));
+
+      } else {
+        break;
+
+      }
+
+      if (board[end] !== 0) {
+        // path blocked by piece
+        break;
+      }
+    }
+
+  }
+};
+
+
 // const isValidQueenMove = (
 //   board,
 //   activeColor,
@@ -667,19 +661,24 @@ export function generateMoves(board: Array<i32>, activeColor: i32): Array<i32> {
     }
 
     switch (item) {
-      case 1: // Pawn
-      case -1:
+      case PAWN:
+      case -PAWN:
         generatePawnMoves(moves, board, activeColor, item, i);
         continue;
 
-      case 2: // Knight
-      case -2:
+      case KNIGHT:
+      case -KNIGHT:
         generateKnightMoves(moves, board, activeColor, item, i);
         continue;
 
-      case 3: // Bishop
-      case -3:
+      case BISHOP:
+      case -BISHOP:
         generateBishopMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case ROOK:
+      case -ROOK:
+        generateRookMoves(moves, board, activeColor, item, i);
         continue;
     }
   }
