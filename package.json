@@ -48,21 +48,7 @@
     "assemblyscript": "^0.8.1",
     "babel-plugin-macros": "^2.7.1",
     "gh-pages": "^2.1.1",
-    "husky": "^3.1.0",
-    "lint-staged": "^9.4.3",
-    "prettier": "^1.19.1",
     "workerize-loader": "^1.1.0"
-  },
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
-  "lint-staged": {
-    "src/**/*.{js,jsx,json,css}": [
-      "prettier --write",
-      "git add"
-    ]
   },
   "babelMacros": {
     "styledComponents": {
