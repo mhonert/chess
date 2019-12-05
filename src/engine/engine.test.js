@@ -26,6 +26,7 @@ import {
   BLACK_RIGHT_ROOK_MOVED,
   WHITE
 } from './board';
+import { decodeEndIndex, decodePiece, decodeStartIndex } from '../../assembly/move-generation';
 
 describe('Calculate board row from board index', () => {
   it('Calculcates correct row for index in first row', () => {
@@ -153,25 +154,25 @@ describe('Finds moves', () => {
     // prettier-ignore
     const board = [
       __, __, __, __, __, __, __, __, __, __,
-            __, __, __, __, __, __, __, __, __, __,
-            __,  0,  0,  0,  0, -K,  0,  0,  0, __,
-            __, +R,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-            __,  0,  0,  0,  0, +K,  0,  0, +R, __,
-            __, __, __, __, __, __, __, __, __, __,
-            __, __, __, __, __, __, __, __, __, __, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
-        ];
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0,  0, -K,  0,  0,  0, __,
+      __, +R,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0, +K,  0,  0, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+  ];
 
+    const result = findBestMove(board, WHITE, 2);
     performMove(board, findBestMove(board, WHITE, 2));
     expect(isCheckMate(board, BLACK)).toBe(true);
   });
 
   it('Finds mate in two moves', () => {
-    // prettier-ignore
     const board = [
             __, __, __, __, __, __, __, __, __, __,
             __, __, __, __, __, __, __, __, __, __,

@@ -143,6 +143,29 @@ export class Board {
       this.blackKingIndex = boardIndex;
     }
   }
+
+  log(): void {
+    trace("Board");
+    for (let i = 21; i < 99; i++) {
+      if (this.items[i] < 0) {
+        const item = this.items[i];
+        trace("Piece", 2, i, item);
+      } else if (this.items[i] > 0 && this.items[i] < 10) {
+        const item = this.items[i];
+        trace("Piece", 2, i, item);
+      }
+    }
+  }
+
+  assertPieceNotFound(piece: i32): void {
+    for (let i = 21; i < 99; i++) {
+      if (this.items[i] == piece) {
+        trace("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        return;
+      }
+    }
+  }
+
 }
 
 function isWhiteKing(piece: i32, index: i32, board: Array<i32>): bool {

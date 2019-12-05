@@ -23,6 +23,60 @@ import {
   WHITE, WHITE_PAWNS_BASELINE_START, WHITE_PAWNS_BASELINE_END, BLACK_PAWNS_BASELINE_START, BLACK_PAWNS_BASELINE_END
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, pieces, QUEEN, ROOK } from './pieces';
+import { sign } from './util';
+
+
+export function generateMoves(board: Board, activeColor: i32): Array<i32> {
+  let moves = new Array<i32>();
+
+  for (let i = 21; i <= 98; i++) {
+    const item = board.items[i];
+
+    if (item == EMPTY || item == BOARD_BORDER) {
+      continue;
+    }
+
+    const pieceColor = item < 0 ? BLACK : WHITE;
+    if (pieceColor != activeColor) {
+      continue;
+    }
+
+    switch (item) {
+      case PAWN:
+      case -PAWN:
+        generatePawnMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case KNIGHT:
+      case -KNIGHT:
+        generateKnightMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case BISHOP:
+      case -BISHOP:
+        generateBishopMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case ROOK:
+      case -ROOK:
+        generateRookMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case QUEEN:
+      case -QUEEN:
+        generateQueenMoves(moves, board, activeColor, item, i);
+        continue;
+
+      case KING:
+      case -KING:
+        generateKingMoves(moves, board, activeColor, item, i);
+        continue;
+
+    }
+  }
+
+  return moves;
+};
 
 
 function generatePawnMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
@@ -150,12 +204,12 @@ function isValidKnightMove(
     return false;
   }
 
-  const pieceColor = Math.sign(board.items[start]);
+  const pieceColor = sign(board.items[start]);
   if (activeColor != pieceColor) {
     return false;
   }
 
-  const targetPieceColor = Math.sign(board.items[end]);
+  const targetPieceColor = sign(board.items[end]);
 
   if (pieceColor == targetPieceColor) {
     return false;
@@ -259,6 +313,7 @@ function isValidRookMove(
   }
 
   return ignoreCheck || !moveResultsInCheck(board, piece, start, end, activeColor);
+
 };
 
 
@@ -389,13 +444,17 @@ function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, pi
 
 const EN_PASSANT_BIT = 1 << 31;
 
+export function performEncodedMove(board: Board, encodedMove: i32): i32 {
+  return performMove(board, decodePiece(encodedMove), decodeStartIndex(encodedMove), decodeEndIndex(encodedMove));
+}
+
 /** Applies the given move to the board.
  *
  * @returns The removed piece with the highest bit set to 1, if it was an en passant move.
  *
  */
-export function performMove(board: Board, piece: i32, start: i32, end: i32): i32 {
-  const pieceColor = sign(piece);
+export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i32 {
+  const pieceColor = sign(board.items[start]);
 
   let removedPiece = board.items[end];
 
@@ -405,7 +464,7 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
 
   let isEnPassant: bool = false;
 
-  if ((piece == PAWN || piece == -PAWN) && board.items[end] == EMPTY) {
+  if (pieceId == PAWN && board.items[end] == EMPTY) {
 
     // Special en passant handling
     if (abs(start - end) == 20) {
@@ -425,9 +484,9 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
 
   }
 
-  board.items[end] = piece;
+  board.items[end] = pieceId * pieceColor;
 
-  if (piece == KING) {
+  if (pieceId == KING && pieceColor == WHITE) {
     board.updateKingPosition(WHITE, end);
     board.setWhiteKingMoved();
 
@@ -446,7 +505,7 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
       }
     }
 
-  } else if (piece == -KING) {
+  } else if (pieceId == KING && pieceColor == BLACK) {
     board.updateKingPosition(BLACK, end);
     board.setBlackKingMoved();
 
@@ -463,7 +522,7 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
       }
     }
 
-  } else if (piece == ROOK) {
+  } else if (pieceId == ROOK && pieceColor == WHITE) {
 
     if (start == WHITE_LEFT_ROOK_START) {
       board.setWhiteLeftRookMoved();
@@ -472,7 +531,7 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
       board.setWhiteRightRookMoved();
     }
 
-  } else if (piece == -ROOK) {
+  } else if (pieceId == ROOK && pieceColor == BLACK) {
 
     if (start == BLACK_LEFT_ROOK_START) {
       board.setBlackLeftRookMoved();
@@ -492,24 +551,24 @@ export function performMove(board: Board, piece: i32, start: i32, end: i32): i32
 };
 
 
-export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPiece: i32, previousState: i32): void {
+export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32, previousState: i32): void {
   board.setState(previousState);
+  const pieceColor = sign(board.items[end]);
   board.items[start] = piece;
-  const pieceColor = sign(board.items[start]);
 
-  const wasEnPassant = (removedPiece & EN_PASSANT_BIT) != 0;
+  const wasEnPassant = (removedPieceId & EN_PASSANT_BIT) != 0;
   if (wasEnPassant) {
 
     if (abs(start - end) == 9) {
-      board.items[start + pieceColor] = removedPiece & (EN_PASSANT_BIT - 1);
+      board.items[start + pieceColor] = removedPieceId & (EN_PASSANT_BIT - 1);
     } else if (abs(start - end) == 11) {
-      board.items[start - pieceColor] = removedPiece & (EN_PASSANT_BIT - 1);
+      board.items[start - pieceColor] = removedPieceId & (EN_PASSANT_BIT - 1);
     }
 
     board.items[end] = EMPTY;
 
   } else {
-    board.items[end] = removedPiece * (-pieceColor);
+    board.items[end] = removedPieceId * (-pieceColor);
 
   }
 
@@ -555,11 +614,13 @@ function isInCheck(board: Board, activeColor: i32): bool {
 
 
 function moveResultsInCheck(board: Board, piece: i32, start: i32, end: i32, activeColor: i32): bool {
+  const pieceId = abs(piece);
   const previousState = board.getState();
   const previousPiece = board.items[start]; // might be different from piece in case of pawn promotions
 
-  const removedFigure = performMove(board, piece, start, end);
+  const removedFigure = performMove(board, pieceId, start, end);
   const check = isInCheck(board, activeColor);
+
   undoMove(board, previousPiece, start, end, removedFigure, previousState);
 
   return check;
@@ -664,89 +725,28 @@ function isAttackedOrthogonally(board: Board, opponentColor: i32, pos: i32): boo
 }
 
 
-export function generateMoves(board: Board, activeColor: i32): Array<i32> {
-  let moves = new Array<i32>();
-
-  for (let i = 21; i <= 98; i++) {
-    const item = board.items[i];
-
-    if (item == EMPTY || item == BOARD_BORDER) {
-      continue;
-    }
-
-    const pieceColor = item < 0 ? -1 : 1;
-    if (pieceColor != activeColor) {
-      continue;
-    }
-
-    switch (item) {
-      case PAWN:
-      case -PAWN:
-        generatePawnMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case KNIGHT:
-      case -KNIGHT:
-        generateKnightMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case BISHOP:
-      case -BISHOP:
-        generateBishopMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case ROOK:
-      case -ROOK:
-        generateRookMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case QUEEN:
-      case -QUEEN:
-        generateQueenMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case KING:
-      case -KING:
-        generateKingMoves(moves, board, activeColor, item, i);
-        continue;
-
-    }
-  }
-
-  return moves;
+export function isCheckMate(board: Board, activeColor: i32): bool {
+  return (
+    isInCheck(board, activeColor) &&
+    generateMoves(board, activeColor).length == 0
+  );
 };
-
 
 // Helper functions
 
 export function encodeMove(piece: i32, start: i32, end: i32): i32 {
-  return abs(piece) | (start << 4) | (end << 12);
+  return abs(piece) | (start << 3) | (end << 10);
 }
 
 export function decodePiece(encodedMove: i32): i32 {
-  return encodedMove & 0xF;
+  return encodedMove & 0x7;
 }
 
 export function decodeStartIndex(encodedMove: i32): i32 {
-  return (encodedMove >> 4) & 0xFF;
+  return (encodedMove >> 3) & 0x7F;
 }
 
 export function decodeEndIndex(encodedMove: i32): i32 {
-  return (encodedMove >> 12) & 0xFF;
+  return (encodedMove >> 10) & 0x7F;
 }
 
-function sign(value: i32): i32 {
-  if (value == 0) {
-    return 0;
-  }
-
-  return value < 0 ? -1 : 1;
-}
-
-//
-// export const isCheckMate = (board, activeColor) => {
-//   return (
-//     isInCheck(board, activeColor) &&
-//     generateMoves(board, activeColor).length == 0
-//   );
-// };
