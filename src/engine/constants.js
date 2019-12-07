@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,10 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {instantiateStreaming} from "assemblyscript/lib/loader";
-export default instantiateStreaming(
-    fetch('./as-api.wasm')
-);
+export const BLACK = -1;
+export const WHITE = 1;
 
+export const __ = 99; // board border
 
-
+export const P = 1; // pawn
+export const N = 2; // knight
+export const B = 3; // bishop
+export const R = 4; // rook
+export const Q = 5; // queen
+export const K = 6; // king

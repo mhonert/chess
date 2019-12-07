@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -51,7 +51,7 @@ const Field = ({
   const [, dropRef] = useDrop({
     accept: 'PIECE',
     drop: (item, monitor) => {
-      movePiece(item.piece, item.boardIndex, boardIndex);
+      movePiece(item.pieceId, item.boardIndex, boardIndex);
     }
   });
 

@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -40,7 +40,7 @@ import {
   decodeEndIndex,
   decodePiece,
   decodeStartIndex,
-  encodeMove,
+  encodeMove, generateMoves,
   isCheckMate,
   performEncodedMove
 } from '../move-generation';
@@ -238,10 +238,8 @@ describe('Finds moves', () => {
       __, __, __, __, __, __, __, __, __, __, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
-    const result = findBestMove(board, BLACK, 1);
-    trace("Move", 3, decodePiece(result), decodeStartIndex(result), decodeEndIndex(result));
-    performEncodedMove(board, result);
-    board.assertPieceNotFound(ROOK);
+    performEncodedMove(board, findBestMove(board, BLACK, 2));
+
     expect(isCheckMate(board, WHITE)).toBe(true);
   });
 
@@ -262,10 +260,8 @@ describe('Finds moves', () => {
       __, __, __, __, __, __, __, __, __, __, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
-    const result = findBestMove(board, WHITE, 3);
-    trace("Move", 3, decodePiece(result), decodeStartIndex(result), decodeEndIndex(result));
-    performEncodedMove(board, result);
-    performEncodedMove(board, findBestMove(board, BLACK, 1));
+    performEncodedMove(board, findBestMove(board, WHITE, 3));
+    performEncodedMove(board, findBestMove(board, BLACK, 2));
     performEncodedMove(board, findBestMove(board, WHITE, 1));
 
     expect(isCheckMate(board, BLACK)).toBe(true);
@@ -289,7 +285,7 @@ describe('Finds moves', () => {
     ]);
 
     performEncodedMove(board, findBestMove(board, WHITE, 3));
-    performEncodedMove(board, findBestMove(board, BLACK, 1));
+    performEncodedMove(board, findBestMove(board, BLACK, 2));
     performEncodedMove(board, findBestMove(board, WHITE, 1));
 
     expect(isCheckMate(board, BLACK)).toBe(true);
@@ -316,3 +312,4 @@ describe('Finds moves', () => {
     expect(move).toBeGreaterThan(0, "An encoded move");
   });
 });
+

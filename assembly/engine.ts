@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,7 +19,7 @@
 import { BLACK, Board, BOARD_BORDER, EMPTY, WHITE } from './board';
 import {
   decodeEndIndex,
-  decodePiece, decodeStartIndex,
+  decodePiece, decodeStartIndex, encodeMove,
   generateMoves,
   isCheckMate, performMove, undoMove
 } from './move-generation';
@@ -27,66 +27,13 @@ import { KING, PAWN, ROOK } from './pieces';
 import { sign } from './util';
 
 
-// Evaluate board position with the given move performed
-function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
-  const previousState = board.getState();
+const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9]; // Pawn, Knight, Bishop, Rook, Queen
 
-  const targetPieceId = decodePiece(encodedMove);
-  const moveStart = decodeStartIndex(encodedMove);
-  const moveEnd = decodeEndIndex(encodedMove);
-  const previousPiece = board.items[moveStart];
+const MIN_SCORE = -16383;
+const MAX_SCORE = 16383;
 
-  const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
-
-  const score = evaluatePosition(board);
-
-  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState);
-
-  return score;
-};
-
-
-function sortMovesByScore(board: Board, moves: Array<i32>, playerColor: i32): Array<i32> {
-
-  for (let i: i32 = 0; i < moves.length; i++) {
-    const score: i32 = evaluateMoveScore(board, moves[i]);
-    moves[i] = encodeScoredMove(moves[i], score);
-  }
-
-  if (playerColor == WHITE) {
-    moves.sort(whiteScoringComparator);
-  } else {
-    moves.sort(blackScoringComparator);
-  }
-
-  return moves;
-};
-
-function whiteScoringComparator(a: i32, b: i32): i32 {
-  const scoreA = decodeScore(a);
-  const scoreB = decodeScore(b);
-
-  if (scoreA == scoreB) {
-    return 0;
-  } else if (scoreA > scoreB) {
-    return -1;
-  } else {
-    return 1;
-  }
-}
-
-function blackScoringComparator(a: i32, b: i32): i32 {
-  const scoreA = decodeScore(a);
-  const scoreB = decodeScore(b);
-
-  if (scoreA == scoreB) {
-    return 0;
-  } else if (scoreA < scoreB) {
-    return -1;
-  } else {
-    return 1;
-  }
-}
+export const WHITE_MATE_SCORE: i32 = -16000;
+export const BLACK_MATE_SCORE: i32 = 16000;
 
 
 /** Finds the best move for the current player color.
@@ -96,51 +43,29 @@ function blackScoringComparator(a: i32, b: i32): i32 {
  * @param remainingHalfMoves Half moves to search for
  */
 export function findBestMove(board: Board, playerColor: i32, remainingHalfMoves: i32): i32 {
-  let alpha: i32 = I32.MIN_VALUE;
-  let beta: i32 = I32.MAX_VALUE;
+  let alpha: i32 = MIN_SCORE;
+  let beta: i32 = MAX_SCORE;
 
-  const result = recFindBestMove(
-    board,
-    alpha,
-    beta,
-    playerColor,
-    remainingHalfMoves,
-    0
-  );
+  const result = recFindBestMove(board, alpha, beta, playerColor, remainingHalfMoves, 0);
 
   return decodeMove(result);
 };
 
-// If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
-// to prevent unnecessary delays.
-function adjustScore(board: Board, realDepth: i32): i32 {
-  const score = evaluatePosition(board);
-
-  if (score == BLACK_MATE_SCORE) {
-    return score + (100 - realDepth);
-  } else if (score == WHITE_MATE_SCORE) {
-    return score - (100 - realDepth);
-  }
-
-  return score;
-};
-
-const MIN_SCORE = -16382;
-const MAX_SCORE = 16382;
 
 // Recursively calls itself with alternating player colors to
 // find the best possible move in response to the current board position.
 //
 function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32): i32 {
   if (remainingLevels <= 0) {
-    return encodeScoredMove(0, adjustScore(board, depth) * playerColor);
+    return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
   }
 
   const moves = sortMovesByScore(board, generateMoves(board, playerColor), playerColor);
 
+
   if (moves.length == 0) {
     // no more moves possible (i.e. check mate or stale mate)
-    return encodeScoredMove(0, adjustScore(board, depth) * playerColor);
+    return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
   }
 
   let bestScore: i32 = MIN_SCORE;
@@ -164,7 +89,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       -alpha,
       -playerColor,
       remainingLevels - 1,
-      depth + 1,
+      depth + 1
     );
 
     undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState);
@@ -186,15 +111,58 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
     }
   }
 
-
   return encodeScoredMove(bestMove, bestScore);
 };
 
 
-const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9]; // Pawn, Knight, Bishop, Rook, Queen
+// Evaluate board position with the given move performed
+// (low values are better for black and high values are better for white)
+function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
+  const previousState = board.getState();
 
-export const WHITE_MATE_SCORE: i32 = -16000;
-export const BLACK_MATE_SCORE: i32 = 16000;
+  const targetPieceId = decodePiece(encodedMove);
+  const moveStart = decodeStartIndex(encodedMove);
+  const moveEnd = decodeEndIndex(encodedMove);
+  const previousPiece = board.items[moveStart];
+
+  const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
+
+  const score = evaluatePosition(board);
+
+  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState);
+
+  return score;
+};
+
+
+// Evaluates and sorts all given moves.
+// The moves will be sorted in descending order starting with the best scored moved for the given player color.
+//
+// The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
+// the moves array can be modified and sorted in-place.
+function sortMovesByScore(board: Board, moves: Array<i32>, playerColor: i32): Array<i32> {
+
+  for (let i: i32 = 0; i < moves.length; i++) {
+    const score: i32 = evaluateMoveScore(board, moves[i]);
+    moves[i] = encodeScoredMove(moves[i], score);
+  }
+
+  if (playerColor == WHITE) {
+    moves.sort(whiteScoringComparator);
+  } else {
+    moves.sort(blackScoringComparator);
+  }
+
+  return moves;
+};
+
+function whiteScoringComparator(a: i32, b: i32): i32 {
+  return decodeScore(b) - decodeScore(a);
+}
+
+function blackScoringComparator(a: i32, b: i32): i32 {
+  return decodeScore(a) - decodeScore(b);
+}
 
 
 /** Evaluates the current position and generates a score.
@@ -376,6 +344,21 @@ export function evaluatePosition(board: Board): i32 {
   }
 
   return materialValue * 100 + positionValue + castleValue;
+};
+
+
+// If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
+// to prevent unnecessary delays.
+function adjustedPositionScore(board: Board, depth: i32): i32 {
+  const score = evaluatePosition(board);
+
+  if (score == BLACK_MATE_SCORE) {
+    return score + (100 - depth);
+  } else if (score == WHITE_MATE_SCORE) {
+    return score - (100 - depth);
+  }
+
+  return score;
 };
 
 

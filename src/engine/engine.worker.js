@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,31 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import waApi from './wa-engine';
-
+import engine from './engine-wasm-interop';
 
 export async function calculateMove(board, playerColor, depth) {
-  console.log('Start calculation of move ...');
-
-  const api = await waApi;
-
-  const boardPtr = api.__retain(api.__allocArray(api.INT32ARRAY_ID, board));
-
-  const moveEncoded = api.calculateMove(boardPtr, playerColor, depth);
-
-  const piece = moveEncoded & 0xF;
-  const start = (moveEncoded >> 4) & 0xFF;
-  const end = (moveEncoded >> 12);
-  console.log("Encoded move: ", moveEncoded);
-  console.log('Calculation finished, move ', piece, ' from ', start, ' to ', end);
-
-  api.__release(boardPtr);
-
-  // api.freeArray(boardPtr);
-
-  return {
-    start: start,
-    end: end,
-    piece: piece * playerColor
-  };
+  await engine.init();
+  return engine.calculateMove(board, playerColor, depth);
 }

@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -19,20 +19,57 @@
 // The entry file of your WebAssembly module.
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
-import { generateMoves } from './move-generation';
+import { decodeEndIndex, decodePiece, decodeStartIndex, generateMoves, performEncodedMove, isCheckMate as isCheckMateFn } from './move-generation';
+import { findBestMove } from './engine';
+import { Board } from './board';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
 
-export function calculateMove(board: Int32Array, color: i32, depth: i32): i32 {
-  trace("Calculation started");
-
+function createBoard(board: Int32Array): Board {
   const boardArray: Array<i32> = new Array<i32>();
   for (let i: i32 = 0; i < board.length; i++) {
     boardArray.push(board[i]);
   }
+  return new Board(boardArray);
+}
 
-  const moves = generateMoves(boardArray, color);
-  trace("Moves generated", 1, moves.length);
+export function calculateMove(boardArray: Int32Array, color: i32, depth: i32): i32 {
+  trace("Calculation started");
 
-  return moves[0];
+  const board = createBoard(boardArray);
+
+  const move = findBestMove(board, color, depth);
+
+  trace("Found best move", 1, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move));
+
+  return move;
+}
+
+export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Array {
+  const board = createBoard(boardArray);
+  performEncodedMove(board, encodedMove);
+
+  const newBoard = new Int32Array(boardArray.length);
+  for (let i = 0; i < boardArray.length; i++) {
+    newBoard[i] = board.items[i];
+  }
+
+  return newBoard;
+}
+
+export function generatePlayerMoves(boardArray: Int32Array, color: i32): Int32Array {
+  const board = createBoard(boardArray);
+  const moves = generateMoves(board, color);
+
+  const movesArray = new Int32Array(moves.length);
+  for (let i = 0; i < moves.length; i++) {
+    movesArray[i] = moves[i];
+  }
+
+  return movesArray;
+}
+
+export function isCheckMate(boardArray: Int32Array, color: i32): bool {
+  const board = createBoard(boardArray);
+  return isCheckMateFn(board, color);
 }

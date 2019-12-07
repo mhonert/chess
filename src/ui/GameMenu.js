@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -18,7 +18,7 @@
 
 import React from 'react';
 import styled from 'styled-components/macro';
-import { WHITE } from '../engine/board';
+import { WHITE } from '../engine/constants';
 import { keyframes } from 'styled-components/macro';
 
 const MenuBar = styled.div`
@@ -121,11 +121,13 @@ const GameMenu = ({
 }) => {
   return (
     <MenuBar>
+
       <MenuItem hidden={isAiThinking}>
         <GameButton disabled={isAiThinking} onClick={startNewGame}>
           New Game
         </GameButton>
       </MenuItem>
+
       <MenuItem hidden={isAiThinking || gameEnded}>
         <GameButton
           disabled={isAiThinking || gameEnded}
@@ -135,13 +137,14 @@ const GameMenu = ({
           Computer Move
         </GameButton>
       </MenuItem>
+
       <MenuItem hidden={isAiThinking}>
         <Label htmlFor="game-menu_difficulty-slider">Difficulty</Label>
         <input
           id="game-menu_difficulty-slider"
           type="range"
-          min="3"
-          max="5"
+          min="4"
+          max="6"
           title="Difficulty"
           value={searchDepth}
           onChange={e => setSearchDepth(e.target.value)}
@@ -153,6 +156,7 @@ const GameMenu = ({
           <AnimatedDualRing>Thinking ...</AnimatedDualRing>
         </ThinkingIndicator>
       )}
+
       {gameEnded && (
         <GameResult>
           {winningPlayerColor

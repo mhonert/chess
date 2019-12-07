@@ -1,5 +1,5 @@
 /*
- * Chess App using React and Web Workers
+ * A free and open source chess game using AssemblyScript and React
  * Copyright (C) 2019 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
@@ -16,40 +16,32 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import React from 'react';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components/macro';
 
-import engineWorker from 'workerize-loader!../engine/web.worker'; // eslint-disable-line import/no-webpack-loader-syntax
-
-import {
-  generateMoves,
-  isCheckMate,
-  performMove
-} from '../engine/move-generation';
-import { __, WHITE } from '../engine/board';
-import { B, K, N, P, Q, R } from '../engine/pieces';
+import engineWorkerLoader from 'workerize-loader!../engine/engine.worker'; // eslint-disable-line import/no-webpack-loader-syntax
+import { __, B, BLACK, K, N, P, Q, R, WHITE } from '../engine/constants';
 import Board from './Board';
 import GameMenu from './GameMenu';
+import engine, { Move } from '../engine/engine-wasm-interop';
 
-const engine = engineWorker();
+const engineWebWorker = engineWorkerLoader();
 
 const initialState = 0;
 
-// prettier-ignore
 const initialBoard = [
-    __, __, __, __, __, __, __, __, __, __,
-    __, __, __, __, __, __, __, __, __, __,
-    __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-    __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-    __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-    __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-    __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-    __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-    __,  P, -P, -P, -P, -P, -P, -P, -P, __,
-    __,  R,  N,  B,  Q,  K,  B,  N,  R, __,
-    __, __, __, __, __, __, __, __, __, __,
-    __, __, __, __, __, __, __, __, __, __, initialState
+  __, __, __, __, __, __, __, __, __, __,
+  __, __, __, __, __, __, __, __, __, __,
+  __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
+  __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __,  P,  P,  P,  P,  P,  P,  P,  P, __,
+  __,  R,  N,  B,  Q,  K,  B,  N,  R, __,
+  __, __, __, __, __, __, __, __, __, __,
+  __, __, __, __, __, __, __, __, __, __, initialState
 ];
 
 const GameArea = styled.div`
@@ -63,9 +55,7 @@ const Game = () => {
   const [board, setBoard] = useState(initialBoard);
   const [gameEnded, setGameEnded] = useState(false);
   const [lastMove, setLastMove] = useState({ start: -1, end: -1 });
-  const [availableMoves, setAvailableMoves] = useState(
-    generateMoves(board, activePlayer)
-  );
+  const [availableMoves, setAvailableMoves] = useState(engine.generateMoves(board, activePlayer));
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
   const [searchDepth, setSearchDepth] = useState(5);
@@ -79,18 +69,17 @@ const Game = () => {
 
     setLastMove(move);
 
-    const newBoard = board.slice(0);
-    performMove(newBoard, move);
+    const newBoard = engine.performMove(board, move);
     setBoard(newBoard);
 
-    if (isCheckMate(newBoard, -aiColor)) {
+    if (engine.isCheckMate(newBoard, -aiColor)) {
       setGameEnded(true);
       setWinningPlayer(aiColor);
 
       return;
     }
 
-    const availablePlayerMoves = generateMoves(newBoard, -aiColor);
+    const availablePlayerMoves = engine.generateMoves(newBoard, -aiColor);
     setAvailableMoves(availablePlayerMoves);
 
     if (availablePlayerMoves.length === 0) {
@@ -110,9 +99,9 @@ const Game = () => {
 
   const forceAiMove = () => {
     setAiThinking(true);
-    engine.calculateMove(board, activePlayer, searchDepth).then(move => {
-      handleAIMove(board, move, activePlayer);
-    });
+    engineWebWorker
+      .calculateMove(board, activePlayer, searchDepth)
+      .then(move => handleAIMove(board, move, activePlayer));
   };
 
   const startNewGame = () => {
@@ -121,7 +110,7 @@ const Game = () => {
     setGameEnded(false);
     setLastMove({ start: -1, end: -1 });
     setWinningPlayer(undefined);
-    setAvailableMoves(generateMoves(initialBoard, activePlayer));
+    setAvailableMoves(engine.generateMoves(initialBoard, activePlayer));
     setCurrentPieceMoves(new Set());
   };
 
@@ -137,38 +126,38 @@ const Game = () => {
 
     setLastMove({ start, end });
 
-    if (pieceId === 1 && activePlayer === WHITE && end < 29) {
+    // TODO: Replace browser prompt dialog with own dialog
+    if (pieceId === P && ((activePlayer === WHITE && end < 29) || (activePlayer === BLACK && end > 90))) {
       // Promotion
       const choice = prompt('Choose promotion (Q, R, B, K)', 'Q');
       switch (choice.toUpperCase()) {
         case 'R':
-          piece = 4;
+          piece = R;
           break;
         case 'B':
-          piece = 3;
+          piece = B;
           break;
         case 'K':
-          piece = 2;
+          piece = K;
           break;
         case 'Q':
         default:
-          piece = 5;
+          piece = Q;
           break;
       }
     }
 
-    const newBoard = board.slice(0);
-    performMove(newBoard, { piece, start, end });
+    const newBoard = engine.performMove(board, new Move(pieceId, start, end));
     setBoard(newBoard);
 
-    if (isCheckMate(newBoard, -activePlayer)) {
+    if (engine.isCheckMate(newBoard, -activePlayer)) {
       setGameEnded(true);
       setWinningPlayer(activePlayer);
 
       return;
     }
 
-    const moves = generateMoves(newBoard, -activePlayer);
+    const moves = engine.generateMoves(newBoard, -activePlayer);
 
     if (moves.length === 0) {
       setGameEnded(true);
@@ -177,7 +166,7 @@ const Game = () => {
 
     setAiThinking(true);
     clearAvailableMoves();
-    engine
+    engineWebWorker
       .calculateMove(newBoard, -activePlayer, searchDepth)
       .then(move => handleAIMove(newBoard, move, -activePlayer));
 
