@@ -115,7 +115,7 @@ const Game = () => {
   };
 
   const handlePlayerMove = (piece, start, end) => {
-    const pieceId = Math.abs(piece);
+    let pieceId = Math.abs(piece);
     if (gameEnded || isAiThinking) {
       return;
     }
@@ -132,17 +132,17 @@ const Game = () => {
       const choice = prompt('Choose promotion (Q, R, B, K)', 'Q');
       switch (choice.toUpperCase()) {
         case 'R':
-          piece = R;
+          pieceId = R;
           break;
         case 'B':
-          piece = B;
+          pieceId = B;
           break;
         case 'K':
-          piece = K;
+          pieceId = K;
           break;
         case 'Q':
         default:
-          piece = Q;
+          pieceId = Q;
           break;
       }
     }
