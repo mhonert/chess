@@ -14,16 +14,18 @@
     "styled-components": "^4.4.1"
   },
   "scripts": {
-    "jsstart": "react-scripts start",
-    "jsbuild": "react-scripts build",
-    "start": "npm run asbuild && npm run jsstart",
+    "asbuild": "asc assembly/index.ts -O3 -b public/as-api.wasm",
+    "asbuild:debug": "asc assembly/index.ts --debug -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",
+    "jsbuild": "react-scripts build",
+    "jsstart": "react-scripts start",
+    "start": "npm run asbuild && npm run jsstart",
+    "start:debug": "npm run asbuild:debug && npm run jsstart",
     "jstest": "react-scripts test",
     "test": "asp",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build",
-    "asbuild": "asc assembly/index.ts -b public/as-api.wasm"
+    "deploy": "gh-pages -d build"
   },
   "eslintConfig": {
     "extends": "react-app"

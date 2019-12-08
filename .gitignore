@@ -27,5 +27,6 @@ yarn-error.log*
 # Generated as-pect type definition file
 as-pect.d.ts
 
-# Generated wasm binary
+# Generated wasm binary and source map
 public/as-api.wasm
+public/as-api.wasm.map
