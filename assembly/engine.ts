@@ -23,7 +23,7 @@ import {
   generateMoves,
   isCheckMate, performMove, undoMove
 } from './move-generation';
-import { KING, PAWN, ROOK } from './pieces';
+import { BISHOP, KING, KNIGHT, PAWN, ROOK } from './pieces';
 import { sign } from './util';
 
 
@@ -200,36 +200,39 @@ export function evaluatePosition(board: Board): i32 {
     const pieceValue = PIECE_VALUES[pieceId - 1];
     materialValue += pieceValue * sign(piece);
 
-    if (piece == -1) {
+    if (piece == -PAWN) {
       const rowBitPattern = 1 << boardRowFromIndex(i);
       if ((blackPawnRows & rowBitPattern) != 0) {
         positionValue += 5; // worse score for double pawns
       } else {
         blackPawnRows |= rowBitPattern;
       }
-    } else if (piece == 1) {
+    } else if (piece == PAWN) {
       const rowBitPattern = 1 << boardRowFromIndex(i);
       if ((whitePawnRows & rowBitPattern) != 0) {
         positionValue -= 5; // worse score for double pawns
       } else {
         whitePawnRows |= rowBitPattern;
       }
-    } else if (piece == -2) {
+    } else if (piece == -KNIGHT) {
       blackKnights++;
-    } else if (piece == 2) {
+      if (i >= 42 && i != 48) { // bonus points for knight outside starting position
+        positionValue--;
+      }
+    } else if (piece == KNIGHT) {
       whiteKnights++;
-    } else if (piece == -3) {
+      if (i <= 77 && i != 71) { // bonus points for knight outside starting position
+        positionValue++;
+      }
+    } else if (piece == -BISHOP) {
       blackBishops++;
-    } else if (piece == 3) {
+      if (i >= 31) { // bonus points for bishop outside starting position
+        positionValue--;
+      }
+    } else if (piece == BISHOP) {
       whiteBishops++;
-    }
-
-    // Bonus point for pieces outside the starting positions
-    if (i >= 41 && i <= 88) {
-      if (board.items[i] < -1 && board.items[i] > -4) {
-        positionValue -= 2;
-      } else if (board.items[i] > 1 && board.items[i] < 4) {
-        positionValue += 2;
+      if (i <= 88) { // bonus points for bishop outside starting position
+        positionValue++;
       }
     }
   }
@@ -253,19 +256,19 @@ export function evaluatePosition(board: Board): i32 {
   }
 
   // Bonus points, if pawns occupy the center positions
-  if (board.items[54] == -1) {
+  if (board.items[54] == -PAWN) {
     positionValue -= 2;
   }
 
-  if (board.items[55] == -1) {
+  if (board.items[55] == -PAWN) {
     positionValue -= 2;
   }
 
-  if (board.items[64] == 1) {
+  if (board.items[64] == PAWN) {
     positionValue += 2;
   }
 
-  if (board.items[65] == 1) {
+  if (board.items[65] == PAWN) {
     positionValue += 2;
   }
 
@@ -273,7 +276,28 @@ export function evaluatePosition(board: Board): i32 {
   let castleValue = 0;
 
   if (board.whiteKingMoved()) {
-    castleValue--;
+    castleValue -= 5;
+
+    // Bonus points for castle positions
+    if (board.items[97] == KING && board.items[96] == ROOK) {
+      castleValue += 10;
+
+    } else if (board.items[92] == KING && board.items[93] == ROOK) {
+      castleValue += 10;
+
+    }
+  }
+
+  for (let i = 81; i <= 83; i++) {
+    if (board.items[i] == PAWN) {
+      castleValue++;
+    }
+  }
+
+  for (let i = 86; i <= 88; i++) {
+    if (board.items[i] == PAWN) {
+      castleValue++;
+    }
   }
 
   if (board.whiteRightRookMoved()) {
@@ -285,7 +309,28 @@ export function evaluatePosition(board: Board): i32 {
   }
 
   if (board.blackKingMoved()) {
-    castleValue++;
+    castleValue += 5;
+
+    // Bonus points for castle positions
+    if (board.items[27] == -KING && board.items[26] == -ROOK) {
+      castleValue -= 10;
+
+    } else if (board.items[22] == -KING && board.items[23] == -ROOK) {
+      castleValue -= 10;
+
+    }
+  }
+
+  for (let i = 31; i <= 33; i++) {
+    if (board.items[i] == -PAWN) {
+      castleValue--;
+    }
+  }
+
+  for (let i = 36; i <= 38; i++) {
+    if (board.items[i] == -PAWN) {
+      castleValue--;
+    }
   }
 
   if (board.blackRightRookMoved()) {
@@ -294,53 +339,6 @@ export function evaluatePosition(board: Board): i32 {
 
   if (board.blackLeftRookMoved()) {
     castleValue++;
-  }
-
-  // Bonus points for safe castle positions
-  if (board.items[27] == -KING && board.items[26] == -ROOK &&
-      board.items[36] == -PAWN && board.items[37] == -PAWN && board.items[38] == -PAWN) {
-
-    castleValue -= 10;
-
-  } else if (board.items[22] == -KING && board.items[23] == -ROOK &&
-             board.items[31] == -PAWN && board.items[32] == -PAWN && board.items[33] == -PAWN) {
-
-    castleValue -= 10;
-  }
-
-  if (board.items[97] == KING && board.items[96] == ROOK &&
-      board.items[86] == PAWN && board.items[87] == PAWN && board.items[88] == PAWN) {
-
-    castleValue += 10;
-
-  } else if (board.items[92] == KING && board.items[93] == ROOK &&
-             board.items[81] == PAWN && board.items[82] == PAWN && board.items[83] == PAWN) {
-
-    castleValue += 10;
-  }
-
-  for (let i = 31; i <= 33; i++) {
-    if (board.items[i] != -1) {
-      castleValue++;
-    }
-  }
-
-  for (let i = 36; i <= 38; i++) {
-    if (board.items[i] != -1) {
-      castleValue++;
-    }
-  }
-
-  for (let i = 81; i <= 83; i++) {
-    if (board.items[i] != 1) {
-      castleValue--;
-    }
-  }
-
-  for (let i = 86; i <= 88; i++) {
-    if (board.items[i] != 1) {
-      castleValue--;
-    }
   }
 
   return materialValue * 100 + positionValue + castleValue;
@@ -362,7 +360,9 @@ function adjustedPositionScore(board: Board, depth: i32): i32 {
 };
 
 
-export const boardRowFromIndex = (index: i32): i32 => (index - 21) % 10;
+export function boardRowFromIndex(index: i32): i32 {
+  return (index - 21) % 10;
+}
 
 export function encodeScoredMove(move: i32, score: i32): i32 {
   if (score < 0) {

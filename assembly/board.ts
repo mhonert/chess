@@ -157,15 +157,6 @@ export class Board {
     }
   }
 
-  assertPieceNotFound(piece: i32): void {
-    for (let i = 21; i < 99; i++) {
-      if (this.items[i] == piece) {
-        trace("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-        return;
-      }
-    }
-  }
-
 }
 
 function isWhiteKing(piece: i32, index: i32, board: Array<i32>): bool {

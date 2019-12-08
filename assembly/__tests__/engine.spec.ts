@@ -172,7 +172,7 @@ describe('Evaluate position', () => {
       __,  0,  0,  0,  0, +P, +P, +P, +P, __,
       __,  0,  0,  0,  0,  0, +R, +K,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
     ];
 
     const score = evaluatePosition(new Board(board));
