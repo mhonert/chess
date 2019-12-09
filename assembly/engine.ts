@@ -79,7 +79,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
     const targetPieceId = decodePiece(move);
     const moveStart = decodeStartIndex(move);
     const moveEnd = decodeEndIndex(move);
-    const previousPiece = board.items[moveStart];
+    const previousPiece = board.getItem(moveStart);
 
     const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
 
@@ -123,7 +123,7 @@ function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
   const targetPieceId = decodePiece(encodedMove);
   const moveStart = decodeStartIndex(encodedMove);
   const moveEnd = decodeEndIndex(encodedMove);
-  const previousPiece = board.items[moveStart];
+  const previousPiece = board.getItem(moveStart);
 
   const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
 
@@ -179,169 +179,7 @@ export function evaluatePosition(board: Board): i32 {
     return WHITE_MATE_SCORE;
   }
 
-  let materialValue = 0;
-  let positionValue = 0;
-  let whiteBishops = 0;
-  let blackBishops = 0;
-  let whiteKnights = 0;
-  let blackKnights = 0;
-
-  let whitePawnRows = 0;
-  let blackPawnRows = 0;
-  for (let i = 21; i <= 98; i++) {
-    const piece = board.items[i];
-    const pieceId = abs(piece);
-
-    if (piece == EMPTY || piece == BOARD_BORDER || pieceId == KING) {
-      continue;
-    }
-
-    // Sum of all piece values (material) on the board
-    const pieceValue = PIECE_VALUES[pieceId - 1];
-    materialValue += pieceValue * sign(piece);
-
-    if (piece == -PAWN) {
-      const rowBitPattern = 1 << boardRowFromIndex(i);
-      if ((blackPawnRows & rowBitPattern) != 0) {
-        positionValue += 5; // worse score for double pawns
-      } else {
-        blackPawnRows |= rowBitPattern;
-      }
-    } else if (piece == PAWN) {
-      const rowBitPattern = 1 << boardRowFromIndex(i);
-      if ((whitePawnRows & rowBitPattern) != 0) {
-        positionValue -= 5; // worse score for double pawns
-      } else {
-        whitePawnRows |= rowBitPattern;
-      }
-    } else if (piece == -KNIGHT) {
-      blackKnights++;
-      if (i >= 42 && i != 48) { // bonus points for knight outside starting position
-        positionValue--;
-      }
-    } else if (piece == KNIGHT) {
-      whiteKnights++;
-      if (i <= 77 && i != 71) { // bonus points for knight outside starting position
-        positionValue++;
-      }
-    } else if (piece == -BISHOP) {
-      blackBishops++;
-      if (i >= 31) { // bonus points for bishop outside starting position
-        positionValue--;
-      }
-    } else if (piece == BISHOP) {
-      whiteBishops++;
-      if (i <= 88) { // bonus points for bishop outside starting position
-        positionValue++;
-      }
-    }
-  }
-
-  // Bonus points if knights exist as pair
-  if (whiteKnights == 2) {
-    positionValue += 4;
-  }
-
-  if (blackKnights == 2) {
-    positionValue -= 4;
-  }
-
-  // Bonus points if bishops exist as pair
-  if (whiteBishops == 2) {
-    positionValue += 6;
-  }
-
-  if (blackBishops == 2) {
-    positionValue -= 6;
-  }
-
-  // Bonus points, if pawns occupy the center positions
-  if (board.items[54] == -PAWN) {
-    positionValue -= 2;
-  }
-
-  if (board.items[55] == -PAWN) {
-    positionValue -= 2;
-  }
-
-  if (board.items[64] == PAWN) {
-    positionValue += 2;
-  }
-
-  if (board.items[65] == PAWN) {
-    positionValue += 2;
-  }
-
-  // Bonus points if pieces involved in castling have not yet moved
-  let castleValue = 0;
-
-  if (board.whiteKingMoved()) {
-    castleValue -= 5;
-
-    // Bonus points for castle positions
-    if (board.items[97] == KING && board.items[96] == ROOK) {
-      castleValue += 10;
-
-    } else if (board.items[92] == KING && board.items[93] == ROOK) {
-      castleValue += 10;
-
-    }
-  }
-
-  for (let i = 81; i <= 83; i++) {
-    if (board.items[i] == PAWN) {
-      castleValue++;
-    }
-  }
-
-  for (let i = 86; i <= 88; i++) {
-    if (board.items[i] == PAWN) {
-      castleValue++;
-    }
-  }
-
-  if (board.whiteRightRookMoved()) {
-    castleValue--;
-  }
-
-  if (board.whiteLeftRookMoved()) {
-    castleValue--;
-  }
-
-  if (board.blackKingMoved()) {
-    castleValue += 5;
-
-    // Bonus points for castle positions
-    if (board.items[27] == -KING && board.items[26] == -ROOK) {
-      castleValue -= 10;
-
-    } else if (board.items[22] == -KING && board.items[23] == -ROOK) {
-      castleValue -= 10;
-
-    }
-  }
-
-  for (let i = 31; i <= 33; i++) {
-    if (board.items[i] == -PAWN) {
-      castleValue--;
-    }
-  }
-
-  for (let i = 36; i <= 38; i++) {
-    if (board.items[i] == -PAWN) {
-      castleValue--;
-    }
-  }
-
-  if (board.blackRightRookMoved()) {
-    castleValue++;
-  }
-
-  if (board.blackLeftRookMoved()) {
-    castleValue++;
-  }
-
-  return materialValue * 100 + positionValue + castleValue;
+  return board.getScore();
 };
 
 

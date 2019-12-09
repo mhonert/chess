@@ -17,11 +17,15 @@
  */
 
 import { KING } from './pieces';
+import { sign } from './util';
+
+const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
 
 export class Board {
-  items: Array<i32>;
+  private items: Array<i32>;
   whiteKingIndex: i32;
   blackKingIndex: i32;
+  score: i32 = 0;
 
   constructor(items: Array<i32>) {
     this.items = items;
@@ -34,6 +38,56 @@ export class Board {
 
     if (this.blackKingIndex == -1) {
       throw new Error("Black king is missing on the board!");
+    }
+
+    for (let i: i32 = 21; i <= 98; i++) {
+      const piece = this.items[i];
+      if (piece != EMPTY && piece != BOARD_BORDER) {
+        const pieceId = abs(piece);
+        this.score += this.calculateScore(i, sign(piece), pieceId);
+      }
+    }
+  }
+
+  getItem(pos: i32): i32 {
+    return this.items[pos];
+  }
+
+  isEmpty(pos: i32): bool {
+    return this.items[pos] == EMPTY;
+  }
+
+  isBorder(pos: i32): bool {
+    return this.items[pos] == BOARD_BORDER;
+  }
+
+  getScore(): i32 {
+    return this.score;
+  }
+
+  addPiece(pieceColor: i32, pieceId: i32, pos: i32): void {
+    const piece = pieceId * pieceColor;
+    this.score += this.calculateScore(pos, pieceColor, pieceId);
+    this.items[pos] = piece;
+  }
+
+  removePiece(pos: i32): i32 {
+    const piece = this.items[pos];
+    if (piece == EMPTY) {
+      return EMPTY;
+    }
+    this.score -= this.calculateScore(pos, sign(piece), abs(piece));
+    this.items[pos] = EMPTY;
+    return piece;
+  }
+
+  calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
+    if (color == WHITE) {
+      return PIECE_VALUES[pieceId - 1] * 10 + WHITE_POSITION_SCORES[pieceId - 1][pos - 20];
+
+    } else {
+      return PIECE_VALUES[pieceId - 1] * -10 - BLACK_POSITION_SCORES[pieceId - 1][pos - 20];
+
     }
   }
 
@@ -167,7 +221,6 @@ function isBlackKing(piece: i32, index: i32, board: Array<i32>): bool {
   return piece == -KING;
 }
 
-
 export const BLACK: i32 = -1;
 export const WHITE: i32 = 1;
 
@@ -206,3 +259,91 @@ const WHITE_ENPASSANT_LINE_END = 48
 const BLACK_ENPASSANT_LINE_START = 71;
 const BLACK_ENPASSANT_LINE_END = 78
 
+
+export const PAWN_POSITION_SCORES: Array<i32> = [
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __, 10, 10, 10, 10, 10, 10, 10, 10, __,
+  __,  2,  2,  4,  6,  6,  4,  2,  2, __,
+  __,  1,  1,  2,  5,  5,  2,  1,  1, __,
+  __,  0,  0,  0,  4,  4,  0,  0,  0, __,
+  __,  1, -1, -2,  0,  0, -2, -1,  1, __,
+  __,  1,  2,  2, -4, -4,  2,  2,  1, __,
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __
+];
+
+const KNIGHT_POSITION_SCORES: Array<i32> = [
+  __, -10, -8, -6, -6, -6, -6, -8,-10, __,
+  __,  -8, -4,  0,  0,  0,  0, -4, -8, __,
+  __,  -6,  0,  2,  3,  3,  2,  0, -6, __,
+  __,  -6,  1,  3,  4,  4,  3,  1, -6, __,
+  __,  -6,  0,  3,  4,  4,  3,  0, -6, __,
+  __,  -6,  1,  2,  3,  3,  2,  1, -6, __,
+  __,  -8, -4,  0,  1,  1,  0, -4, -8, __,
+  __, -10, -8, -6, -6, -6, -6, -8,-10, __,
+]
+
+const BISHOP_POSITION_SCORES: Array<i32> = [
+  __, -4, -2, -2, -2, -2, -2, -2, -4, __,
+  __, -2,  0,  0,  0,  0,  0,  0, -2, __,
+  __, -2,  0,  1,  2,  2,  1,  0, -2, __,
+  __, -2,  1,  1,  2,  2,  1,  1, -2, __,
+  __, -2,  0,  2,  2,  2,  2,  0, -2, __,
+  __, -2,  2,  2,  2,  2,  2,  2, -2, __,
+  __, -2,  1,  0,  0,  0,  0,  1, -2, __,
+  __, -4, -2, -2, -2, -2, -2, -2, -4, __
+]
+
+const ROOK_POSITION_SCORES: Array<i32> = [
+  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+  __,  1,  2,  2,  2,  2,  2,  2,  1, __,
+  __, -1,  0,  0,  0,  0,  0,  0, -1, __,
+  __, -1,  0,  0,  0,  0,  0,  0, -1, __,
+  __, -1,  0,  0,  0,  0,  0,  0, -1, __,
+  __, -1,  0,  0,  0,  0,  0,  0, -1, __,
+  __, -1,  0,  0,  0,  0,  0,  0, -1, __,
+  __,  0,  0,  0,  1,  1,  0,  0,  0, __
+]
+
+const QUEEN_POSITION_SCORES: Array<i32> = [
+  __, -4, -2, -2, -1, -1, -2, -2, -4, __,
+  __, -2,  0,  0,  0,  0,  0,  0, -2, __,
+  __, -2,  0,  1,  1,  1,  1,  0, -2, __,
+  __, -1,  0,  1,  1,  1,  1,  0, -1, __,
+  __,  0,  0,  1,  1,  1,  1,  0, -1, __,
+  __, -2,  1,  1,  1,  1,  1,  0, -2, __,
+  __, -2,  0,  1,  0,  0,  0,  0, -2, __,
+  __, -4, -2, -2, -1, -1, -2, -2, -4, __
+]
+
+const KING_POSITION_SCORES: Array<i32> = [
+  __, -6, -8, -8, -10, -10, -8, -8, -6, __,
+  __, -6, -8, -8, -10, -10, -8, -8, -6, __,
+  __, -6, -8, -8, -10, -10, -8, -8, -6, __,
+  __, -6, -8, -8, -10, -10, -8, -8, -6, __,
+  __, -4, -6, -6,  -8,  -8, -6, -6, -4, __,
+  __, -2, -4, -4,  -4,  -4, -4, -4, -2, __,
+  __,  4,  4,  0,   0,   0,  0,  4,  4, __,
+  __,  4,  6,  2,   0,   0,  2,  6,  4, __
+]
+
+const WHITE_POSITION_SCORES: Array<Array<i32>> = [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
+                                                  ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES];
+
+const BLACK_POSITION_SCORES: Array<Array<i32>> = [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
+                                                  mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)];
+
+export function mirrored(input: Array<i32>): Array<i32> {
+  let output = input.slice(0);
+  for (let column: i32 = 0; column < 10; column++) {
+    for (let row: i32 = 0; row < 4; row++) {
+      const oppositeRow = 7 - row;
+      const pos = column + row * 10;
+      const oppositePos = column + oppositeRow * 10;
+      const value = output[pos];
+      output[pos] = output[oppositePos];
+      output[oppositePos] = value;
+    }
+  }
+
+  return output;
+}

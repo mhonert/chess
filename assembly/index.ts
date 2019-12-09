@@ -51,7 +51,7 @@ export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Arra
 
   const newBoard = new Int32Array(boardArray.length);
   for (let i = 0; i < boardArray.length; i++) {
-    newBoard[i] = board.items[i];
+    newBoard[i] = board.getItem(i);
   }
 
   return newBoard;
