@@ -740,7 +740,7 @@ describe("White king moves", () => {
     const moves = filterMoves(95, generateMoves(board, WHITE));
 
     expect(moves).toHaveLength(7);
-    expect(moves).toContain(encodeMove(KING, 95, 92));
+    expect(moves).toContain(encodeMove(KING, 95, 93));
     expect(moves).toContain(encodeMove(KING, 95, 97));
   });
 
@@ -776,7 +776,7 @@ describe("White king moves", () => {
     expect(moves).toHaveLength(0, "All moves would put the king into check");
   });
 
-  it("Does not generate castling move if any involved field is under attack", () => {
+  it("Does not generate castling move if king would pass an attacked field", () => {
     const board: Board = boardWithKing(KING, 95);
     addPiece(board, ROOK, 91);
     addPiece(board, ROOK, 98);
@@ -789,6 +789,19 @@ describe("White king moves", () => {
     expect(moves).toHaveLength(5, "Only standard moves");
   });
 
+  it("Still generates the queen-side castling move if only the rook passes an attacked field", () => {
+    const board: Board = boardWithKing(KING, 95);
+    addPiece(board, ROOK, 91);
+    addPiece(board, ROOK, 98);
+
+    addPiece(board, -ROOK, 32);
+    addPiece(board, -ROOK, 36);
+
+    const moves = filterMoves(95, generateMoves(board, WHITE));
+
+    expect(moves).toHaveLength(4);
+    expect(moves).toContain(encodeMove(KING, 95, 93));
+  });
 });
 
 
@@ -866,7 +879,7 @@ describe("Black king moves", () => {
     const moves = filterMoves(25, generateMoves(board, BLACK));
 
     expect(moves).toHaveLength(7);
-    expect(moves).toContain(encodeMove(KING, 25, 22));
+    expect(moves).toContain(encodeMove(KING, 25, 23));
     expect(moves).toContain(encodeMove(KING, 25, 27));
   });
 
@@ -902,7 +915,7 @@ describe("Black king moves", () => {
     expect(moves).toHaveLength(0, "All moves would put the king into check");
   });
 
-  it("Does not generate castling move if any involved field is under attack", () => {
+  it("Does not generate castling move if king would pass an attacked field", () => {
     const board: Board = boardWithKing(-KING, 25);
     addPiece(board, -ROOK, 21);
     addPiece(board, -ROOK, 28);
@@ -913,6 +926,20 @@ describe("Black king moves", () => {
     const moves = filterMoves(25, generateMoves(board, BLACK));
 
     expect(moves).toHaveLength(5, "Only standard moves");
+  });
+
+  it("Still generates the queen-side castling move if only the rook passes an attacked field", () => {
+    const board: Board = boardWithKing(-KING, 25);
+    addPiece(board, -ROOK, 21);
+    addPiece(board, -ROOK, 28);
+
+    addPiece(board, ROOK, 92);
+    addPiece(board, ROOK, 96);
+
+    const moves = filterMoves(25, generateMoves(board, BLACK));
+
+    expect(moves).toHaveLength(4);
+    expect(moves).toContain(encodeMove(KING, 25, 23));
   });
 
 });

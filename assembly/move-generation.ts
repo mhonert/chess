@@ -384,8 +384,7 @@ function isValidWhiteSmallCastlingMove(board: Board): bool {
   return (board.isEmpty(WHITE_KING_START + 1) && board.isEmpty(WHITE_KING_START + 2)) &&
     !isAttacked(board, BLACK, WHITE_KING_START) &&
     !isAttacked(board, BLACK, WHITE_KING_START + 1) &&
-    !isAttacked(board, BLACK, WHITE_KING_START + 2) &&
-    !isAttacked(board, BLACK, WHITE_RIGHT_ROOK_START);
+    !isAttacked(board, BLACK, WHITE_KING_START + 2);
 }
 
 function isValidWhiteBigCastlingMove(board: Board): bool {
@@ -393,26 +392,21 @@ function isValidWhiteBigCastlingMove(board: Board): bool {
     board.isEmpty(WHITE_KING_START - 3) &&
     !isAttacked(board, BLACK, WHITE_KING_START) &&
     !isAttacked(board, BLACK, WHITE_KING_START - 1) &&
-    !isAttacked(board, BLACK, WHITE_KING_START - 2) &&
-    !isAttacked(board, BLACK, WHITE_KING_START - 3) &&
-    !isAttacked(board, BLACK, WHITE_LEFT_ROOK_START);
+    !isAttacked(board, BLACK, WHITE_KING_START - 2);
 }
 
 function isValidBlackSmallCastlingMove(board: Board): bool {
   return board.isEmpty(BLACK_KING_START + 1) && board.isEmpty(BLACK_KING_START + 2) &&
     !isAttacked(board, WHITE, BLACK_KING_START) &&
     !isAttacked(board, WHITE, BLACK_KING_START + 1) &&
-    !isAttacked(board, WHITE, BLACK_KING_START + 2) &&
-    !isAttacked(board, WHITE, BLACK_RIGHT_ROOK_START);
+    !isAttacked(board, WHITE, BLACK_KING_START + 2);
 }
 
 function isValidBlackBigCastlingMove(board: Board): bool {
   return board.isEmpty(BLACK_KING_START - 1) && board.isEmpty(BLACK_KING_START - 2) && board.isEmpty(BLACK_KING_START - 3) &&
   !isAttacked(board, WHITE, BLACK_KING_START) &&
   !isAttacked(board, WHITE, BLACK_KING_START - 1) &&
-  !isAttacked(board, WHITE, BLACK_KING_START - 2) &&
-  !isAttacked(board, WHITE, BLACK_KING_START - 3) &&
-  !isAttacked(board, WHITE, BLACK_LEFT_ROOK_START);
+  !isAttacked(board, WHITE, BLACK_KING_START - 2);
 }
 
 function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
@@ -429,7 +423,7 @@ function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, pi
     }
 
     if (!board.whiteLeftRookMoved() && isValidWhiteBigCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start - 3));
+      moves.push(encodeMove(piece, start, start - 2));
     }
 
   } else if (activeColor == BLACK && start == BLACK_KING_START && !board.blackKingMoved()) {
@@ -438,7 +432,7 @@ function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, pi
     }
 
     if (!board.blackLeftRookMoved() && isValidBlackBigCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start - 3));
+      moves.push(encodeMove(piece, start, start - 2));
     }
   }
 };
