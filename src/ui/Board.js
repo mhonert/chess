@@ -27,7 +27,8 @@ const BoardGrid = styled.div`
     grid-template-columns: 0 repeat(8, 1fr);
     grid-template-rows: 0 repeat(8, 1fr);
 
-    border-right: 1px solid salmon;
+    //border-right: 3px outset #586e75;
+    box-shadow: 3px 3px 3px #586e75;
     
     // always keep board size rectangular and maximized to the smaller axis
     @media (min-aspect-ratio: 99/100) {

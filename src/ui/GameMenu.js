@@ -19,17 +19,19 @@
 import React from 'react';
 import styled from 'styled-components/macro';
 import { WHITE } from '../engine/constants';
-import { keyframes } from 'styled-components/macro';
+import AnimatedSpinner from './AnimatedSpinner';
 
 const MenuBar = styled.div`
   display: flex;
   flex-direction: column;
-  margin: 1rem;
+  margin-top: 1.5rem;
+  margin-left: 2rem;
   text-align: center;
 
   // center menubar below board, if window width is < window height
   @media (max-aspect-ratio: 100/99) {
-    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
   }
 `;
 
@@ -41,17 +43,18 @@ const MenuItem = styled.div`
 `;
 
 const GameButton = styled.button`
-  background: none;
-  border: 1px solid salmon;
-  border-radius: 0.5rem;
-  color: salmon;
+  background: white;
+  color: #073642;
+  border: 1px solid #073642;
+  border-radius: 0.3rem;
   font-size: 1rem;
   font-weight: bold;
   padding: 0.5rem;
   width: 11rem;
+  box-shadow: 1px 1px 1px #073642;
 
   & :hover {
-    background: salmon;
+    background: #073642;
     color: white;
     cursor: pointer;
   }
@@ -63,49 +66,15 @@ const Label = styled.label`
   width: 100%;
   text-align: center;
   font-size: 0.8rem;
-  color: gray;
-`;
-
-const ThinkingIndicator = styled(MenuItem)`
-  font-weight: bold;
-  margin-left: 1rem;
-  font-size: 1rem;
-  text-align: center;
-  color: salmon;
-`;
-
-const rotate = keyframes`
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-`;
-
-const AnimatedDualRing = styled.div`
-  /* Animated spinner from https://loading.io/css/ */
-  display: inline-block;
-  width: 128px;
-  height: 128px;
-  & :after {
-    content: ' ';
-    display: block;
-    width: 80px;
-    height: 80px;
-    margin: 8px;
-    border-radius: 50%;
-    border: 6px solid salmon;
-    border-color: salmon transparent salmon transparent;
-    animation: ${rotate} 1.2s linear infinite;
-  }
+  color: #073642;
 `;
 
 const GameResult = styled(MenuItem)`
   padding-top: 2rem;
   font-weight: bold;
   font-size: 1.5rem;
-  color: salmon;
+  color: #dc322f;
+;
 `;
 
 const colorName = color => (color === WHITE ? 'White' : 'Black');
@@ -151,11 +120,7 @@ const GameMenu = ({
         />
       </MenuItem>
 
-      {isAiThinking && (
-        <ThinkingIndicator>
-          <AnimatedDualRing>Thinking ...</AnimatedDualRing>
-        </ThinkingIndicator>
-      )}
+      {isAiThinking && <AnimatedSpinner /> }
 
       {gameEnded && (
         <GameResult>

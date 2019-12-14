@@ -22,9 +22,10 @@ import styled from 'styled-components/macro';
 
 const FieldDiv = styled.div`
   position: relative;
-
+  background-color: #fdf6e3;
+  
   &:nth-child(even) {
-    background-color: #f8f5df;
+    background-color: #eee8d5;
   }
 
   &.move-mark:before {
@@ -37,6 +38,7 @@ const FieldDiv = styled.div`
     display: block;
     border: 0.5vh solid ${props => props.markColor};
     border-radius: 50%;
+    //box-shadow: 0px 0px 1px ${props => props.markColor};
   }
 `;
 
@@ -59,9 +61,9 @@ const Field = ({
     isStart || isEnd || isPossibleTarget ? 'move-mark' : '';
 
   // prettier-ignore
-  const markColor = isPossibleTarget ? '#80fa72'
-                  : isStart ? 'lightpink'
-                  : isEnd ? 'salmon'
+  const markColor = isPossibleTarget ? 'rgba(169,189,0,0.69)'
+                  : isStart ? '#dc322f9f'
+                  : isEnd ? '#dc322faf'
                   : 'white';
 
   return (
