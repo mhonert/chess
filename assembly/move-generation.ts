@@ -17,10 +17,15 @@
  */
 
 import {
-  Board,
   BLACK,
-  BOARD_BORDER, EMPTY,
-  WHITE, WHITE_PAWNS_BASELINE_START, WHITE_PAWNS_BASELINE_END, BLACK_PAWNS_BASELINE_START, BLACK_PAWNS_BASELINE_END
+  BLACK_PAWNS_BASELINE_END,
+  BLACK_PAWNS_BASELINE_START,
+  Board,
+  BOARD_BORDER,
+  EMPTY,
+  WHITE,
+  WHITE_PAWNS_BASELINE_END,
+  WHITE_PAWNS_BASELINE_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { sign } from './util';
@@ -294,6 +299,8 @@ function generateBishopDirectionMoves(moves: Array<i32>, board: Board, activeCol
 }
 
 const ORTHOGONAL_DIRECTIONS: Array<i32> = [1, 10, -1, -10];
+const HORIZONTAL_DIRECTIONS: Array<i32> = [1, -1];
+const VERTICAL_DIRECTIONS: Array<i32> = [10, -10];
 
 const WHITE_LEFT_ROOK_START = 91;
 const WHITE_RIGHT_ROOK_START = 98;
@@ -626,9 +633,7 @@ function isAttacked(board: Board, opponentColor: i32, pos: i32): bool {
     return true;
   }
 
-  // TODO: Additional optimizations: only check pieces that still exist, save piece positions in bit sets?
-
-  if (isAttackedByKnights(board, opponentColor, pos)) {
+  if (board.isKnightAttacked(opponentColor, pos)) {
     return true;
   }
 
@@ -667,56 +672,73 @@ function isAttackedByKnights(board: Board, opponentColor: i32, pos: i32): bool {
 }
 
 function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool {
-  for (let i: i32 = 0; i < DIAGONAL_DIRECTIONS.length; i++) {
-    const direction = DIAGONAL_DIRECTIONS[i];
-    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-      const piece = board.getItem(pos + direction * distance);
-      if (piece == EMPTY) {
-        continue;
-      }
+  const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
+  if (kingDistance == 9 || kingDistance == 11) {
+    return true;
+  }
 
-      if (piece == BOARD_BORDER) {
-        break;
-      }
+  const diaUpAttack = board.isDiagonallyUpAttacked(opponentColor, pos);
+  if (diaUpAttack < 0) {
+    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack);
+  } else if (diaUpAttack > 0) {
+    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaUpAttack);
 
-      if (piece == BISHOP * opponentColor || piece == QUEEN * opponentColor) {
-        return true;
-      }
+  }
 
-      if (distance == 1 && piece == KING * opponentColor) {
-        return true;
-      }
+  const diaDownAttack = board.isDiagonallyDownAttacked(opponentColor, pos);
+  if (diaDownAttack < 0) {
+    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaDownAttack);
+  } else if (diaDownAttack > 0) {
+    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaDownAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaDownAttack);
 
-      break; // skip this direction => all other pieces block possible attacks
+  }
+
+  return false;
+}
+
+
+function isAttackedInDirection(board: Board, slidingPiece: i32, opponentColor: i32, pos: i32, direction: i32): bool {
+  const opponentPiece = slidingPiece * opponentColor;
+  const opponentQueen = QUEEN * opponentColor;
+
+  for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
+    pos += direction
+    const piece = board.getItem(pos);
+    if (piece == EMPTY) {
+      continue;
     }
+
+    if (piece == opponentPiece || piece == opponentQueen) {
+      return true;
+    }
+
+    return false;
+
   }
 
   return false;
 }
 
 function isAttackedOrthogonally(board: Board, opponentColor: i32, pos: i32): bool {
-  for (let i: i32 = 0; i < ORTHOGONAL_DIRECTIONS.length; i++) {
-    const direction = ORTHOGONAL_DIRECTIONS[i];
-    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-      const piece = board.getItem(pos + direction * distance);
-      if (piece == EMPTY) {
-        continue;
-      }
+  const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
+  if (kingDistance == 1 || kingDistance == 10) {
+    return true;
+  }
 
-      if (piece == BOARD_BORDER) {
-        break;
-      }
+  const horAttack = board.isHorizontallyAttacked(opponentColor, pos);
+  if (horAttack < 0) {
+    return isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack);
+  } else if (horAttack > 0) {
+    return isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -horAttack);
 
-      if (piece == ROOK * opponentColor || piece == QUEEN * opponentColor) {
-        return true;
-      }
+  }
 
-      if (distance == 1 && piece == KING * opponentColor) {
-        return true;
-      }
+  const verAttack = board.isVerticallyAttacked(opponentColor, pos);
+  if (verAttack < 0) {
+    return isAttackedInDirection(board, ROOK, opponentColor, pos, verAttack);
+  } else if (verAttack > 0) {
+    return isAttackedInDirection(board, ROOK, opponentColor, pos, verAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -verAttack);
 
-      break; // skip this direction => all other pieces block possible attacks
-    }
   }
 
   return false;

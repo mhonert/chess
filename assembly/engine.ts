@@ -16,18 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BLACK, Board, BOARD_BORDER, EMPTY, WHITE } from './board';
+import { BLACK, Board, WHITE } from './board';
 import {
   decodeEndIndex,
-  decodePiece, decodeStartIndex, encodeMove,
+  decodePiece,
+  decodeStartIndex,
   generateMoves,
-  isCheckMate, performMove, undoMove
+  isCheckMate,
+  performMove,
+  undoMove
 } from './move-generation';
-import { BISHOP, KING, KNIGHT, PAWN, ROOK } from './pieces';
-import { sign } from './util';
 
-
-const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9]; // Pawn, Knight, Bishop, Rook, Queen
 
 const MIN_SCORE = -16383;
 const MAX_SCORE = 16383;
@@ -197,10 +196,6 @@ function adjustedPositionScore(board: Board, depth: i32): i32 {
   return score;
 };
 
-
-export function boardRowFromIndex(index: i32): i32 {
-  return (index - 21) % 10;
-}
 
 export function encodeScoredMove(move: i32, score: i32): i32 {
   if (score < 0) {

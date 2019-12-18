@@ -31,6 +31,7 @@ import {
 } from '../board';
 import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 import { evaluatePosition } from '../engine';
+import { sign } from '../util';
 
 
 function emptyBoardWithKings(): Array<i32> {
@@ -109,7 +110,7 @@ describe("White pawn moves", () => {
     expect(moves).toContain(encodeMove(PAWN, 55, 44)); // en passant
   });
 
-  it("Exclude moves that would put own king in check", () => {
+  it("xyz Exclude moves that would put own king in check", () => {
     const board: Board = boardWithOnePiece(PAWN, 85);
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
@@ -971,7 +972,7 @@ describe('Detect check mate', () => {
 // Test helper functions
 
 function addPiece(board: Board, piece: i32, location: i32): Board {
-  board.items[location] = piece;
+  board.addPiece(sign(piece), abs(piece), location);
   return board;
 }
 
@@ -991,9 +992,10 @@ function boardWithKing(piece: i32, location: i32): Board {
 function moveKing(board: Board, piece: i32, location: i32): void {
   const color = piece < 0 ? BLACK : WHITE;
 
-  board.items[board.findKingPosition(color)] = EMPTY;
+  const kingPos = board.findKingPosition(color);
+  board.removePiece(kingPos);
 
-  addPiece(board, piece, location);
+  board.addPiece(color, abs(piece), location);
   board.updateKingPosition(color, location);
 }
 

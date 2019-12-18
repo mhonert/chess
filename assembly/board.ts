@@ -16,16 +16,20 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { KING } from './pieces';
-import { sign } from './util';
+import { BISHOP, KING, KNIGHT, QUEEN, ROOK } from './pieces';
+import { sign, toBitBoardString } from './util';
+import { KNIGHT_DIRECTIONS } from './move-generation';
 
 const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
 
 export class Board {
   private items: Array<i32>;
-  whiteKingIndex: i32;
-  blackKingIndex: i32;
-  score: i32 = 0;
+  private whiteKingIndex: i32;
+  private blackKingIndex: i32;
+  private score: i32 = 0;
+  private orthogonalPieces: Array<u64> = new Array<u64>(2);
+  private diagonalPieces: Array<u64> = new Array<u64>(2);
+  private knights: Array<u64> = new Array<u64>(2);
 
   constructor(items: Array<i32>) {
     this.items = items;
@@ -43,8 +47,7 @@ export class Board {
     for (let i: i32 = 21; i <= 98; i++) {
       const piece = this.items[i];
       if (piece != EMPTY && piece != BOARD_BORDER) {
-        const pieceId = abs(piece);
-        this.score += this.calculateScore(i, sign(piece), pieceId);
+        this.addPiece(sign(piece), abs(piece), i);
       }
     }
   }
@@ -69,6 +72,27 @@ export class Board {
     const piece = pieceId * pieceColor;
     this.score += this.calculateScore(pos, pieceColor, pieceId);
     this.items[pos] = piece;
+
+    const colIndex = indexFromColor(pieceColor);
+
+    switch (pieceId) {
+      case ROOK:
+        this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        break;
+
+      case BISHOP:
+        this.diagonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        break;
+
+      case QUEEN:
+        this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        this.diagonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        break;
+
+      case KNIGHT:
+        this.knights[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        break;
+    }
   }
 
   removePiece(pos: i32): i32 {
@@ -78,7 +102,115 @@ export class Board {
     }
     this.score -= this.calculateScore(pos, sign(piece), abs(piece));
     this.items[pos] = EMPTY;
+
+    const colIndex = indexFromColor(sign(piece));
+    switch (abs(piece)) {
+      case ROOK:
+        this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        break;
+
+      case BISHOP:
+        this.diagonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        break;
+
+      case QUEEN:
+        this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        this.diagonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        break;
+
+      case KNIGHT:
+        this.knights[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+    }
+
     return piece;
+  }
+
+  hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
+    const colIndex = indexFromColor(color);
+    return (this.orthogonalPieces[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+  }
+
+  hasDiagonalSlidingFigure(color: i32, pos: i32): bool {
+    const colIndex = indexFromColor(color);
+    return (this.diagonalPieces[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+  }
+
+  hasKnight(color: i32, pos: i32): bool {
+    const colIndex = indexFromColor(color);
+    return (this.knights[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+  }
+
+  @inline
+  isKnightAttacked(opponentColor: i32, pos: i32): bool {
+    const colIndex = indexFromColor(opponentColor);
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+
+    return (this.knights[colIndex] & KNIGHT_PATTERNS[bitIndex]) != 0;
+  }
+
+  @inline
+  isHorizontallyAttacked(opponentColor: i32, pos: i32): i32 {
+    const colIndex = indexFromColor(opponentColor);
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+
+    const result = this.orthogonalPieces[colIndex] & HORIZONTAL_PATTERNS[bitIndex];
+    if (result == 0) {
+      return 0;
+    }
+    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+      return -1;
+    }
+
+    return 1;
+  }
+
+  @inline
+  isVerticallyAttacked(opponentColor: i32, pos: i32): i32 {
+    const colIndex = indexFromColor(opponentColor);
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+
+    const result = this.orthogonalPieces[colIndex] & VERTICAL_PATTERNS[bitIndex];
+
+    if (result == 0) {
+      return 0;
+    }
+    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+      return -10;
+    }
+
+    return 10;
+  }
+
+  @inline
+  isDiagonallyDownAttacked(opponentColor: i32, pos: i32): i32 {
+    const colIndex = indexFromColor(opponentColor);
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+
+    const result = this.diagonalPieces[colIndex] & DIAGONAL_DOWN_PATTERNS[bitIndex];
+    if (result == 0) {
+      return 0;
+    }
+    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+      return -11;
+    }
+
+    return 11;
+  }
+
+  @inline
+  isDiagonallyUpAttacked(opponentColor: i32, pos: i32): i32 {
+    const colIndex = indexFromColor(opponentColor);
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+
+    const result = this.diagonalPieces[colIndex] & DIAGONAL_UP_PATTERNS[bitIndex];
+    if (result == 0) {
+      return 0;
+    }
+    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+      return -9;
+    }
+
+    return 9;
   }
 
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
@@ -200,17 +332,44 @@ export class Board {
 
   log(): void {
     trace("Board");
-    for (let i = 21; i < 99; i++) {
-      if (this.items[i] < 0) {
-        const item = this.items[i];
-        trace("Piece", 2, i, item);
-      } else if (this.items[i] > 0 && this.items[i] < 10) {
-        const item = this.items[i];
-        trace("Piece", 2, i, item);
+
+    let str = "";
+    for (let i = 21; i < 100; i++) {
+      if (this.items[i] == 99) {
+        if (str != "") {
+          trace(str);
+        }
+        str = "";
+        continue;
+      }
+
+      const item = this.items[i];
+      if (item == 0) {
+        str += "[  ]"
+
+      } else if (item < 0) {
+        str += "[-" + pieces[abs(item)] + "]";
+
+      } else {
+        str += "[+" + pieces[item] + "]";
+
       }
     }
   }
 
+  logBitBoards(color: i32): void {
+    trace("Orthogonal: " + toBitBoardString(this.orthogonalPieces[indexFromColor(color)]));
+    trace("Diagonal  : " + toBitBoardString(this.diagonalPieces[indexFromColor(color)]));
+  }
+}
+
+const pieces: Array<String> = ["_", "P", "N", "B", "R", "Q", "K"];
+
+
+// Return index 0 for BLACK (-1) and 1 for WHITE (+1)
+@inline
+function indexFromColor(color: i32): i32 {
+  return (color + 1) >> 1;
 }
 
 function isWhiteKing(piece: i32, index: i32, board: Array<i32>): bool {
@@ -220,6 +379,159 @@ function isWhiteKing(piece: i32, index: i32, board: Array<i32>): bool {
 function isBlackKing(piece: i32, index: i32, board: Array<i32>): bool {
   return piece == -KING;
 }
+
+/* Convert from array board position to bitboard index.
+ * Bitboard representation maps the upper left corner of the board to bit index 0 and the lower right corner to 63.
+ * Array representation maps the upper left corner of the board to array index 21 and the lower right corner to 98.
+ *
+ */
+function calculateBoardPosToBitIndex(): Array<i32> {
+  const bitIndices: Array<i32> = new Array<i32>();
+  for (let i: i32 = 0; i < 99; i++) {
+    const col = (i - 21) % 10;
+    const row = (i - 21) / 10;
+    if (col >= 0 && row >= 0 && col < 8) {
+      bitIndices.push(row * 8 + col);
+    } else {
+      bitIndices.push(-1);
+    }
+  }
+
+  return bitIndices;
+}
+
+const BOARD_POS_TO_BIT_INDEX = calculateBoardPosToBitIndex();
+
+function calculateBoardPosToBitPattern(bitIndices: Array<i32>): Array<u64> {
+  const bitPatterns = new Array<u64>(bitIndices.length);
+  for (let i = 0; i < bitIndices.length; i++) {
+    if (bitIndices[i] != -1) {
+      bitPatterns[i] = 1 << u64(bitIndices[i]);
+    } else {
+      bitPatterns[i] = 0;
+    }
+  }
+  return bitPatterns;
+}
+
+export const BOARD_POS_TO_BIT_PATTERN: Array<u64> = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
+
+function calculateBoardPosToNotBitPattern(boardPosToBitPattern: Array<u64>): Array<u64> {
+  const bitPatterns = new Array<u64>(boardPosToBitPattern.length);
+  for (let i = 0; i < boardPosToBitPattern.length; i++) {
+    bitPatterns[i] = ~boardPosToBitPattern[i];
+  }
+  return bitPatterns;
+}
+
+const BOARD_POS_TO_BIT_NOT_PATTERN: Array<u64> = calculateBoardPosToNotBitPattern(BOARD_POS_TO_BIT_PATTERN);
+
+
+function calculateHorizontalPatterns(): Array<u64> {
+  const patterns = new Array<u64>(64);
+  for (let bit = 0; bit < 64; bit++) {
+    const pattern: u64 = 0xFF << ((bit >> 3) << 3)
+    patterns[bit] = pattern;
+  }
+
+  return patterns
+}
+
+export const HORIZONTAL_PATTERNS: Array<u64> = calculateHorizontalPatterns();
+
+function calculateVerticalPatterns(): Array<u64> {
+  const patterns = new Array<u64>(64);
+  const startPattern: u64 = 0x0101010101010101;
+  for (let bit = 0; bit < 64; bit++) {
+    const pattern: u64 = startPattern << (bit & 0x7);
+    patterns[bit] = pattern;
+  }
+
+  return patterns
+}
+
+export const VERTICAL_PATTERNS: Array<u64> = calculateVerticalPatterns();
+
+function calculateDiagonalUpPatterns(): Array<u64> {
+  const patterns = new Array<u64>(64);
+  for (let bit = 0; bit < 64; bit++) {
+    const startCol = bit % 8;
+    const startRow = bit / 8;
+
+    let pattern: u64 = 0;
+
+    for (let distance = -7; distance <= 7; distance++) {
+      let col = startCol - distance;
+      let row = startRow + distance;
+      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
+        const patternIndex = row * 8 + col;
+        pattern |= (1 << patternIndex);
+      }
+    }
+    patterns[bit] = pattern;
+  }
+
+  return patterns
+}
+
+export const DIAGONAL_UP_PATTERNS: Array<u64> = calculateDiagonalUpPatterns();
+
+function calculateDiagonalDownPatterns(): Array<u64> {
+  const patterns = new Array<u64>(64);
+  for (let bit = 0; bit < 64; bit++) {
+    const startCol = bit % 8;
+    const startRow = bit / 8;
+
+    let pattern: u64 = 0;
+
+    for (let distance = -7; distance <= 7; distance++) {
+      let col = startCol + distance;
+      let row = startRow + distance;
+      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
+        const patternIndex = row * 8 + col;
+        pattern |= (1 << patternIndex);
+      }
+    }
+    patterns[bit] = pattern;
+  }
+
+  return patterns
+}
+
+export const DIAGONAL_DOWN_PATTERNS: Array<u64> = calculateDiagonalDownPatterns();
+
+
+export function isBorder(boardPos: i32): bool {
+  if (boardPos < 21 || boardPos > 98) {
+    return true;
+  }
+
+  return boardPos % 10 == 0 || boardPos % 10 == 9;
+}
+
+function calculateKnightPatterns(): Array<u64> {
+  const patterns = new Array<u64>();
+  for (let boardPos = 21; boardPos <= 98; boardPos++) {
+    if (isBorder(boardPos)) {
+      continue;
+    }
+
+    let pattern: u64 = 0;
+    for (let i = 0; i < KNIGHT_DIRECTIONS.length; i++) {
+      const dir = KNIGHT_DIRECTIONS[i];
+      const targetPos = boardPos + dir;
+      if (!isBorder(targetPos)) {
+        pattern |= BOARD_POS_TO_BIT_PATTERN[targetPos];
+      }
+    }
+
+    patterns.push(pattern);
+  }
+
+  return patterns;
+}
+
+export const KNIGHT_PATTERNS: Array<u64> = calculateKnightPatterns();
 
 export const BLACK: i32 = -1;
 export const WHITE: i32 = 1;

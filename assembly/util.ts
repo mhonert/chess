@@ -24,4 +24,48 @@ export function sign(value: i32): i32 {
   return value < 0 ? -1 : 1;
 }
 
+// Only parses 0s and 1s. All other characters are ignored and can for example be used as separators (10001000/00110011/...)
+// Note: the printing order starts with the least significant bit (index 0) up to the most significant bit (index 63), so
+// the string representation is reversed (i.e. for value 1: "10000000/00000000/[...]" instead of "[...]/00000000/00000001")
+export function fromBitBoardString(bits: string): u64 {
+  let result: u64 = 0;
+  let bitCount = 0;
+  for (let i = bits.length - 1; i >= 0; i--) {
+    const char = bits.charAt(i);
+
+    if (char == '1') {
+      bitCount++;
+      if (bitCount > 64) {
+        throw new Error("Can not parse bit string with more than 64 bits");
+      }
+      result <<= 1;
+      result |= 1;
+    } else if (char == '0') {
+      bitCount++;
+      if (bitCount > 64) {
+        throw new Error("Can not parse bit string with more than 64 bits");
+      }
+      result <<= 1;
+    }
+  }
+
+  return result;
+}
+
+
+export function toBitBoardString(value: u64, separator: string = '/'): string {
+ let result = "";
+ for (let i = 0; i < 64; i++) {
+   if (i != 0 && i % 8 == 0) {
+     result += separator
+   }
+   if ((value & (1 << i)) != 0) {
+     result += "1";
+   } else {
+     result += "0";
+   }
+ }
+ return result;
+}
+
 

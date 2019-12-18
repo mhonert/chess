@@ -19,7 +19,14 @@
 // The entry file of your WebAssembly module.
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
-import { decodeEndIndex, decodePiece, decodeStartIndex, generateMoves, performEncodedMove, isCheckMate as isCheckMateFn } from './move-generation';
+import {
+  decodeEndIndex,
+  decodePiece,
+  decodeStartIndex,
+  generateMoves,
+  isCheckMate as isCheckMateFn,
+  performEncodedMove
+} from './move-generation';
 import { findBestMove } from './engine';
 import { Board } from './board';
 
