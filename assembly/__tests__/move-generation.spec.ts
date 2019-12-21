@@ -21,17 +21,13 @@ import {
   decodePiece,
   decodeStartIndex,
   encodeMove,
-  generateMoves, isCheckMate,
+  generateMoves,
+  isCheckMate,
   KNIGHT_DIRECTIONS
 } from '../move-generation';
-import {
-  __,
-  BLACK, Board, EMPTY,
-  WHITE
-} from '../board';
-import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
-import { evaluatePosition } from '../engine';
-import { sign } from '../util';
+import {__, BLACK, BLACK_KING_MOVED, Board, WHITE} from '../board';
+import {B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK} from '../pieces';
+import {sign} from '../util';
 
 
 function emptyBoardWithKings(): Array<i32> {
@@ -968,6 +964,47 @@ describe('Detect check mate', () => {
   });
 });
 
+describe('Check detection', () => {
+  it('Detects diagonal attacks from different directions', () => {
+
+    const board: Array<i32> = [
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0,  0, -K,  0,  0,  0, __,
+      __,  0,  0,  0, -P,  0, -P,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  B,  0,  0,  0,  0,  0,  Q, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  K,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
+    ];
+
+    expect(generateMoves(new Board(board), BLACK)).toHaveLength(3, "All pawn moves would leave king in check");
+  });
+
+  it('Detects orthogonal attacks from different directions', () => {
+
+    const board: Array<i32> = [
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  R,  0,  0, -N, -K,  0,  0,  0, __,
+      __,  0,  0,  0,  0, -N,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  Q,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  K,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
+    ];
+
+    expect(generateMoves(new Board(board), BLACK)).toHaveLength(6, "All knight moves would leave king in check");
+  });
+});
 
 // Test helper functions
 

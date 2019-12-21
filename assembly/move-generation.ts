@@ -660,17 +660,6 @@ function isAttackedByPawns(board: Board, opponentColor: i32, pos: i32): bool {
   return false;
 }
 
-function isAttackedByKnights(board: Board, opponentColor: i32, pos: i32): bool {
-  for (let i: i32 = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-    const offset = KNIGHT_DIRECTIONS[i];
-    if (board.getItem(pos + offset) == KNIGHT * opponentColor) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool {
   const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
   if (kingDistance == 9 || kingDistance == 11) {
@@ -678,11 +667,15 @@ function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool 
   }
 
   const diaUpAttack = board.isDiagonallyUpAttacked(opponentColor, pos);
-  if (diaUpAttack < 0) {
-    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack);
-  } else if (diaUpAttack > 0) {
-    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaUpAttack);
 
+  if (diaUpAttack < 0) {
+    if (isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack)) {
+      return true;
+    }
+  } else if (diaUpAttack > 0) {
+    if (isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaUpAttack)) {
+      return true;
+    }
   }
 
   const diaDownAttack = board.isDiagonallyDownAttacked(opponentColor, pos);
@@ -727,10 +720,13 @@ function isAttackedOrthogonally(board: Board, opponentColor: i32, pos: i32): boo
 
   const horAttack = board.isHorizontallyAttacked(opponentColor, pos);
   if (horAttack < 0) {
-    return isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack);
+    if (isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack)) {
+      return true;
+    }
   } else if (horAttack > 0) {
-    return isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -horAttack);
-
+    if (isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -horAttack)) {
+      return true;
+    }
   }
 
   const verAttack = board.isVerticallyAttacked(opponentColor, pos);
