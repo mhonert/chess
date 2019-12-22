@@ -17,7 +17,7 @@ and do not block the main thread for the UI.
 
 ## Features
 - Chess engine implemented in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript)
-- Computer opponent with 3 difficulty levels
+- Computer opponent with 5 difficulty levels
 - Drag'n'Drop support to move chess pieces
 - Touch support for mobile devices
 - Responsive design

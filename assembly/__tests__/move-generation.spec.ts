@@ -1036,14 +1036,6 @@ function moveKing(board: Board, piece: i32, location: i32): void {
   board.updateKingPosition(color, location);
 }
 
-function logMoves(moves: Array<i32>): void {
-  trace("# of moves:", 1, moves.length);
-
-  for (let i = 0; i < moves.length; i++) {
-    trace("Move", 3, decodePiece(moves[i]), decodeStartIndex(moves[i]), decodeEndIndex(moves[i]));
-  }
-}
-
 function filterMoves(filterForStartIndex: i32, moves: Array<i32>): Array<i32> {
   const filteredMoves: Array<i32> = new Array<i32>();
 

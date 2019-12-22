@@ -85,7 +85,7 @@ const GameMenu = ({
   winningPlayerColor,
   startNewGame,
   forceAiMove,
-  searchDepth,
+  difficultyLevel,
   setSearchDepth
 }) => {
   return (
@@ -112,10 +112,10 @@ const GameMenu = ({
         <input
           id="game-menu_difficulty-slider"
           type="range"
-          min="4"
-          max="6"
+          min="1"
+          max="5"
           title="Difficulty"
-          value={searchDepth}
+          value={difficultyLevel}
           onChange={e => setSearchDepth(e.target.value)}
         />
       </MenuItem>

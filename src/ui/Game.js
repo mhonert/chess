@@ -58,7 +58,7 @@ const Game = () => {
   const [availableMoves, setAvailableMoves] = useState(engine.generateMoves(board, activePlayer));
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
-  const [searchDepth, setSearchDepth] = useState(5);
+  const [difficultyLevel, setDifficultyLevel] = useState(3);
 
   const clearAvailableMoves = () => setAvailableMoves([]);
 
@@ -100,7 +100,7 @@ const Game = () => {
   const forceAiMove = () => {
     setAiThinking(true);
     engineWebWorker
-      .calculateMove(board, activePlayer, searchDepth)
+      .calculateMove(board, activePlayer, difficultyLevel)
       .then(move => handleAIMove(board, move, activePlayer));
   };
 
@@ -110,7 +110,7 @@ const Game = () => {
     setGameEnded(false);
     setLastMove({ start: -1, end: -1 });
     setWinningPlayer(undefined);
-    setAvailableMoves(engine.generateMoves(initialBoard, activePlayer));
+    setAvailableMoves(engine.generateMoves(initialBoard, WHITE));
     setCurrentPieceMoves(new Set());
   };
 
@@ -167,7 +167,7 @@ const Game = () => {
     setAiThinking(true);
     clearAvailableMoves();
     engineWebWorker
-      .calculateMove(newBoard, -activePlayer, searchDepth)
+      .calculateMove(newBoard, -activePlayer, difficultyLevel)
       .then(move => handleAIMove(newBoard, move, -activePlayer));
 
     setActivePlayer(-activePlayer);
@@ -200,8 +200,8 @@ const Game = () => {
         winningPlayerColor={winningPlayer}
         startNewGame={startNewGame}
         forceAiMove={forceAiMove}
-        searchDepth={searchDepth}
-        setSearchDepth={setSearchDepth}
+        searchDepth={difficultyLevel}
+        setSearchDepth={setDifficultyLevel}
       />
     </GameArea>
   );

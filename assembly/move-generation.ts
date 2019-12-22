@@ -609,7 +609,7 @@ export function undoMove(board: Board, piece: i32, start: i32, end: i32, removed
 };
 
 
-function isInCheck(board: Board, activeColor: i32): bool {
+export function isInCheck(board: Board, activeColor: i32): bool {
   return isAttacked(board, -activeColor, board.findKingPosition(activeColor));
 };
 
@@ -660,7 +660,7 @@ function isAttackedByPawns(board: Board, opponentColor: i32, pos: i32): bool {
   return false;
 }
 
-function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool {
+export function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool {
   const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
   if (kingDistance == 9 || kingDistance == 11) {
     return true;
@@ -679,6 +679,7 @@ function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool 
   }
 
   const diaDownAttack = board.isDiagonallyDownAttacked(opponentColor, pos);
+
   if (diaDownAttack < 0) {
     return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaDownAttack);
   } else if (diaDownAttack > 0) {
@@ -766,3 +767,18 @@ export function decodeEndIndex(encodedMove: i32): i32 {
   return (encodedMove >> 10) & 0x7F;
 }
 
+export function logMoves(moves: Array<i32>): void {
+  trace("# of moves:", 1, moves.length);
+
+  for (let i = 0; i < moves.length; i++) {
+    logMove(moves[i]);
+  }
+}
+
+export function logMove(move: i32, prefix: string = ""): void {
+
+  const piece = decodePiece(move);
+  const start = decodeStartIndex(move);
+  const end = decodeEndIndex(move);
+  trace(prefix + " - Move " + piece.toString() + " from " + start.toString() + " to " + end.toString());
+}

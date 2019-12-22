@@ -27,7 +27,7 @@ import {
   isCheckMate as isCheckMateFn,
   performEncodedMove
 } from './move-generation';
-import { findBestMove } from './engine';
+import { findBestMove, findBestMoveIncrementally } from './engine';
 import { Board } from './board';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
@@ -40,12 +40,21 @@ function createBoard(board: Int32Array): Board {
   return new Board(boardArray);
 }
 
-export function calculateMove(boardArray: Int32Array, color: i32, depth: i32): i32 {
+const DIFFICULTY_LEVELS: Array<Array<i32>> = [
+  [3, 0],
+  [5, 0],
+  [5, 300],
+  [5, 3000],
+  [5, 7500]
+]
+
+export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
   trace("Calculation started");
 
   const board = createBoard(boardArray);
 
-  const move = findBestMove(board, color, depth);
+  const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
+  const move = findBestMoveIncrementally(board, color, 3, levelSettings[0], levelSettings[1]);
 
   trace("Found best move", 1, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move));
 

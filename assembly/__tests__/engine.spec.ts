@@ -24,7 +24,7 @@ import {
   decodeScore,
   encodeScoredMove,
   evaluatePosition,
-  findBestMove,
+  findBestMove, logScoredMove,
   WHITE_MATE_SCORE
 } from '../engine';
 import {
@@ -40,8 +40,8 @@ import {
   decodeEndIndex,
   decodePiece,
   decodeStartIndex,
-  encodeMove, generateMoves,
-  isCheckMate,
+  encodeMove, generateMoves, isAttackedDiagonally,
+  isCheckMate, isInCheck, logMove,
   performEncodedMove
 } from '../move-generation';
 
@@ -312,5 +312,29 @@ describe('Finds moves', () => {
     const move = findBestMove(board, WHITE, 4);
     expect(move).toBeGreaterThan(0, "An encoded move");
   });
+
+  it('Does not sacrifice queen', () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R,  0, -B, -Q,  0, -R,  0, -K, __,
+      __,  0, -P, -P,  0, -N, -P,  0,  0, __,
+      __, -P,  0,  0, -P, -P,  0,  0, -P, __,
+      __,  0,  0,  0,  0,  0, -P,  0,  0, __,
+      __, +B,  0, +P,  0, +P,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0, +Q,  0, __,
+      __, +P, +P, +P, +N,  0, +P, +P, +P, __,
+      __, +R,  0,  0,  0,  0, +R, +K,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0
+    ]);
+
+    const move = findBestMove(board, WHITE, 2);
+    performEncodedMove(board, move);
+    expect(move).not.toBe(encodeMove(5, 77, 37), "Must not sacrifice queen @37");
+    expect(move).not.toBe(encodeMove(5, 77, 44), "Must not sacrifice queen @44");
+  });
+
 });
 
