@@ -16,12 +16,25 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+@inline
 export function sign(value: i32): i32 {
   if (value == 0) {
     return 0;
   }
 
   return value < 0 ? -1 : 1;
+}
+
+// Checks whether the given values have the same color, by comparing the sign (+/-)
+@inline
+export function sameColor(a: i32, b: i32): bool {
+  return (a ^ b) >= 0;
+}
+
+// Checks whether the given values have different colors, by comparing the sign (+/-)
+@inline
+export function differentColor(a: i32, b: i32): bool {
+  return (a ^ b) < 0;
 }
 
 // Only parses 0s and 1s. All other characters are ignored and can for example be used as separators (10001000/00110011/...)

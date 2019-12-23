@@ -20,9 +20,9 @@ import { BLACK, Board, WHITE } from './board';
 import {
   decodeEndIndex,
   decodePiece,
-  decodeStartIndex,
+  decodeStartIndex, generateFilteredMoves,
   generateMoves,
-  isCheckMate,
+  isCheckMate, isInCheck,
   performMove,
   undoMove
 } from './move-generation';
@@ -66,26 +66,24 @@ let skippedRootMoves = 0;
 // find the best possible move in response to the current board position.
 function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i32, depth: i32): i32 {
 
-  if (remainingLevels > minimumDepth && depth == minimumDepth && (Date.now() - startTime >= timeLimitMillis)) {
-    // Cancel search due to time limit
-    return -1;
-  }
-
   if (remainingLevels <= 0) {
     return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
   }
 
-  const moves = sortMovesByScore(board, generateMoves(board, playerColor), playerColor);
+  let moves: Array<i32>;
+  if (depth == 0) {
+    startTime = Date.now();
+    skippedRootMoves = 0;
+    moves = sortMovesByScore(board, generateFilteredMoves(board, playerColor), playerColor);
+  } else {
+    moves = sortMovesByScore(board, generateMoves(board, playerColor), playerColor);
+  }
 
   if (moves.length == 0) {
     // no more moves possible (i.e. check mate or stale mate)
     return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
   }
 
-  if (depth == 0) {
-    startTime = Date.now();
-    skippedRootMoves = 0;
-  }
 
   if (depth == 0 && moves.length == 1) {
     const score = decodeScore(moves[0]);
@@ -122,32 +120,35 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
       moveCount++;
 
-      const result = recFindBestMove(
-        board,
-        -beta,
-        -alpha,
-        -playerColor,
-        remainingLevels - 1,
-        minimumDepth,
-        timeLimitMillis,
-        depth + 1
-      );
-      if (result == -1) {
-        if (depth > 0) {
-          return -1;
+      let score = i32.MIN_VALUE; // Score for invalid move
+      if (!isInCheck(board, playerColor)) {
+        const result = recFindBestMove(
+          board,
+          -beta,
+          -alpha,
+          -playerColor,
+          remainingLevels - 1,
+          minimumDepth,
+          timeLimitMillis,
+          depth + 1
+        );
+        if (result == -1) {
+          if (depth > 0) {
+            return -1;
+          }
+          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+          break;
         }
-        trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
-        break;
+
+        let unadjustedScore: i32 = decodeScore(result);
+
+        score = -unadjustedScore;
       }
 
       undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState);
 
-      let unadjustedScore: i32 = decodeScore(result);
-
-      const score = -unadjustedScore;
-      if (depth == 0) {
-        moves[i] = encodeScoredMove(move, score);
-        scoredMoves++;
+      if (score == i32.MIN_VALUE) {
+        continue; // skip this invalid move
       }
 
       // Use mini-max algorithm ...
@@ -156,18 +157,24 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         bestMove = move;
       }
 
+      if (depth == 0) {
+        moves[i] = encodeScoredMove(move, score);
+        scoredMoves++;
+
+        if (remainingLevels > minimumDepth && Date.now() - startTime >= timeLimitMillis) {
+          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+          break;
+        }
+
+      } else if (depth == minimumDepth && Date.now() - startTime >= timeLimitMillis) {
+        // Cancel search
+        return -1;
+      }
+
       // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
       alpha = max(alpha, bestScore);
       if (alpha >= beta) {
         break;
-      }
-
-      if (depth == 0 && scoredMoves > 0 && remainingLevels > minimumDepth && Date.now() - startTime >= timeLimitMillis) {
-        trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
-        break;
-      } else if (depth == minimumDepth && Date.now() - startTime >= timeLimitMillis) {
-        // Cancel search
-        return -1;
       }
     }
 

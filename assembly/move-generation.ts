@@ -28,11 +28,11 @@ import {
   WHITE_PAWNS_BASELINE_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { sign } from './util';
+import { differentColor, sameColor, sign } from './util';
 
 
 export function generateMoves(board: Board, activeColor: i32): Array<i32> {
-  let moves = new Array<i32>();
+  const moves = new Array<i32>();
 
   for (let i = 21; i <= 98; i++) {
     const item = board.getItem(i);
@@ -82,6 +82,24 @@ export function generateMoves(board: Board, activeColor: i32): Array<i32> {
 
   return moves;
 };
+
+
+// Generates and filters out any moves that would leave the own king in check.
+export function generateFilteredMoves(board: Board, activeColor: i32): Array<i32> {
+  const moves = generateMoves(board, activeColor);
+  const filteredMoves: Array<i32> = new Array<i32>();
+
+  for (let i = 0; i < moves.length; i++) {
+    const startIndex = decodeStartIndex(moves[i]);
+    if (moveResultsInCheck(board, decodePiece(moves[i]), startIndex, decodeEndIndex(moves[i]), activeColor )) {
+      continue;
+    }
+
+    filteredMoves.push(moves[i]);
+  }
+
+  return filteredMoves;
+}
 
 
 function generatePawnMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
@@ -163,17 +181,13 @@ function isValidStraightPawnMove(board: Board, activeColor: i32, piece: i32, sta
 
   // 1 field move
   if (end - start == 10 * direction) {
-    return moveResultsInCheck(board, piece, start, end, activeColor)
-      ? INVALID
-      : VALID
+    return VALID;
   }
 
   // 2 fields move from base line
   const noObstacleInBetween = board.isEmpty(start + direction * 10);
   if (end - start == 20 * direction && noObstacleInBetween) {
-    return moveResultsInCheck(board, piece, start, end, activeColor)
-      ? INVALID
-      : VALID;
+      return VALID;
   }
 
   return INVALID;
@@ -186,20 +200,14 @@ function isValidDiagonalPawnMove(board: Board, activeColor: i32, piece: i32, sta
   }
 
   const targetPiece = board.getItem(end);
-  const targetPieceColor: i32 = sign(targetPiece);
 
   // Diagonal => hit other piece
-  if (targetPieceColor == -activeColor) {
-    return moveResultsInCheck(board, piece, start, end, activeColor)
-      ? INVALID
-      : VALID;
-  }
-
-  // En passant?
-  if (targetPiece == EMPTY && board.isEnPassentPossible(activeColor, end)) {
-    return moveResultsInCheck(board, piece, start, end, activeColor)
-      ? INVALID
-      : VALID;
+  if (targetPiece != EMPTY) {
+    if (differentColor(targetPiece, activeColor)) {
+      return VALID;
+    }
+  } else if (board.isEnPassentPossible(activeColor, end)) {
+    return VALID;
   }
 
   return INVALID;
@@ -209,22 +217,18 @@ function isValidDiagonalPawnMove(board: Board, activeColor: i32, piece: i32, sta
 export const KNIGHT_DIRECTIONS: Array<i32> = [21, 19, 12, 8, -12, -21, -19, -8];
 
 function isValidKnightMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
-
   // General assumption is that the move already follows the knight move pattern
 
   if (board.isBorder(end)) {
     return INVALID;
   }
 
-  const targetPieceColor = sign(board.getItem(end));
-
-  if (activeColor == targetPieceColor) {
+  const targetPiece = board.getItem(end);
+  if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
     return INVALID;
   }
 
-  return moveResultsInCheck(board, piece, start, end, activeColor)
-    ? INVALID
-    : VALID;
+  return VALID;
 };
 
 function generateKnightMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
@@ -241,31 +245,20 @@ const DIAGONAL_DIRECTIONS: Array<i32> = [9, 11, -9, -11];
 const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
 
 function isValidBishopMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
-  if (board.isBorder(end)) {
+  const targetPiece = board.getItem(end);
+  if (targetPiece == BOARD_BORDER) {
     return INVALID_BLOCKING;
   }
 
-  const pieceColor = sign(board.getItem(start));
-  if (pieceColor != activeColor) {
+  if (targetPiece == EMPTY) {
+    return VALID;
+  }
+
+  if (sameColor(targetPiece, activeColor)) {
     return INVALID_BLOCKING;
   }
 
-  const targetPieceColor = sign(board.getItem(end));
-
-  if (activeColor == targetPieceColor) {
-    return INVALID_BLOCKING;
-  }
-
-  if (moveResultsInCheck(board, piece, start, end, activeColor)) {
-    return board.isEmpty(end)
-      ? INVALID
-      : INVALID_BLOCKING
-  }
-
-  return board.isEmpty(end)
-    ? VALID
-    : VALID_BLOCKING
-
+  return VALID_BLOCKING;
 };
 
 
@@ -308,25 +301,20 @@ const BLACK_LEFT_ROOK_START = 21;
 const BLACK_RIGHT_ROOK_START = 28;
 
 function isValidRookMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
-  if (board.isBorder(end)) {
+  const targetPiece = board.getItem(end);
+  if (targetPiece == BOARD_BORDER) {
     return INVALID_BLOCKING;
   }
 
-  const targetPieceColor = sign(board.getItem(end));
+  if (targetPiece == EMPTY) {
+    return VALID;
+  }
 
-  if (activeColor == targetPieceColor) {
+  if (sameColor(targetPiece, activeColor)) {
     return INVALID_BLOCKING;
   }
 
-  if (moveResultsInCheck(board, piece, start, end, activeColor)) {
-    return board.isEmpty(end)
-      ? INVALID
-      : INVALID_BLOCKING
-  }
-
-  return board.isEmpty(end)
-    ? VALID
-    : VALID_BLOCKING
+  return VALID_BLOCKING;
 };
 
 
@@ -372,19 +360,17 @@ const WHITE_KING_START = 95;
 const BLACK_KING_START = 25;
 
 function isValidKingMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
-  if (board.isBorder(end)) {
+  const targetPiece = board.getItem(end);
+  if (targetPiece == BOARD_BORDER) {
     return INVALID;
   }
 
-  const targetPieceColor = sign(board.getItem(end));
-
-  if (activeColor == targetPieceColor) {
+  if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
     return INVALID;
   }
 
-  return moveResultsInCheck(board, piece, start, end, activeColor)
-    ? INVALID
-    : VALID;
+  return VALID;
+
 };
 
 function isValidWhiteSmallCastlingMove(board: Board): bool {
@@ -614,8 +600,7 @@ export function isInCheck(board: Board, activeColor: i32): bool {
 };
 
 
-function moveResultsInCheck(board: Board, piece: i32, start: i32, end: i32, activeColor: i32): bool {
-  const pieceId = abs(piece);
+export function moveResultsInCheck(board: Board, pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
   const previousState = board.getState();
   const previousPiece = board.getItem(start); // might be different from piece in case of pawn promotions
 
@@ -743,11 +728,20 @@ function isAttackedOrthogonally(board: Board, opponentColor: i32, pos: i32): boo
 
 
 export function isCheckMate(board: Board, activeColor: i32): bool {
-  return (
-    isInCheck(board, activeColor) &&
-    generateMoves(board, activeColor).length == 0
-  );
+  return isInCheck(board, activeColor) && hasNoValidMoves(board, activeColor, generateMoves(board, activeColor));
 }
+
+
+function hasNoValidMoves(board: Board, activeColor: i32, moves: Array<i32>): bool {
+  for (let i = 0; i < moves.length; i++) {
+    const move = moves[i];
+    if (!moveResultsInCheck(board, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move), activeColor)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 
 // Helper functions
 

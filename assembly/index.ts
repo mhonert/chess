@@ -22,12 +22,11 @@
 import {
   decodeEndIndex,
   decodePiece,
-  decodeStartIndex,
-  generateMoves,
+  decodeStartIndex, generateFilteredMoves,
   isCheckMate as isCheckMateFn,
   performEncodedMove
 } from './move-generation';
-import { findBestMove, findBestMoveIncrementally } from './engine';
+import { findBestMoveIncrementally } from './engine';
 import { Board } from './board';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
@@ -42,10 +41,10 @@ function createBoard(board: Int32Array): Board {
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [3, 0],
-  [5, 0],
-  [5, 300],
-  [5, 3000],
-  [5, 7500]
+  [3, 200],
+  [5, 250],
+  [5, 2500],
+  [7, 5000]
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
@@ -75,7 +74,7 @@ export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Arra
 
 export function generatePlayerMoves(boardArray: Int32Array, color: i32): Int32Array {
   const board = createBoard(boardArray);
-  const moves = generateMoves(board, color);
+  const moves = generateFilteredMoves(board, color);
 
   const movesArray = new Int32Array(moves.length);
   for (let i = 0; i < moves.length; i++) {

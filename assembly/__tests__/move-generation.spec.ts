@@ -17,10 +17,8 @@
  */
 
 import {
-  decodeEndIndex,
-  decodePiece,
   decodeStartIndex,
-  encodeMove,
+  encodeMove, generateFilteredMoves,
   generateMoves,
   isCheckMate,
   KNIGHT_DIRECTIONS
@@ -53,7 +51,7 @@ describe("White pawn moves", () => {
   it("Generates moves for base position", () => {
     const board: Board = boardWithOnePiece(PAWN, 85);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
 
     expect(moves).toHaveLength(2);
     expect(moves).toContain(encodeMove(PAWN, 85, 75));
@@ -64,7 +62,7 @@ describe("White pawn moves", () => {
     const board: Board = boardWithOnePiece(PAWN, 85);
     addPiece(board, PAWN, 75);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
 
     expect(moves).toHaveLength(0);
   });
@@ -74,7 +72,7 @@ describe("White pawn moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(75, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 75);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(PAWN, 75, 64));
@@ -85,7 +83,7 @@ describe("White pawn moves", () => {
   it("Generates promotion moves", () => {
     const board: Board = boardWithOnePiece(PAWN, 35);
 
-    const moves = filterMoves(35, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 35);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KNIGHT, 35, 25));
@@ -99,7 +97,7 @@ describe("White pawn moves", () => {
     addPiece(board, -PAWN, 54);
     board.setEnPassantPossible(34);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(2);
     expect(moves).toContain(encodeMove(PAWN, 55, 45)); // standard move
@@ -111,7 +109,7 @@ describe("White pawn moves", () => {
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -122,7 +120,7 @@ describe("Black pawn moves", () => {
   it("Generates moves for base position", () => {
     const board: Board = boardWithOnePiece(-PAWN, 35);
 
-    const moves = filterMoves(35, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 35);
 
     expect(moves).toHaveLength(2);
     expect(moves).toContain(encodeMove(PAWN, 35, 45));
@@ -133,7 +131,7 @@ describe("Black pawn moves", () => {
     const board: Board = boardWithOnePiece(-PAWN, 35);
     addPiece(board, -BISHOP, 45);
 
-    const moves = filterMoves(35, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 35);
 
     expect(moves).toHaveLength(0);
   });
@@ -143,7 +141,7 @@ describe("Black pawn moves", () => {
     addPiece(board, PAWN, 54);
     addPiece(board, PAWN, 56);
 
-    const moves = filterMoves(45, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 45);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(PAWN, 45, 54));
@@ -154,7 +152,7 @@ describe("Black pawn moves", () => {
   it("Generates promotion moves", () => {
     const board: Board = boardWithOnePiece(-PAWN, 85);
 
-    const moves = filterMoves(85, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 85);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KNIGHT, 85, 95));
@@ -168,7 +166,7 @@ describe("Black pawn moves", () => {
     addPiece(board, PAWN, 64);
     board.setEnPassantPossible(84);
 
-    const moves = filterMoves(65, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 65);
 
     expect(moves).toHaveLength(2);
     expect(moves).toContain(encodeMove(PAWN, 65, 75)); // standard move
@@ -180,7 +178,7 @@ describe("Black pawn moves", () => {
     moveKing(board, -KING, 26);
     addPiece(board, ROOK, 24);
 
-    const moves = filterMoves(85, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 85);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 });
@@ -191,7 +189,7 @@ describe("White knight moves", () => {
   it("Generates moves for base position", () => {
     const board: Board = boardWithOnePiece(KNIGHT, 92);
 
-    const moves = filterMoves(92, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 92);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(KNIGHT, 92, 71));
@@ -202,7 +200,7 @@ describe("White knight moves", () => {
   it("Generates moves for all directions", () => {
     const board: Board = boardWithOnePiece(KNIGHT, 53);
 
-    const moves = filterMoves(53, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 53);
 
     expect(moves).toHaveLength(8);
     for (let i = 0; i < KNIGHT_DIRECTIONS.length; i++) {
@@ -217,7 +215,7 @@ describe("White knight moves", () => {
     addPiece(board, -QUEEN, 73);
     addPiece(board, -BISHOP, 84);
 
-    const moves = filterMoves(92, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 92);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(KNIGHT, 92, 71));
@@ -231,7 +229,7 @@ describe("White knight moves", () => {
     addPiece(board,  PAWN, 73);
     addPiece(board,  BISHOP, 84);
 
-    const moves = filterMoves(92, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 92);
 
     expect(moves).toHaveLength(0);
   });
@@ -241,7 +239,7 @@ describe("White knight moves", () => {
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -252,7 +250,7 @@ describe("Black knight moves", () => {
   it("Generates moves for base position", () => {
     const board: Board = boardWithOnePiece(-KNIGHT, 22);
 
-    const moves = filterMoves(22, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 22);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(KNIGHT, 22, 41));
@@ -263,7 +261,7 @@ describe("Black knight moves", () => {
   it("Generates moves for all directions", () => {
     const board: Board = boardWithOnePiece(-KNIGHT, 53);
 
-    const moves = filterMoves(53, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 53);
 
     expect(moves).toHaveLength(8);
     for (let i = 0; i < KNIGHT_DIRECTIONS.length; i++) {
@@ -278,7 +276,7 @@ describe("Black knight moves", () => {
     addPiece(board, QUEEN, 43);
     addPiece(board, BISHOP, 34);
 
-    const moves = filterMoves(22, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 22);
 
     expect(moves).toHaveLength(3);
     expect(moves).toContain(encodeMove(KNIGHT, 22, 41));
@@ -292,7 +290,7 @@ describe("Black knight moves", () => {
     addPiece(board,  -PAWN, 43);
     addPiece(board,  -BISHOP, 34);
 
-    const moves = filterMoves(22, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 22);
 
     expect(moves).toHaveLength(0);
   });
@@ -302,7 +300,7 @@ describe("Black knight moves", () => {
     moveKing(board, -KING, 23);
     addPiece(board, ROOK, 21);
 
-    const moves = filterMoves(22, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 22);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 });
@@ -313,7 +311,7 @@ describe("White bishop moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(BISHOP, 55);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(13);
     expect(moves).toContain(encodeMove(BISHOP, 55, 22));
@@ -329,7 +327,7 @@ describe("White bishop moves", () => {
     addPiece(board, PAWN, 64);
     addPiece(board, PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -341,7 +339,7 @@ describe("White bishop moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(BISHOP, 55, 44));
@@ -355,7 +353,7 @@ describe("White bishop moves", () => {
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -366,7 +364,7 @@ describe("Black bishop moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(-BISHOP, 55);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(13);
     expect(moves).toContain(encodeMove(BISHOP, 55, 22));
@@ -382,7 +380,7 @@ describe("Black bishop moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -394,7 +392,7 @@ describe("Black bishop moves", () => {
     addPiece(board, PAWN, 64);
     addPiece(board, PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(BISHOP, 55, 44));
@@ -408,7 +406,7 @@ describe("Black bishop moves", () => {
     moveKing(board, -KING, 23);
     addPiece(board, ROOK, 21);
 
-    const moves = filterMoves(22, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 22);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -420,7 +418,7 @@ describe("White rook moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(ROOK, 55);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(14);
     expect(moves).toContain(encodeMove(ROOK, 55, 25));
@@ -436,7 +434,7 @@ describe("White rook moves", () => {
     addPiece(board, PAWN, 45);
     addPiece(board, PAWN, 65);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -448,7 +446,7 @@ describe("White rook moves", () => {
     addPiece(board, -PAWN, 45);
     addPiece(board, -PAWN, 65);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(ROOK, 55, 54));
@@ -462,7 +460,7 @@ describe("White rook moves", () => {
     moveKing(board, KING, 86);
     addPiece(board, -BISHOP, 68);
 
-    const moves = filterMoves(77, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 77);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -473,7 +471,7 @@ describe("Black rook moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(-ROOK, 55);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(14);
     expect(moves).toContain(encodeMove(ROOK, 55, 25));
@@ -489,7 +487,7 @@ describe("Black rook moves", () => {
     addPiece(board, -PAWN, 45);
     addPiece(board, -PAWN, 65);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -501,7 +499,7 @@ describe("Black rook moves", () => {
     addPiece(board, PAWN, 45);
     addPiece(board, PAWN, 65);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(ROOK, 55, 54));
@@ -516,7 +514,7 @@ describe("Black rook moves", () => {
     addPiece(board, BISHOP, 48);
 
 
-    const moves = filterMoves(37, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 37);
     expect(moves).toHaveLength(0, "All moves would put own king into check");
   });
 
@@ -528,7 +526,7 @@ describe("White queen moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(QUEEN, 55);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(27);
     expect(moves).toContain(encodeMove(QUEEN, 55, 25));
@@ -552,7 +550,7 @@ describe("White queen moves", () => {
     addPiece(board, PAWN, 64);
     addPiece(board, PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -568,7 +566,7 @@ describe("White queen moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(8);
     expect(moves).toContain(encodeMove(QUEEN, 55, 54));
@@ -586,7 +584,7 @@ describe("White queen moves", () => {
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
 
-    const moves = filterMoves(85, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 85);
     expect(moves).toHaveLength(1, "Only capturing the rook would not put the king into check");
   });
 
@@ -598,7 +596,7 @@ describe("Black queen moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithOnePiece(-QUEEN, 55);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(27);
     expect(moves).toContain(encodeMove(QUEEN, 55, 25));
@@ -622,7 +620,7 @@ describe("Black queen moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -638,7 +636,7 @@ describe("Black queen moves", () => {
     addPiece(board, PAWN, 64);
     addPiece(board, PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(8);
     expect(moves).toContain(encodeMove(QUEEN, 55, 54));
@@ -656,7 +654,7 @@ describe("Black queen moves", () => {
     moveKing(board, -KING, 26);
     addPiece(board, ROOK, 24);
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
     expect(moves).toHaveLength(1, "Only capturing the rook would not put the king into check");
   });
 
@@ -668,7 +666,7 @@ describe("White king moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithKing(KING, 55);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(8);
     expect(moves).toContain(encodeMove(KING, 55, 54));
@@ -692,7 +690,7 @@ describe("White king moves", () => {
     addPiece(board, PAWN, 64);
     addPiece(board, PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -704,7 +702,7 @@ describe("White king moves", () => {
     addPiece(board, -KNIGHT, 64);
     addPiece(board, -KNIGHT, 66);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 55, 44));
@@ -720,7 +718,7 @@ describe("White king moves", () => {
     addPiece(board, -KNIGHT, 45);
     addPiece(board, -KNIGHT, 65);
 
-    const moves = filterMoves(55, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 55, 54));
@@ -734,7 +732,7 @@ describe("White king moves", () => {
     addPiece(board, ROOK, 91);
     addPiece(board, ROOK, 98);
 
-    const moves = filterMoves(95, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 95);
 
     expect(moves).toHaveLength(7);
     expect(moves).toContain(encodeMove(KING, 95, 93));
@@ -747,7 +745,7 @@ describe("White king moves", () => {
     addPiece(board, ROOK, 91);
     addPiece(board, ROOK, 98);
 
-    const moves = filterMoves(95, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 95);
 
     expect(moves).toHaveLength(5, "Only standard moves without castling");
   });
@@ -759,7 +757,7 @@ describe("White king moves", () => {
     board.setWhiteLeftRookMoved();
     board.setWhiteRightRookMoved();
 
-    const moves = filterMoves(95, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 95);
 
     expect(moves).toHaveLength(5, "Only standard moves without castling");
   });
@@ -769,7 +767,7 @@ describe("White king moves", () => {
     addPiece(board, -QUEEN, 82);
     addPiece(board, -QUEEN, 27);
 
-    const moves = filterMoves(98, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 98);
     expect(moves).toHaveLength(0, "All moves would put the king into check");
   });
 
@@ -781,7 +779,7 @@ describe("White king moves", () => {
     addPiece(board, -ROOK, 33);
     addPiece(board, -ROOK, 37);
 
-    const moves = filterMoves(95, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 95);
 
     expect(moves).toHaveLength(5, "Only standard moves");
   });
@@ -794,7 +792,7 @@ describe("White king moves", () => {
     addPiece(board, -ROOK, 32);
     addPiece(board, -ROOK, 36);
 
-    const moves = filterMoves(95, generateMoves(board, WHITE));
+    const moves = generateMovesForStartIndex(board, WHITE, 95);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 95, 93));
@@ -807,7 +805,7 @@ describe("Black king moves", () => {
   it("Generates moves", () => {
     const board: Board = boardWithKing(-KING, 55);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(8);
     expect(moves).toContain(encodeMove(KING, 55, 54));
@@ -831,7 +829,7 @@ describe("Black king moves", () => {
     addPiece(board, -PAWN, 64);
     addPiece(board, -PAWN, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(0);
   });
@@ -843,7 +841,7 @@ describe("Black king moves", () => {
     addPiece(board, KNIGHT, 64);
     addPiece(board, KNIGHT, 66);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 55, 44));
@@ -859,7 +857,7 @@ describe("Black king moves", () => {
     addPiece(board, KNIGHT, 45);
     addPiece(board, KNIGHT, 65);
 
-    const moves = filterMoves(55, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 55);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 55, 54));
@@ -873,7 +871,7 @@ describe("Black king moves", () => {
     addPiece(board, -ROOK, 21);
     addPiece(board, -ROOK, 28);
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
 
     expect(moves).toHaveLength(7);
     expect(moves).toContain(encodeMove(KING, 25, 23));
@@ -886,7 +884,7 @@ describe("Black king moves", () => {
     addPiece(board, -ROOK, 21);
     addPiece(board, -ROOK, 28);
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
 
     expect(moves).toHaveLength(5, "Only standard moves without castling");
   });
@@ -898,7 +896,7 @@ describe("Black king moves", () => {
     board.setBlackLeftRookMoved();
     board.setBlackRightRookMoved();
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
 
     expect(moves).toHaveLength(5, "Only standard moves without castling");
   });
@@ -908,7 +906,7 @@ describe("Black king moves", () => {
     addPiece(board, QUEEN, 38);
     addPiece(board, QUEEN, 92);
 
-    const moves = filterMoves(21, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 21);
     expect(moves).toHaveLength(0, "All moves would put the king into check");
   });
 
@@ -920,7 +918,7 @@ describe("Black king moves", () => {
     addPiece(board, ROOK, 93);
     addPiece(board, ROOK, 97);
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
 
     expect(moves).toHaveLength(5, "Only standard moves");
   });
@@ -933,7 +931,7 @@ describe("Black king moves", () => {
     addPiece(board, ROOK, 92);
     addPiece(board, ROOK, 96);
 
-    const moves = filterMoves(25, generateMoves(board, BLACK));
+    const moves = generateMovesForStartIndex(board, BLACK, 25);
 
     expect(moves).toHaveLength(4);
     expect(moves).toContain(encodeMove(KING, 25, 23));
@@ -982,7 +980,7 @@ describe('Check detection', () => {
       __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
     ];
 
-    expect(generateMoves(new Board(board), BLACK)).toHaveLength(3, "All pawn moves would leave king in check");
+    expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(3, "All pawn moves would leave king in check");
   });
 
   it('Detects orthogonal attacks from different directions', () => {
@@ -1002,7 +1000,7 @@ describe('Check detection', () => {
       __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
     ];
 
-    expect(generateMoves(new Board(board), BLACK)).toHaveLength(6, "All knight moves would leave king in check");
+    expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(6, "All knight moves would leave king in check");
   });
 });
 
@@ -1036,7 +1034,9 @@ function moveKing(board: Board, piece: i32, location: i32): void {
   board.updateKingPosition(color, location);
 }
 
-function filterMoves(filterForStartIndex: i32, moves: Array<i32>): Array<i32> {
+// Generates moves and filters for valid moves for the given start index
+function generateMovesForStartIndex(board: Board, playerColor: i32, filterForStartIndex: i32): Array<i32> {
+  const moves = generateFilteredMoves(board, playerColor);
   const filteredMoves: Array<i32> = new Array<i32>();
 
   for (let i = 0; i < moves.length; i++) {
