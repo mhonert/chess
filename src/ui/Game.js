@@ -59,6 +59,7 @@ const Game = () => {
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
   const [difficultyLevel, setDifficultyLevel] = useState(3);
+  const [previousMoveState, setPreviousMoveState] = useState();
 
   const clearAvailableMoves = () => setAvailableMoves([]);
 
@@ -105,6 +106,7 @@ const Game = () => {
   };
 
   const startNewGame = () => {
+    setPreviousMoveState(undefined);
     setBoard(initialBoard);
     setActivePlayer(WHITE);
     setGameEnded(false);
@@ -113,6 +115,25 @@ const Game = () => {
     setAvailableMoves(engine.generateMoves(initialBoard, WHITE));
     setCurrentPieceMoves(new Set());
   };
+
+  const undoMove = () => {
+    const {previousBoard, previousLastMove, previousActivePlayer, previousAvailableMoves} = previousMoveState;
+    setBoard(previousBoard);
+    setLastMove(previousLastMove);
+    setActivePlayer(previousActivePlayer)
+    setAvailableMoves(previousAvailableMoves);
+
+    setPreviousMoveState(undefined);
+  }
+
+  const saveCurrentMoveState = () => {
+    setPreviousMoveState({
+      previousBoard: board,
+      previousLastMove: lastMove,
+      previousActivePlayer: activePlayer,
+      previousAvailableMoves: availableMoves
+    })
+  }
 
   const handlePlayerMove = (piece, start, end) => {
     let pieceId = Math.abs(piece);
@@ -124,6 +145,7 @@ const Game = () => {
       return;
     }
 
+    saveCurrentMoveState();
     setLastMove({ start, end });
 
     // TODO: Replace browser prompt dialog with own dialog
@@ -202,6 +224,8 @@ const Game = () => {
         forceAiMove={forceAiMove}
         searchDepth={difficultyLevel}
         setSearchDepth={setDifficultyLevel}
+        canUndoMove={!!previousMoveState}
+        undoMove={undoMove}
       />
     </GameArea>
   );

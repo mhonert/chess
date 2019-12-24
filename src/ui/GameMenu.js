@@ -86,7 +86,9 @@ const GameMenu = ({
   startNewGame,
   forceAiMove,
   difficultyLevel,
-  setSearchDepth
+  setSearchDepth,
+  canUndoMove,
+  undoMove
 }) => {
   return (
     <MenuBar>
@@ -107,7 +109,16 @@ const GameMenu = ({
         </GameButton>
       </MenuItem>
 
-      <MenuItem hidden={isAiThinking}>
+      <MenuItem hidden={isAiThinking || gameEnded || !canUndoMove}>
+        <GameButton disabled={!canUndoMove}
+                    onClick={undoMove}
+                    title="Undo previous player move"
+        >
+          Undo Move
+        </GameButton>
+      </MenuItem>
+
+        <MenuItem hidden={isAiThinking}>
         <Label htmlFor="game-menu_difficulty-slider">Difficulty</Label>
         <input
           id="game-menu_difficulty-slider"
