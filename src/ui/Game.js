@@ -50,7 +50,9 @@ const GameArea = styled.div`
 `;
 
 const Game = () => {
+  const [rotateBoard, setRotateBoard] = useState(false);
   const [activePlayer, setActivePlayer] = useState(WHITE);
+  const [humanPlayerColor, setHumanPlayerColor] = useState(WHITE);
   const [isAiThinking, setAiThinking] = useState(false);
   const [board, setBoard] = useState(initialBoard);
   const [gameEnded, setGameEnded] = useState(false);
@@ -98,17 +100,21 @@ const Game = () => {
     );
   };
 
-  const forceAiMove = () => {
+  const switchSides = () => {
+    setRotateBoard(true);
     setAiThinking(true);
+    setHumanPlayerColor(-humanPlayerColor);
     engineWebWorker
       .calculateMove(board, activePlayer, difficultyLevel)
       .then(move => handleAIMove(board, move, activePlayer));
   };
 
   const startNewGame = () => {
+    setRotateBoard(false);
     setPreviousMoveState(undefined);
     setBoard(initialBoard);
     setActivePlayer(WHITE);
+    setHumanPlayerColor(WHITE);
     setGameEnded(false);
     setLastMove({ start: -1, end: -1 });
     setWinningPlayer(undefined);
@@ -210,6 +216,7 @@ const Game = () => {
     <GameArea>
       <Board
         board={board}
+        isRotated={rotateBoard}
         lastMove={lastMove}
         currentPieceMoves={currentPieceMoves}
         handlePlayerMove={handlePlayerMove}
@@ -218,12 +225,15 @@ const Game = () => {
       />
       <GameMenu
         isAiThinking={isAiThinking}
+        firstMovePlayed={lastMove.start !== -1}
+        humanPlayerColor={humanPlayerColor}
         gameEnded={gameEnded}
         winningPlayerColor={winningPlayer}
         startNewGame={startNewGame}
-        forceAiMove={forceAiMove}
-        searchDepth={difficultyLevel}
-        setSearchDepth={setDifficultyLevel}
+        switchSides={switchSides}
+        rotateBoard={() => setRotateBoard(!rotateBoard)}
+        difficultyLevel={difficultyLevel}
+        setDifficultyLevel={setDifficultyLevel}
         canUndoMove={!!previousMoveState}
         undoMove={undoMove}
       />

@@ -41,6 +41,7 @@ and do not block the main thread for the UI.
 * [React](https://reactjs.org/) - for the user interface
 * [React DnD](https://github.com/react-dnd/react-dnd) - for Drag and Drop support
 * [styled-components](https://www.styled-components.com/) - to style React components in JS
+* [React Fortawesome](https://github.com/FortAwesome/react-fontawesome) - to add font icons
 * [workerize-loader](https://github.com/developit/workerize-loader) - to load modules as Web Workers
 
 ## License

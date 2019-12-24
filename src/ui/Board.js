@@ -27,8 +27,9 @@ const BoardGrid = styled.div`
     grid-template-columns: 0 repeat(8, 1fr);
     grid-template-rows: 0 repeat(8, 1fr);
 
-    //border-right: 3px outset #586e75;
-    box-shadow: 3px 3px 3px #586e75;
+    box-shadow: ${props => props.isRotated ? "-3px -3px 3px" : "3px 3px 3px"} #586e75;
+    
+    transform: rotateZ(${props => props.isRotated ? "180deg" : "0deg"});
     
     // always keep board size rectangular and maximized to the smaller axis
     @media (min-aspect-ratio: 99/100) {
@@ -41,9 +42,9 @@ const BoardGrid = styled.div`
     }
 `;
 
-const Board = ({board, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
+const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
   return (
-    <BoardGrid>
+    <BoardGrid isRotated={isRotated}>
       {board.map((item, idx) => {
         if (idx % 10 === 9 || idx >= 100 || idx < 10) {
           return null; // skip
@@ -58,6 +59,7 @@ const Board = ({board, lastMove, currentPieceMoves, handlePlayerMove, updatePoss
             key={idx}
             boardIndex={idx}
             movePiece={handlePlayerMove}
+            isRotated={isRotated}
             isStart={idx === lastMove.start}
             isEnd={idx === lastMove.end}
             isPossibleTarget={currentPieceMoves.has(idx)}

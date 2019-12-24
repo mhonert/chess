@@ -27,9 +27,9 @@ const AnimatedSpinner = styled.div`
   width: 80px;
   height: 80px;
   
-  margin-top: 2rem;
-  margin-right: 3rem;
-  margin-left: 3rem;
+  margin-top: 1rem;
+  margin-right: 0.5rem;
+  margin-left: 1.5rem;
   
   div {
     transform-origin: 40px 40px;

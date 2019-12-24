@@ -20,26 +20,47 @@ import React from 'react';
 import styled from 'styled-components/macro';
 import { WHITE } from '../engine/constants';
 import AnimatedSpinner from './AnimatedSpinner';
+import {
+  faBalanceScale,
+  faDiceFive,
+  faDiceFour,
+  faDiceOne,
+  faDiceThree,
+  faDiceTwo,
+  faExchangeAlt,
+  faMedal,
+  faPlus,
+  faRetweet,
+  faRobot,
+  faUndo
+} from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 const MenuBar = styled.div`
   display: flex;
   flex-direction: column;
-  margin-top: 1.5rem;
-  margin-left: 2rem;
+  margin-top: 1rem;
+  margin-left: 1.5rem;
   text-align: center;
 
   // center menubar below board, if window width is < window height
   @media (max-aspect-ratio: 100/99) {
     margin-left: auto;
     margin-right: auto;
+    flex-flow: column-reverse;
   }
 `;
 
 const MenuItem = styled.div`
   position: relative;
   display: ${props => (props.hidden ? 'none' : 'flex')};
-  align-self: center;
   padding-bottom: 0.5rem;
+  flex-direction: column;
+  
+  @media (max-aspect-ratio: 100/99) {
+    flex-direction: row;
+    align-self: center;
+  }
 `;
 
 const GameButton = styled.button`
@@ -49,9 +70,14 @@ const GameButton = styled.button`
   border-radius: 0.3rem;
   font-size: 1rem;
   font-weight: bold;
-  padding: 0.5rem;
-  width: 11rem;
+  padding: 0.5rem 0.4rem;
+  width: 2.5rem;
+  margin: 0.3rem;
   box-shadow: 1px 1px 1px #073642;
+  
+  &[disabled] {
+    display: none;
+  }
 
   & :hover {
     background: #073642;
@@ -60,88 +86,120 @@ const GameButton = styled.button`
   }
 `;
 
-const Label = styled.label`
-  position: absolute;
-  top: 1.3rem;
-  width: 100%;
-  text-align: center;
-  font-size: 0.8rem;
-  color: #073642;
-`;
-
 const GameResult = styled(MenuItem)`
-  padding-top: 2rem;
+  margin-top: 0.3rem;
   font-weight: bold;
   font-size: 1.5rem;
-  color: #dc322f;
-;
+  color: #073642;
+  width: 100%;
+  align-items: center;
+  
+  svg {
+    margin-left: 1rem;
+    margin-right: 1rem;
+  }
 `;
+
+const IconRadioInput = styled.input`
+  display: none;
+  
+  &:checked + label {
+    opacity: 1;
+  }
+`;
+
+const IconRadioLabel = styled.label`
+  color: #073642;
+  margin: 0.2rem;
+  opacity: 0.2;
+  
+  & :hover {
+    opacity: 0.5;
+    cursor: pointer;
+  }
+`
 
 const colorName = color => (color === WHITE ? 'White' : 'Black');
 
+const getGameResultIcon = (winningPlayerColor, humanPlayerColor) => {
+  if (!winningPlayerColor) {
+    return faBalanceScale;
+  }
+
+  return winningPlayerColor === humanPlayerColor
+    ? faMedal
+    : faRobot;
+}
+
 const GameMenu = ({
   isAiThinking,
+  firstMovePlayed,
+  humanPlayerColor,
   gameEnded,
   winningPlayerColor,
   startNewGame,
-  forceAiMove,
+  switchSides,
+  rotateBoard,
   difficultyLevel,
-  setSearchDepth,
+  setDifficultyLevel,
   canUndoMove,
-  undoMove
-}) => {
-  return (
-    <MenuBar>
+  undoMove,
+}) => (
+  <MenuBar>
+    {gameEnded &&
+    <GameResult>
+      <FontAwesomeIcon icon={getGameResultIcon(winningPlayerColor, humanPlayerColor)} size="2x" />
+      {winningPlayerColor ? colorName(winningPlayerColor) + ' wins!' : 'Draw!'}
+    </GameResult>
+    }
 
-      <MenuItem hidden={isAiThinking}>
-        <GameButton disabled={isAiThinking} onClick={startNewGame}>
-          New Game
-        </GameButton>
-      </MenuItem>
+    <MenuItem hidden={isAiThinking}>
 
-      <MenuItem hidden={isAiThinking || gameEnded}>
-        <GameButton
-          disabled={isAiThinking || gameEnded}
-          onClick={forceAiMove}
-          title="Let computer play the current color"
-        >
-          Computer Move
-        </GameButton>
-      </MenuItem>
+      <GameButton disabled={!firstMovePlayed} onClick={startNewGame}>
+        <FontAwesomeIcon icon={faPlus} title="Start new game" />
+      </GameButton>
 
-      <MenuItem hidden={isAiThinking || gameEnded || !canUndoMove}>
-        <GameButton disabled={!canUndoMove}
-                    onClick={undoMove}
-                    title="Undo previous player move"
-        >
-          Undo Move
-        </GameButton>
-      </MenuItem>
+      <GameButton disabled={gameEnded || firstMovePlayed} onClick={switchSides}>
+        <FontAwesomeIcon icon={faExchangeAlt} title="Switch sides" />
+      </GameButton>
 
-        <MenuItem hidden={isAiThinking}>
-        <Label htmlFor="game-menu_difficulty-slider">Difficulty</Label>
-        <input
-          id="game-menu_difficulty-slider"
-          type="range"
-          min="1"
-          max="5"
-          title="Difficulty"
-          value={difficultyLevel}
-          onChange={e => setSearchDepth(e.target.value)}
-        />
-      </MenuItem>
+      <GameButton disabled={!canUndoMove || gameEnded} onClick={undoMove}>
+        <FontAwesomeIcon icon={faUndo} title="Undo move" />
+      </GameButton>
 
-      {isAiThinking && <AnimatedSpinner /> }
+      <GameButton disabled={gameEnded || !firstMovePlayed} onClick={rotateBoard}>
+        <FontAwesomeIcon icon={faRetweet} title="Rotate board" />
+      </GameButton>
 
-      {gameEnded && (
-        <GameResult>
-          {winningPlayerColor
-            ? colorName(winningPlayerColor) + ' wins!'
-            : 'Stalemate!'}
-        </GameResult>
-      )}
-    </MenuBar>
-  );
-};
+    </MenuItem>
+
+    <MenuItem hidden={isAiThinking || gameEnded}>
+      <IconRadioButtons currentValue={difficultyLevel} name="difficulty-level" onChange={setDifficultyLevel}
+                        options={[
+                          {value: 1, description: "Difficulty level 1 (easy)", icon: faDiceOne},
+                          {value: 2, description: "Difficulty level 2", icon: faDiceTwo},
+                          {value: 3, description: "Difficulty level 3", icon: faDiceThree},
+                          {value: 4, description: "Difficulty level 4", icon: faDiceFour},
+                          {value: 5, description: "Difficulty level 5 (hard)", icon: faDiceFive},
+                        ]} />
+    </MenuItem>
+
+    {isAiThinking && <AnimatedSpinner /> }
+
+  </MenuBar>
+);
+
+const IconRadioButtons = ({currentValue, name, options, onChange}) => (
+  <>
+    {options.map(({value, description, icon}) => (
+      <>
+        <IconRadioInput type="radio" id={`${name}-${value}`} name={name} value={value} defaultChecked={currentValue === value} onChange={(e) => onChange(e.target.value)} />
+        <IconRadioLabel htmlFor={`${name}-${value}`}>
+          <FontAwesomeIcon icon={icon} title={description} size="2x" />
+        </IconRadioLabel>
+      </>
+      ))}
+  </>
+);
 
 export default GameMenu;

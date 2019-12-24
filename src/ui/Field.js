@@ -24,6 +24,8 @@ const FieldDiv = styled.div`
   position: relative;
   background-color: #fdf6e3;
   
+  transform: rotateZ(${props => props.isRotated ? "180deg" : "0deg"});
+  
   &:nth-child(even) {
     background-color: #eee8d5;
   }
@@ -38,12 +40,12 @@ const FieldDiv = styled.div`
     display: block;
     border: 0.5vh solid ${props => props.markColor};
     border-radius: 50%;
-    //box-shadow: 0px 0px 1px ${props => props.markColor};
   }
 `;
 
 const Field = ({
   boardIndex,
+  isRotated,
   children,
   movePiece,
   isStart,
@@ -69,6 +71,7 @@ const Field = ({
   return (
     <FieldDiv
       ref={dropRef}
+      isRotated={isRotated}
       style={{ position: 'relative' }}
       isStart={isStart}
       markColor={markColor}
