@@ -192,12 +192,12 @@ const GameMenu = ({
 const IconRadioButtons = ({currentValue, name, options, onChange}) => (
   <>
     {options.map(({value, description, icon}) => (
-      <>
+      <React.Fragment key={`${name}-${value}`}>
         <IconRadioInput type="radio" id={`${name}-${value}`} name={name} value={value} defaultChecked={currentValue === value} onChange={(e) => onChange(e.target.value)} />
         <IconRadioLabel htmlFor={`${name}-${value}`}>
           <FontAwesomeIcon icon={icon} title={description} size="2x" />
         </IconRadioLabel>
-      </>
+      </React.Fragment>
       ))}
   </>
 );
