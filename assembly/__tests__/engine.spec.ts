@@ -92,7 +92,7 @@ describe('Evaluate position', () => {
       __, +P, +P, +P, +P, +P, +P, +P, +P, __,
       __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
     const score = evaluatePosition(new Board(board));
@@ -113,7 +113,7 @@ describe('Evaluate position', () => {
   //     __, +P, +P, +P,  0, +P, +P, +P, +P, __,
   //     __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
   //     __, __, __, __, __, __, __, __, __, __,
-  //     __, __, __, __, __, __, __, __, __, __, 0
+  //     __, __, __, __, __, __, __, __, __, __, 0, 0, 0
   //   ];
   //
   //   const score = evaluatePosition(new Board(board));
@@ -133,7 +133,7 @@ describe('Evaluate position', () => {
       __, +P, +P, +P, +P,  0, +P, +P, +P, __,
       __, +R,  0, +B, +Q, +K, +B, +N, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
     const score = evaluatePosition(new Board(board));
@@ -153,7 +153,7 @@ describe('Evaluate position', () => {
       __, +P, +P, +P, +P, +P, +P, +P, +P, __,
       __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
     const score = evaluatePosition(new Board(board));
@@ -173,7 +173,7 @@ describe('Evaluate position', () => {
       __,  0,  0,  0,  0, +P, +P, +P, +P, __,
       __,  0,  0,  0,  0,  0, +R, +K,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
     ];
 
     const score = evaluatePosition(new Board(board));
@@ -193,7 +193,7 @@ describe('Evaluate position', () => {
       __,  0,  0,  0,  0,  0,  0,  0,  0, __,
       __,  0,  0,  0,  0, -K,  0,  0,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
     const score = evaluatePosition(board);
@@ -213,7 +213,7 @@ describe('Evaluate position', () => {
       __,  0,  0,  0,  0,  0,  0,  0,  0, __,
       __,  0,  0,  0,  0, +K,  0,  0,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
     const score = evaluatePosition(board);
@@ -236,7 +236,7 @@ describe('Finds moves', () => {
       __,  0,  0,  0, -K,  0,  0,  0,  0, __,
       __,  0,  0,  0,  0,  0,  0,  0, -R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, WHITE_KING_MOVED | BLACK_KING_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     performEncodedMove(board, findBestMove(board, BLACK, 2));
@@ -258,7 +258,7 @@ describe('Finds moves', () => {
       __,  0,  0,  0,  0,  0,  0,  0,  0, __,
       __, +R,  0,  0,  0, +K,  0,  0, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
     performEncodedMove(board, findBestMove(board, WHITE, 3));
@@ -282,7 +282,7 @@ describe('Finds moves', () => {
       __,  0,  0,  0,  0, +P,  0, +K, +R, __,
       __,  0,  0, +N,  0,  0, +R, +B,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
     performEncodedMove(board, findBestMove(board, WHITE, 3));
@@ -306,7 +306,7 @@ describe('Finds moves', () => {
       __, +P, +P, +P, +P, +P, +P, +P, +P, __,
       __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
     const move = findBestMove(board, WHITE, 4);
@@ -327,7 +327,7 @@ describe('Finds moves', () => {
       __, +P, +P, +P, +N,  0, +P, +P, +P, __,
       __, +R,  0,  0,  0,  0, +R, +K,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
     const move = findBestMove(board, WHITE, 2);

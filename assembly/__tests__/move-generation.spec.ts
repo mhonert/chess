@@ -21,9 +21,9 @@ import {
   encodeMove, generateFilteredMoves,
   generateMoves,
   isCheckMate,
-  KNIGHT_DIRECTIONS
+  KNIGHT_DIRECTIONS, performEncodedMove, undoMove
 } from '../move-generation';
-import {__, BLACK, BLACK_KING_MOVED, Board, WHITE} from '../board';
+import { __, BLACK, BLACK_KING_MOVED, Board, EMPTY, WHITE } from '../board';
 import {B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK} from '../pieces';
 import {sign} from '../util';
 
@@ -41,7 +41,7 @@ function emptyBoardWithKings(): Array<i32> {
     __,  0,  0,  0,  0,  0,  0,  0,  0, __, // 80 - 89
     __,  0,  0,  0,  0,  0,  0,  K,  0, __, // 90 - 99
     __, __, __, __, __, __, __, __, __, __, // ...
-    __, __, __, __, __, __, __, __, __, __, 0
+    __, __, __, __, __, __, __, __, __, __, 0, 0, 0
   ];
 }
 
@@ -955,7 +955,7 @@ describe('Detect check mate', () => {
       __, +P, +P,  0,  0, +B, +P, +P,  0, __,
       __, +R,  0,  0,  0, +K,  0, +N, +R, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
     expect(isCheckMate(new Board(board), BLACK)).toBeFalsy();
@@ -977,7 +977,7 @@ describe('Check detection', () => {
       __,  0,  0,  0,  0,  0,  0,  0,  0, __,
       __,  0,  0,  0,  0,  K,  0,  0,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_KING_MOVED
     ];
 
     expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(3, "All pawn moves would leave king in check");
@@ -997,11 +997,125 @@ describe('Check detection', () => {
       __,  0,  0,  0,  0,  Q,  0,  0,  0, __,
       __,  0,  0,  0,  0,  K,  0,  0,  0, __,
       __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, BLACK_KING_MOVED
+      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_KING_MOVED
     ];
 
     expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(6, "All knight moves would leave king in check");
   });
+});
+
+
+describe("Half move clock", () => {
+
+  it("Increases half move count for each half move", () => {
+    const board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
+      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
+      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    performEncodedMove(board, encodeMove(P, 84, 64));
+    performEncodedMove(board, encodeMove(-P, 34, 54));
+
+    expect(board.getHalfMoveCount()).toBe(2);
+  });
+
+  it("Decreases half move count if move is undone", () => {
+    const board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
+      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
+      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    performEncodedMove(board, encodeMove(P, 84, 64));
+    performEncodedMove(board, encodeMove(-P, 34, 54));
+    undoMove(board, -P, 34, 54, EMPTY, 0, 0);
+
+    expect(board.getHalfMoveCount()).toBe(1);
+  });
+
+  it("Increase half move clock if no pawn is moved and no piece is captured", () => {
+    const board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
+      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
+      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    performEncodedMove(board, encodeMove(N, 82, 63));
+
+    expect(board.getHalfMoveClock()).toBe(1);
+  });
+
+  it("Reset half move clock if a pawn is moved", () => {
+    const board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
+      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
+      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    performEncodedMove(board, encodeMove(N, 92, 73));
+    performEncodedMove(board, encodeMove(-P, 34, 54));
+
+    expect(board.getHalfMoveClock()).toBe(0);
+  });
+
+  it("Reset half move clock if a piece is captured", () => {
+    const board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, -R, -N, -B, -Q, -K,  0, -N, -R, __,
+      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0, -B,  0,  0,  0,  0,  0, __,
+      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
+      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    performEncodedMove(board, encodeMove(N, 92, 73));
+
+    expect(board.getHalfMoveClock()).toBe(0);
+  });
+
 });
 
 // Test helper functions

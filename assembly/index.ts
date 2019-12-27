@@ -69,6 +69,9 @@ export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Arra
     newBoard[i] = board.getItem(i);
   }
 
+  trace("Full move count: ", 1, board.getFullMoveCount());
+  trace("Half move clock: ", 1, board.getHalfMoveClock());
+
   return newBoard;
 }
 

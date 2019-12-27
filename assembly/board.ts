@@ -22,6 +22,10 @@ import { KNIGHT_DIRECTIONS } from './move-generation';
 
 const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
 
+const HALFMOVE_CLOCK_INDEX = 120;
+const HALFMOVE_COUNT_INDEX = 121;
+const STATE_INDEX = 122;
+
 export class Board {
   private items: Array<i32>;
   private whiteKingIndex: i32;
@@ -31,7 +35,16 @@ export class Board {
   private diagonalPieces: Array<u64> = new Array<u64>(2);
   private knights: Array<u64> = new Array<u64>(2);
 
+  /* items Array:
+     Index 0 - 119: Board representation (10 columns * 12 rows)
+     Index 120: Half-move clock (number of halfmoves since last capture or pawn move)
+     Index 121: Half-move count (total number of half moves since the beginning of the game)
+     Index 122: Encoded board state (en passant option and castling availability)
+   */
   constructor(items: Array<i32>) {
+    if (items.length < (STATE_INDEX + 1)) {
+      throw new Error("Invalid board item length: " + items.length.toString());
+    }
     this.items = items;
     this.whiteKingIndex = items.findIndex(isWhiteKing)
     this.blackKingIndex = items.findIndex(isBlackKing);
@@ -249,6 +262,36 @@ export class Board {
   clearEnPassentPossible(): void {
     this.items[this.items.length - 1] &= (EN_PASSANT_BITMASKS[0] - 1);
   };
+
+  increaseHalfMoveCount(): void {
+    this.items[HALFMOVE_COUNT_INDEX]++;
+    this.items[HALFMOVE_CLOCK_INDEX]++;
+  }
+
+  resetHalfMoveClock(): void {
+    this.items[HALFMOVE_CLOCK_INDEX] = 0;
+  }
+
+  restorePreviousHalfMoveState(newValue: i32): void {
+    this.items[HALFMOVE_COUNT_INDEX]--;
+    this.items[HALFMOVE_CLOCK_INDEX] = newValue;
+  }
+
+  getHalfMoveClock(): i32 {
+    return this.items[HALFMOVE_CLOCK_INDEX];
+  }
+
+  getHalfMoveCount(): i32 {
+    return this.items[HALFMOVE_COUNT_INDEX];
+  }
+
+  getFullMoveCount(): i32 {
+    return this.items[HALFMOVE_COUNT_INDEX] / 2 + 1;
+  }
+
+  getActivePlayer(): i32 {
+    return (this.items[HALFMOVE_COUNT_INDEX] & 1) === 0 ? WHITE : BLACK;
+  }
 
   getState(): i32 {
     return this.items[this.items.length - 1];
@@ -566,10 +609,10 @@ export const WHITE_PAWNS_BASELINE_END = 88;
 export const BLACK_PAWNS_BASELINE_START = 31;
 export const BLACK_PAWNS_BASELINE_END = 38;
 
-const WHITE_ENPASSANT_LINE_START = 41;
-const WHITE_ENPASSANT_LINE_END = 48
-const BLACK_ENPASSANT_LINE_START = 71;
-const BLACK_ENPASSANT_LINE_END = 78
+export const WHITE_ENPASSANT_LINE_START = 41;
+export const WHITE_ENPASSANT_LINE_END = 48
+export const BLACK_ENPASSANT_LINE_START = 71;
+export const BLACK_ENPASSANT_LINE_END = 78
 
 
 export const PAWN_POSITION_SCORES: Array<i32> = [

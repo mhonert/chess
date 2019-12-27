@@ -444,6 +444,7 @@ export function performEncodedMove(board: Board, encodedMove: i32): i32 {
  */
 export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i32 {
   const pieceColor = sign(board.getItem(start));
+  board.increaseHalfMoveCount();
 
   let removedPiece = board.removePiece(end);
 
@@ -453,21 +454,28 @@ export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i
 
   let isEnPassant: bool = false;
 
-  if (pieceId == PAWN && removedPiece == EMPTY) {
+  if (pieceId == PAWN) {
+    board.resetHalfMoveClock();
 
-    // Special en passant handling
-    if (abs(start - end) == 20) {
-      board.setEnPassantPossible(start);
+    if (removedPiece == EMPTY) {
 
-    } else if (abs(start - end) == 9) {
-      removedPiece = board.removePiece(start + pieceColor);
-      isEnPassant = true;
+      // Special en passant handling
+      if (abs(start - end) == 20) {
+        board.setEnPassantPossible(start);
 
-    } else if (abs(start - end) == 11) {
-      removedPiece = board.removePiece(start - pieceColor);
-      isEnPassant = true;
+      } else if (abs(start - end) == 9) {
+        removedPiece = board.removePiece(start + pieceColor);
+        isEnPassant = true;
 
+      } else if (abs(start - end) == 11) {
+        removedPiece = board.removePiece(start - pieceColor);
+        isEnPassant = true;
+
+      }
     }
+
+  } else if (removedPiece != EMPTY) {
+    board.resetHalfMoveClock();
 
   }
 
@@ -538,8 +546,9 @@ export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i
 };
 
 
-export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32, previousState: i32): void {
+export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32, previousState: i32, previousHalfMoveClock: i32): void {
   board.setState(previousState);
+  board.restorePreviousHalfMoveState(previousHalfMoveClock);
   const pieceColor = sign(piece);
   board.removePiece(end);
   board.addPiece(pieceColor, abs(piece), start);
@@ -603,11 +612,12 @@ export function isInCheck(board: Board, activeColor: i32): bool {
 export function moveResultsInCheck(board: Board, pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
   const previousState = board.getState();
   const previousPiece = board.getItem(start); // might be different from piece in case of pawn promotions
+  const previousHalfMoveClock = board.getHalfMoveClock();
 
   const removedFigure = performMove(board, pieceId, start, end);
   const check = isInCheck(board, activeColor);
 
-  undoMove(board, previousPiece, start, end, removedFigure, previousState);
+  undoMove(board, previousPiece, start, end, removedFigure, previousState, previousHalfMoveClock);
 
   return check;
 };

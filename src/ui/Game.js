@@ -41,7 +41,7 @@ const initialBoard = [
   __,  P,  P,  P,  P,  P,  P,  P,  P, __,
   __,  R,  N,  B,  Q,  K,  B,  N,  R, __,
   __, __, __, __, __, __, __, __, __, __,
-  __, __, __, __, __, __, __, __, __, __, initialState
+  __, __, __, __, __, __, __, __, __, __, 0, 0, initialState
 ];
 
 const GameArea = styled.div`
