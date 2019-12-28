@@ -268,6 +268,14 @@ export class Board {
     this.items[HALFMOVE_CLOCK_INDEX]++;
   }
 
+  setHalfMoveCount(value: i32): void {
+    this.items[HALFMOVE_COUNT_INDEX] = value;
+  }
+
+  setHalfMoveClock(value: i32): void {
+    this.items[HALFMOVE_CLOCK_INDEX] = value;
+  }
+
   resetHalfMoveClock(): void {
     this.items[HALFMOVE_CLOCK_INDEX] = 0;
   }
@@ -404,6 +412,7 @@ export class Board {
     trace("Orthogonal: " + toBitBoardString(this.orthogonalPieces[indexFromColor(color)]));
     trace("Diagonal  : " + toBitBoardString(this.diagonalPieces[indexFromColor(color)]));
   }
+
 }
 
 const pieces: Array<String> = ["_", "P", "N", "B", "R", "Q", "K"];

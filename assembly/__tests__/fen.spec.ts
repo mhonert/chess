@@ -26,7 +26,7 @@ import {
   WHITE_LEFT_ROOK_MOVED, WHITE_RIGHT_ROOK_MOVED
 } from '../board';
 import { B, K, N, P, Q, R } from '../pieces';
-import { toFEN } from '../fen';
+import { fromFEN, toFEN } from '../fen';
 import { encodeMove, performEncodedMove } from '../move-generation';
 
 describe("FEN exporter", () => {
@@ -271,5 +271,68 @@ describe("FEN exporter", () => {
     expect(toFEN(board)).toBe("rnbqkbnr/ppppppp1/8/6Pp/8/8/PPPPPP1P/RNBQKBNR b KQkq - 2 4");
   });
 
-  // Castling: only one -
 });
+
+
+describe("FEN importer", () => {
+  it("reads FEN for starting position correctly", () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  })
+
+  it("reads FEN for test position correctly", () => {
+    const fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  })
+
+  it("reads FEN for active player color correctly", () => {
+    const fen = "rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for castling availability correctly if no castlings are possible", () => {
+    const fen = "r4k1r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R4K1R w - - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for castling availability correctly if only white castlings are possible", () => {
+    const fen = "r4k1r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQ - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for castling availability correctly if only black castlings are possible", () => {
+    const fen = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R4K1R w kq - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for castling availability correctly if only king side castlings are possible", () => {
+    const fen = "1r2k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/1R2K2R w Kk - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for castling availability correctly if only queen side castlings are possible", () => {
+    const fen = "r3k1r1/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K1R1 w Qq - 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for black en passant correctly", () => {
+    const fen = "rnbqkbnr/p1pppppp/8/8/Pp6/8/1PPPPPPP/RNBQKBNR w KQkq a3 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for white en passant correctly", () => {
+    const fen = "rnbqkbnr/ppppppp1/8/6Pp/8/8/PPPPPP1P/RNBQKBNR w KQkq h6 0 1";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for half move clock correctly", () => {
+    const fen = "rnbqkbnr/ppppppp1/8/6Pp/8/8/PPPPPP1P/RNBQKBNR w KQkq - 2 4";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+  it("reads FEN for full move count correctly", () => {
+    const fen = "rnbqkbnr/ppppppp1/8/6Pp/8/8/PPPPPP1P/RNBQKBNR b KQkq - 2 4";
+    expect(toFEN(fromFEN(fen))).toBe(fen);
+  });
+
+})

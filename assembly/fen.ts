@@ -19,20 +19,20 @@
 import {
   BLACK,
   BLACK_ENPASSANT_LINE_END,
-  BLACK_ENPASSANT_LINE_START,
+  BLACK_ENPASSANT_LINE_START, BLACK_LEFT_ROOK_MOVED, BLACK_RIGHT_ROOK_MOVED,
   Board,
   BOARD_BORDER,
   EMPTY,
   WHITE,
   WHITE_ENPASSANT_LINE_END,
-  WHITE_ENPASSANT_LINE_START
+  WHITE_ENPASSANT_LINE_START, WHITE_LEFT_ROOK_MOVED, WHITE_RIGHT_ROOK_MOVED
 } from './board';
 
 /* Transforms the given board to a string representation of FEN (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
  */
 export function toFEN(board: Board): string {
   return piecePlacement(board) + ' ' + activeColor(board) + ' ' + castlingAvailability(board) +
-    ' ' + enPassantTargetSquare(board) + ' ' + halfmoveClock(board) + ' ' + fullmoveNumber(board);
+    ' ' + enPassantTargetSquare(board) + ' ' + halfMoveClock(board) + ' ' + fullMoveNumber(board);
 }
 
 // Black pieces go from -6 to -1, white pieces from 1 to 6
@@ -121,10 +121,160 @@ function enPassantTargetSquare(board: Board): string {
   return "-";
 }
 
-function halfmoveClock(board: Board): string {
+function halfMoveClock(board: Board): string {
   return board.getHalfMoveClock().toString();
 }
 
-function fullmoveNumber(board: Board): string {
+function fullMoveNumber(board: Board): string {
   return board.getFullMoveCount().toString();
 }
+
+
+/* Creates a Board instance from a FEN string (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
+ */
+export function fromFEN(fen: string): Board {
+  const boardItems: Array<i32> = new Array<i32>(122);
+  boardItems.fill(BOARD_BORDER, 0, 120);
+  boardItems[120] = 0;
+  boardItems[121] = 0;
+  boardItems[122] = 0;
+
+  const fenParts = fen.split(" ");
+  if (fenParts.length != 6) {
+    throw new Error("Invalid FEN string: expected 6 parts, but got " + fenParts.length.toString());
+  }
+
+  readPiecePlacement(boardItems, fenParts[0]);
+  const board = new Board(boardItems);
+
+  const activeColor = readActiveColor(fenParts[1]);
+  readCastlingAvailability(board, fenParts[2]);
+  readEnPassantTargetSquare(board,fenParts[3]);
+  readHalfMoveClock(board,fenParts[4]);
+  readFullMoveNumber(board, activeColor, fenParts[5]);
+
+  return board;
+}
+
+const DIGIT_ONE_CHARCODE = "1".charCodeAt(0);
+const DIGIT_EIGHT_CHARCODE = "8".charCodeAt(0);
+
+function readPiecePlacement(boardItems: Array<i32>, fenPart: string): void {
+  const piecePlacements = fenPart.split("/");
+  if (piecePlacements.length != 8) {
+    throw new Error("Invalid FEN string: invalid piece placement part");
+  }
+
+  let boardPos = 21;
+  for (let i = 0; i < piecePlacements.length; i++) {
+    const rowChars = piecePlacements[i];
+    for (let j = 0; j < rowChars.length; j++) {
+      const pieceCharCode = rowChars.charCodeAt(j);
+      if (pieceCharCode >= DIGIT_ONE_CHARCODE && pieceCharCode <= DIGIT_EIGHT_CHARCODE) {
+        // it's a digit indicating the number of empty fields
+        const numberOfEmptyFields = pieceCharCode - DIGIT_ONE_CHARCODE + 1;
+        boardItems.fill(EMPTY, boardPos, boardPos + numberOfEmptyFields);
+        boardPos += numberOfEmptyFields;
+        continue;
+      }
+
+      const pieceIndex = PIECE_FEN_CHARS.indexOf(String.fromCharCode(pieceCharCode));
+      if (pieceIndex == -1) {
+        throw new Error("Invalid FEN string: unknown piece character: " + String.fromCharCode(pieceCharCode));
+      }
+
+      const piece = pieceIndex - 6;
+      boardItems[boardPos] = piece;
+      boardPos++;
+    }
+    boardPos += 2; // skip border
+  }
+}
+
+function readActiveColor(fenPart: string): i32 {
+  if (fenPart == "w") {
+    return WHITE;
+  } else if (fenPart == "b") {
+    return BLACK;
+  }
+
+  throw new Error("Invalid FEN string: unexpected character in color part: " + fenPart);
+}
+
+function readCastlingAvailability(board: Board, fenPart: string): void {
+  let state = WHITE_RIGHT_ROOK_MOVED | WHITE_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED | BLACK_LEFT_ROOK_MOVED;
+
+  if (fenPart == "-") {
+    board.setState(state);
+    return;
+  }
+
+  for (let i = 0; i < fenPart.length; i++) {
+    const castlingChar = fenPart.charAt(i);
+    if (castlingChar == "K") {
+      state &= ~WHITE_RIGHT_ROOK_MOVED;
+    } else if (castlingChar == "Q") {
+      state &= ~WHITE_LEFT_ROOK_MOVED;
+    } else if (castlingChar == "k") {
+      state &= ~BLACK_RIGHT_ROOK_MOVED;
+    } else if (castlingChar == "q") {
+      state &= ~BLACK_LEFT_ROOK_MOVED;
+    } else {
+        throw new Error("Invalid FEN string: unexpected character in castling availability string: " + castlingChar);
+    }
+  }
+
+  board.setState(state);
+}
+
+
+const LETTER_A_CHARCODE = "a".charCodeAt(0);
+const LETTER_H_CHARCODE = "h".charCodeAt(0);
+
+function readEnPassantTargetSquare(board: Board, fenPart: string): void {
+  if (fenPart == "-") {
+    return;
+  }
+
+  if (fenPart.length != 2) {
+    throw new Error("Invalid FEN string: unexpected en passant part: " + fenPart);
+  }
+
+  const colChar = fenPart.charCodeAt(0);
+  if (colChar < LETTER_A_CHARCODE || colChar > LETTER_H_CHARCODE) {
+    throw new Error("Invalid FEN string: unexpected en passant part: " + fenPart);
+  }
+
+  const rowChar = fenPart.charAt(1);
+
+  const colOffset = (colChar - LETTER_A_CHARCODE); // 0-7
+
+  if (rowChar == "3") {
+    board.setEnPassantPossible(81 + colOffset);
+  } else if (rowChar == "6") {
+    board.setEnPassantPossible(31 + colOffset);
+  } else {
+    throw new Error("Invalid FEN string: unexpected en passant part: " + fenPart);
+  }
+
+}
+
+function readHalfMoveClock(board: Board, fenPart: string): void {
+  const halfMoveClock = i32(parseInt(fenPart));
+  if (halfMoveClock < 0) {
+    throw new Error("Invalid FEN string: unexpected halfmove clock part: " + fenPart);
+  }
+
+  board.setHalfMoveClock(halfMoveClock);
+}
+
+function readFullMoveNumber(board: Board, activeColor: i32, fenPart: string): void {
+  const fullMoveNumber = i32(parseInt(fenPart));
+  if (fullMoveNumber < 1) {
+    throw new Error("Invalid FEN string: unexpected fullmove number part: " + fenPart);
+  }
+
+  const halfMoveCount = (fullMoveNumber - 1) * 2 + (activeColor == WHITE ? 0 : 1);
+  board.setHalfMoveCount(halfMoveCount);
+}
+
