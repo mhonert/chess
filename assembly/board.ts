@@ -120,6 +120,15 @@ export class Board {
     switch (abs(piece)) {
       case ROOK:
         this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        if (pos == WHITE_LEFT_ROOK_START) {
+          this.setWhiteLeftRookMoved();
+        } else if (pos == WHITE_RIGHT_ROOK_START) {
+          this.setWhiteRightRookMoved();
+        } else if (pos == BLACK_LEFT_ROOK_START) {
+          this.setBlackLeftRookMoved();
+        } else if (pos == BLACK_RIGHT_ROOK_START) {
+          this.setBlackRightRookMoved();
+        }
         break;
 
       case BISHOP:
@@ -416,6 +425,11 @@ export class Board {
 }
 
 const pieces: Array<String> = ["_", "P", "N", "B", "R", "Q", "K"];
+
+export const WHITE_LEFT_ROOK_START = 91;
+export const WHITE_RIGHT_ROOK_START = 98;
+export const BLACK_LEFT_ROOK_START = 21;
+export const BLACK_RIGHT_ROOK_START = 28;
 
 
 // Return index 0 for BLACK (-1) and 1 for WHITE (+1)

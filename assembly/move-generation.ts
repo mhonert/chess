@@ -17,15 +17,15 @@
  */
 
 import {
-  BLACK,
+  BLACK, BLACK_LEFT_ROOK_START,
   BLACK_PAWNS_BASELINE_END,
-  BLACK_PAWNS_BASELINE_START,
+  BLACK_PAWNS_BASELINE_START, BLACK_RIGHT_ROOK_START,
   Board,
   BOARD_BORDER,
   EMPTY,
-  WHITE,
+  WHITE, WHITE_LEFT_ROOK_START,
   WHITE_PAWNS_BASELINE_END,
-  WHITE_PAWNS_BASELINE_START
+  WHITE_PAWNS_BASELINE_START, WHITE_RIGHT_ROOK_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { differentColor, sameColor, sign } from './util';
@@ -292,13 +292,6 @@ function generateBishopDirectionMoves(moves: Array<i32>, board: Board, activeCol
 }
 
 const ORTHOGONAL_DIRECTIONS: Array<i32> = [1, 10, -1, -10];
-const HORIZONTAL_DIRECTIONS: Array<i32> = [1, -1];
-const VERTICAL_DIRECTIONS: Array<i32> = [10, -10];
-
-const WHITE_LEFT_ROOK_START = 91;
-const WHITE_RIGHT_ROOK_START = 98;
-const BLACK_LEFT_ROOK_START = 21;
-const BLACK_RIGHT_ROOK_START = 28;
 
 function isValidRookMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
   const targetPiece = board.getItem(end);
@@ -490,12 +483,10 @@ export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i
       if (end == WHITE_KING_START + 2) {
         board.removePiece(WHITE_RIGHT_ROOK_START);
         board.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
-        board.setWhiteRightRookMoved();
 
       } else if (end == WHITE_KING_START - 2) {
         board.removePiece(WHITE_LEFT_ROOK_START);
         board.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
-        board.setWhiteLeftRookMoved();
 
       }
     }
@@ -509,33 +500,11 @@ export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i
       if (end == BLACK_KING_START + 2) {
         board.removePiece(BLACK_RIGHT_ROOK_START);
         board.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
-        board.setBlackRightRookMoved();
       } else if (end == BLACK_KING_START - 2) {
         board.removePiece(BLACK_LEFT_ROOK_START);
         board.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
-        board.setBlackLeftRookMoved();
       }
     }
-
-  } else if (pieceId == ROOK && pieceColor == WHITE) {
-
-    if (start == WHITE_LEFT_ROOK_START) {
-      board.setWhiteLeftRookMoved();
-
-    } else if (start == WHITE_RIGHT_ROOK_START) {
-      board.setWhiteRightRookMoved();
-    }
-
-  } else if (pieceId == ROOK && pieceColor == BLACK) {
-
-    if (start == BLACK_LEFT_ROOK_START) {
-      board.setBlackLeftRookMoved();
-
-    } else if (start == BLACK_RIGHT_ROOK_START) {
-      board.setBlackRightRookMoved();
-
-    }
-
   }
 
   if (isEnPassant) {

@@ -26,6 +26,8 @@
     "start:debug": "npm run asbuild:debug && npm run jsstart",
     "jstest": "react-scripts test",
     "test": "asp",
+    "perft:full": "asp --nortrace -c as-pect-perft.config.js --test='.*#full.*'",
+    "perft:quick": "asp --nortrace -c as-pect-perft.config.js --test='.*#quick.*'",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"
