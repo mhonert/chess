@@ -180,6 +180,16 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
     }
 
     if (depth > 0) {
+      if (bestMove == 0) { // no legal move found?
+        if (isInCheck(board, playerColor)) {
+          // Check mate
+          return encodeScoredMove(0, WHITE_MATE_SCORE - (100 - depth));
+        }
+
+        // Stalemate
+        return encodeScoredMove(0, 0);
+      }
+
       return encodeScoredMove(bestMove, bestScore);
     }
 
@@ -295,7 +305,6 @@ export function evaluatePosition(board: Board): i32 {
 
   return board.getScore();
 };
-
 
 // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
 // to prevent unnecessary delays.

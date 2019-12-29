@@ -336,5 +336,27 @@ describe('Finds moves', () => {
     expect(move).not.toBe(encodeMove(5, 77, 44), "Must not sacrifice queen @44");
   });
 
+
+  it('Avoids stalemate when it is ahead of the opponent', () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  R, __,
+      __,  0,  0,  0,  0,  0,  B,  0,  0, __,
+      __,  0,  0,  0,  N,  0,  P,  0,  0, __,
+      __,  0,  0,  0,  0,  P,  0, -K,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0, -R, __,
+      __,  0,  0,  0,  0,  0,  0,  P,  K, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+
+    const move = findBestMove(board, WHITE, 2);
+    expect(move).not.toBe(encodeMove(4, 38, 78), "Using the rook to capture the black rook causes a stalemate");
+    expect(move).toBe(encodeMove(1, 87, 78), "Using the pawn for the capture lets the game proceed");
+  });
 });
 
