@@ -82,3 +82,16 @@ export function toBitBoardString(value: u64, separator: string = '/'): string {
 }
 
 
+// Create pseudo random numbers using a "Permuted Congruential Generator" (see https://en.wikipedia.org/wiki/Permuted_congruential_generator)
+let state: u64 = 0x4d595df4d0f33173;
+const multiplier: u64 = 6364136223846793005;
+const increment: u64 = 1442695040888963407;
+
+export function rand(): u32 {
+  let x = state;
+  const count: u32 = u32(x >> 59);
+  state = x * multiplier + increment;
+  x ^= x >> 18;
+
+  return rotr(u32(x >> 27), count);
+}

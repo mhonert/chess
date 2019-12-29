@@ -16,7 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { differentColor, fromBitBoardString, sameColor, toBitBoardString } from '../util';
+import { differentColor, fromBitBoardString, rand, sameColor, toBitBoardString } from '../util';
+
 
 describe("fromBitBoardString", () => {
 
@@ -31,6 +32,7 @@ describe("fromBitBoardString", () => {
 
 });
 
+
 describe("toBitBoardString", () => {
 
   it("writes correct bit board string", () => {
@@ -43,6 +45,7 @@ describe("toBitBoardString", () => {
   });
 
 });
+
 
 describe("sameColor", () => {
 
@@ -79,6 +82,31 @@ describe("differentColor", () => {
   it("returns true for different colors", () => {
     expect(differentColor(-2, 3)).toBeTruthy();
     expect(differentColor(4, -1)).toBeTruthy();
+  });
+
+});
+
+
+describe("Random number generated", () => {
+
+  it("quickly calculates evenly distributed random numbers", () => {
+    const numberCounts = new Array<i32>(6);
+    numberCounts.fill(0, 0, numberCounts.length);
+
+    const iterations = 1_000_000;
+
+    for (let i = 0; i < iterations; i++) {
+      const number = rand() % 6;
+      numberCounts[number]++;
+    }
+
+    const deviationTolerance = i32(iterations * 0.001); // accept a low deviation from the "ideal" distribution
+
+    const idealDistribution = iterations / 6;
+    for (let i = 0; i < numberCounts.length; i++) {
+      const deviationFromIdeal = abs(idealDistribution - numberCounts[i]);
+      expect(deviationFromIdeal).toBeLessThan(deviationTolerance);
+    }
   });
 
 });
