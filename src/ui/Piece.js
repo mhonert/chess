@@ -55,7 +55,7 @@ const pieceNames = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King' ]
 
 const PieceContainer = styled.div`
   // Workaround for wrong Drag'n'Drop preview image rendering in Chrome (see https://github.com/react-dnd/react-dnd/issues/832)
-  -webkit-transform: translate3d(0, 0, 0);
+  -webkit-transform: rotateZ(0deg);
 `;
 
 const PieceImage = styled.img`

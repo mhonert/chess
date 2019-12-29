@@ -24,7 +24,7 @@ const FieldDiv = styled.div`
   position: relative;
   background-color: #fdf6e3;
   
-  transform: rotateZ(${props => props.isRotated ? "180deg" : "0deg"});
+  transform: ${props => props.isRotated ? "rotateZ(180deg)" : "none"};
   
   &:nth-child(even) {
     background-color: #eee8d5;
