@@ -18,14 +18,14 @@
 
 import {
   decodeStartIndex,
-  encodeMove, generateFilteredMoves,
-  generateMoves,
+  encodeMove,
+  generateFilteredMoves,
   isCheckMate,
-  KNIGHT_DIRECTIONS, performEncodedMove, undoMove
+  KNIGHT_DIRECTIONS,
 } from '../move-generation';
 import { __, BLACK, BLACK_KING_MOVED, Board, EMPTY, WHITE } from '../board';
-import {B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK} from '../pieces';
-import {sign} from '../util';
+import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
+import { sign } from '../util';
 
 
 function emptyBoardWithKings(): Array<i32> {
@@ -1023,8 +1023,8 @@ describe("Half move clock", () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    performEncodedMove(board, encodeMove(P, 84, 64));
-    performEncodedMove(board, encodeMove(-P, 34, 54));
+    board.performEncodedMove(encodeMove(P, 84, 64));
+    board.performEncodedMove(encodeMove(-P, 34, 54));
 
     expect(board.getHalfMoveCount()).toBe(2);
   });
@@ -1045,9 +1045,9 @@ describe("Half move clock", () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    performEncodedMove(board, encodeMove(P, 84, 64));
-    performEncodedMove(board, encodeMove(-P, 34, 54));
-    undoMove(board, -P, 34, 54, EMPTY);
+    board.performEncodedMove(encodeMove(P, 84, 64));
+    board.performEncodedMove(encodeMove(-P, 34, 54));
+    board.undoMove(-P, 34, 54, EMPTY);
 
     expect(board.getHalfMoveCount()).toBe(1);
   });
@@ -1068,7 +1068,7 @@ describe("Half move clock", () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    performEncodedMove(board, encodeMove(N, 82, 63));
+    board.performEncodedMove(encodeMove(N, 82, 63));
 
     expect(board.getHalfMoveClock()).toBe(1);
   });
@@ -1089,8 +1089,8 @@ describe("Half move clock", () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    performEncodedMove(board, encodeMove(N, 92, 73));
-    performEncodedMove(board, encodeMove(-P, 34, 54));
+    board.performEncodedMove(encodeMove(N, 92, 73));
+    board.performEncodedMove(encodeMove(-P, 34, 54));
 
     expect(board.getHalfMoveClock()).toBe(0);
   });
@@ -1111,7 +1111,7 @@ describe("Half move clock", () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    performEncodedMove(board, encodeMove(N, 92, 73));
+    board.performEncodedMove(encodeMove(N, 92, 73));
 
     expect(board.getHalfMoveClock()).toBe(0);
   });

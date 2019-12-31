@@ -27,7 +27,7 @@ import {
 } from '../board';
 import { B, K, N, P, Q, R } from '../pieces';
 import { fromFEN, toFEN } from '../fen';
-import { encodeMove, performEncodedMove } from '../move-generation';
+import { encodeMove } from '../move-generation';
 
 describe("FEN exporter", () => {
 
@@ -85,7 +85,7 @@ describe("FEN exporter", () => {
       __, __, __, __, __, __, __, __, __, __,
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
-    performEncodedMove(board, encodeMove(P, 84, 64));
+    board.performEncodedMove(encodeMove(P, 84, 64));
 
     expect(toFEN(board)).toBe("rnbqkbnr/pppppppp/8/8/3P4/8/PPP1PPPP/RNBQKBNR b KQkq d3 0 1");
   });

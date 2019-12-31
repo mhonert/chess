@@ -17,18 +17,20 @@
  */
 
 import {
-  BLACK, BLACK_LEFT_ROOK_START,
+  BLACK,
+  BLACK_KING_START,
   BLACK_PAWNS_BASELINE_END,
-  BLACK_PAWNS_BASELINE_START, BLACK_RIGHT_ROOK_START,
+  BLACK_PAWNS_BASELINE_START,
   Board,
   BOARD_BORDER,
   EMPTY,
-  WHITE, WHITE_LEFT_ROOK_START,
+  WHITE,
+  WHITE_KING_START,
   WHITE_PAWNS_BASELINE_END,
-  WHITE_PAWNS_BASELINE_START, WHITE_RIGHT_ROOK_START
+  WHITE_PAWNS_BASELINE_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { differentColor, sameColor, sign } from './util';
+import { differentColor, sameColor } from './util';
 
 
 export function generateMoves(board: Board, activeColor: i32): Array<i32> {
@@ -349,8 +351,6 @@ function generateQueenMoves(moves: Array<i32>, board: Board, activeColor: i32, p
 
 
 const KING_DIRECTIONS: Array<i32> = ORTHOGONAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
-const WHITE_KING_START = 95;
-const BLACK_KING_START = 25;
 
 function isValidKingMove(board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
   const targetPiece = board.getItem(end);
@@ -424,154 +424,6 @@ function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, pi
 };
 
 
-const EN_PASSANT_BIT = 1 << 31;
-
-export function performEncodedMove(board: Board, encodedMove: i32): i32 {
-  return performMove(board, decodePiece(encodedMove), decodeStartIndex(encodedMove), decodeEndIndex(encodedMove));
-}
-
-/** Applies the given move to the board.
- *
- * @returns The removed piece ID or the highest bit set to 1, if it was an en passant move.
- *
- */
-export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i32 {
-  board.storeState();
-  const pieceColor = sign(board.getItem(start));
-  board.increaseHalfMoveCount();
-
-  let removedPiece = board.getItem(end) != EMPTY ? board.removePiece(end) : EMPTY;
-
-  board.removePiece(start);
-
-  board.clearEnPassentPossible();
-
-  let isEnPassant: bool = false;
-
-  if (pieceId == PAWN) {
-    board.resetHalfMoveClock();
-
-    if (removedPiece == EMPTY) {
-
-      // Special en passant handling
-      if (abs(start - end) == 20) {
-        board.setEnPassantPossible(start);
-
-      } else if (abs(start - end) == 9) {
-        removedPiece = board.removePiece(start + pieceColor);
-        isEnPassant = true;
-
-      } else if (abs(start - end) == 11) {
-        removedPiece = board.removePiece(start - pieceColor);
-        isEnPassant = true;
-
-      }
-    }
-
-  } else if (removedPiece != EMPTY) {
-    board.resetHalfMoveClock();
-
-  }
-
-  board.addPiece(pieceColor, pieceId, end);
-
-  if (pieceId == KING && pieceColor == WHITE) {
-    board.updateKingPosition(WHITE, end);
-    board.setWhiteKingMoved();
-
-    // Special castling handling
-    if (abs(start - end) == 2) {
-      if (end == WHITE_KING_START + 2) {
-        board.removePiece(WHITE_RIGHT_ROOK_START);
-        board.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
-
-      } else if (end == WHITE_KING_START - 2) {
-        board.removePiece(WHITE_LEFT_ROOK_START);
-        board.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
-
-      }
-    }
-
-  } else if (pieceId == KING && pieceColor == BLACK) {
-    board.updateKingPosition(BLACK, end);
-    board.setBlackKingMoved();
-
-    // Special castling handling
-    if (abs(start - end) == 2) {
-      if (end == BLACK_KING_START + 2) {
-        board.removePiece(BLACK_RIGHT_ROOK_START);
-        board.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
-      } else if (end == BLACK_KING_START - 2) {
-        board.removePiece(BLACK_LEFT_ROOK_START);
-        board.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
-      }
-    }
-  }
-
-  if (isEnPassant) {
-    return EN_PASSANT_BIT;
-  } else {
-    return abs(removedPiece);
-  }
-};
-
-
-export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32): void {
-  const pieceColor = sign(piece);
-  board.removePiece(end);
-  board.addPiece(pieceColor, abs(piece), start);
-
-  if (removedPieceId == EN_PASSANT_BIT) {
-
-    if (abs(start - end) == 9) {
-      board.addPiece(-pieceColor, PAWN, start + pieceColor);
-    } else if (abs(start - end) == 11) {
-      board.addPiece(-pieceColor, PAWN, start - pieceColor);
-    }
-
-  } else if (removedPieceId != EMPTY) {
-    board.addPiece(-pieceColor, removedPieceId, end);
-
-  }
-
-  if (piece == KING) {
-    board.updateKingPosition(WHITE, start);
-
-    if (abs(start - end) == 2) {
-      // Undo Castle
-      if (end == WHITE_KING_START + 2) {
-        board.removePiece(WHITE_KING_START + 1);
-        board.addPiece(pieceColor, ROOK, WHITE_RIGHT_ROOK_START);
-
-      } else if (end == WHITE_KING_START - 2) {
-        board.removePiece(WHITE_KING_START - 1);
-        board.addPiece(pieceColor, ROOK, WHITE_LEFT_ROOK_START);
-
-      }
-    }
-
-  } else if (piece == -KING) {
-    board.updateKingPosition(BLACK, start);
-
-    if (abs(start - end) == 2) {
-      // Undo Castle
-      if (end == BLACK_KING_START + 2) {
-        board.removePiece(BLACK_KING_START + 1);
-        board.addPiece(pieceColor, ROOK, BLACK_RIGHT_ROOK_START);
-
-      } else if (end == BLACK_KING_START - 2) {
-        board.removePiece(BLACK_KING_START - 1);
-        board.addPiece(pieceColor, ROOK, BLACK_LEFT_ROOK_START);
-
-      }
-    }
-
-  }
-
-  board.restoreState();
-};
-
-
 export function isInCheck(board: Board, activeColor: i32): bool {
   return isAttacked(board, -activeColor, board.findKingPosition(activeColor));
 };
@@ -580,10 +432,10 @@ export function isInCheck(board: Board, activeColor: i32): bool {
 export function moveResultsInCheck(board: Board, pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
   const previousPiece = board.getItem(start); // might be different from piece in case of pawn promotions
 
-  const removedFigure = performMove(board, pieceId, start, end);
+  const removedFigure = board.performMove(pieceId, start, end);
   const check = isInCheck(board, activeColor);
 
-  undoMove(board, previousPiece, start, end, removedFigure);
+  board.undoMove(previousPiece, start, end, removedFigure);
 
   return check;
 };

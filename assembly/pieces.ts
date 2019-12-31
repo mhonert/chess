@@ -34,3 +34,4 @@ export const B = BISHOP;
 export const R = ROOK;
 export const Q = QUEEN;
 export const K = KING;
+

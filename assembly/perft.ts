@@ -23,7 +23,6 @@ import {
   decodeStartIndex,
   generateMoves,
   isInCheck,
-  performMove, undoMove
 } from './move-generation';
 
 
@@ -51,12 +50,12 @@ export function perft(board: Board, depth: i32): u64 {
     const moveEnd = decodeEndIndex(move);
     const previousPiece = board.getItem(moveStart);
 
-    const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
+    const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
 
     if (!isInCheck(board, activePlayer)) {
       nodes += perft(board, depth - 1);
     }
-    undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
+    board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
   }
 
   return nodes;

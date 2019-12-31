@@ -23,8 +23,6 @@ import {
   decodeStartIndex, generateFilteredMoves,
   generateMoves,
   isCheckMate, isInCheck,
-  performMove,
-  undoMove
 } from './move-generation';
 import {
   decodeTranspositionDepth, decodeTranspositionScore, encodeTranspositionEntry,
@@ -124,7 +122,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       const moveEnd = decodeEndIndex(move);
       const previousPiece = board.getItem(moveStart);
 
-      const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
+      const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
       moveCount++;
 
 
@@ -167,7 +165,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         }
       }
 
-      undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
+      board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
       if (score == i32.MIN_VALUE) {
         continue; // skip this invalid move
@@ -268,11 +266,11 @@ function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
   const moveEnd = decodeEndIndex(encodedMove);
   const previousPiece = board.getItem(moveStart);
 
-  const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
+  const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
 
   const score = evaluatePosition(board);
 
-  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
+  board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
   return score;
 };

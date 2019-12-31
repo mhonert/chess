@@ -18,13 +18,17 @@
 
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { sign, toBitBoardString } from './util';
-import { KNIGHT_DIRECTIONS } from './move-generation';
+import { decodeEndIndex, decodePiece, decodeStartIndex, KNIGHT_DIRECTIONS } from './move-generation';
 import {
   CASTLING_RNG_NUMBERS,
   EN_PASSANT_RNG_NUMBERS,
   PIECE_RNG_NUMBERS,
   PLAYER_RNG_NUMBER
 } from './zobrist';
+
+export const WHITE_KING_START = 95;
+export const BLACK_KING_START = 25;
+
 
 const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
 
@@ -33,6 +37,8 @@ const HALFMOVE_COUNT_INDEX = 121;
 const STATE_INDEX = 122;
 
 const MAX_GAME_HALFMOVES = 5898 * 2;
+
+const EN_PASSANT_BIT = 1 << 31;
 
 export class Board {
   private items: Array<i32>;
@@ -171,6 +177,150 @@ export class Board {
 
     return piece;
   }
+
+  performEncodedMove(encodedMove: i32): i32 {
+    return this.performMove(decodePiece(encodedMove), decodeStartIndex(encodedMove), decodeEndIndex(encodedMove));
+  }
+
+  /** Applies the given move to the board.
+   *
+   * @returns The removed piece ID or the highest bit set to 1, if it was an en passant move.
+   *
+   */
+  performMove(pieceId: i32, start: i32, end: i32): i32 {
+    this.storeState();
+    const pieceColor = sign(this.getItem(start));
+    this.increaseHalfMoveCount();
+
+    let removedPiece = this.getItem(end) != EMPTY ? this.removePiece(end) : EMPTY;
+
+    this.removePiece(start);
+
+    this.clearEnPassentPossible();
+
+    let isEnPassant: bool = false;
+
+    if (pieceId == PAWN) {
+      this.resetHalfMoveClock();
+
+      if (removedPiece == EMPTY) {
+
+        // Special en passant handling
+        if (abs(start - end) == 20) {
+          this.setEnPassantPossible(start);
+
+        } else if (abs(start - end) == 9) {
+          removedPiece = this.removePiece(start + pieceColor);
+          isEnPassant = true;
+
+        } else if (abs(start - end) == 11) {
+          removedPiece = this.removePiece(start - pieceColor);
+          isEnPassant = true;
+
+        }
+      }
+
+    } else if (removedPiece != EMPTY) {
+      this.resetHalfMoveClock();
+
+    }
+
+    this.addPiece(pieceColor, pieceId, end);
+
+    if (pieceId == KING && pieceColor == WHITE) {
+      this.updateKingPosition(WHITE, end);
+      this.setWhiteKingMoved();
+
+      // Special castling handling
+      if (abs(start - end) == 2) {
+        if (end == WHITE_KING_START + 2) {
+          this.removePiece(WHITE_RIGHT_ROOK_START);
+          this.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
+
+        } else if (end == WHITE_KING_START - 2) {
+          this.removePiece(WHITE_LEFT_ROOK_START);
+          this.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
+
+        }
+      }
+
+    } else if (pieceId == KING && pieceColor == BLACK) {
+      this.updateKingPosition(BLACK, end);
+      this.setBlackKingMoved();
+
+      // Special castling handling
+      if (abs(start - end) == 2) {
+        if (end == BLACK_KING_START + 2) {
+          this.removePiece(BLACK_RIGHT_ROOK_START);
+          this.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
+        } else if (end == BLACK_KING_START - 2) {
+          this.removePiece(BLACK_LEFT_ROOK_START);
+          this.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
+        }
+      }
+    }
+
+    if (isEnPassant) {
+      return EN_PASSANT_BIT;
+    } else {
+      return abs(removedPiece);
+    }
+  };
+
+  undoMove(piece: i32, start: i32, end: i32, removedPieceId: i32): void {
+    const pieceColor = sign(piece);
+    this.removePiece(end);
+    this.addPiece(pieceColor, abs(piece), start);
+
+    if (removedPieceId == EN_PASSANT_BIT) {
+
+      if (abs(start - end) == 9) {
+        this.addPiece(-pieceColor, PAWN, start + pieceColor);
+      } else if (abs(start - end) == 11) {
+        this.addPiece(-pieceColor, PAWN, start - pieceColor);
+      }
+
+    } else if (removedPieceId != EMPTY) {
+      this.addPiece(-pieceColor, removedPieceId, end);
+
+    }
+
+    if (piece == KING) {
+      this.updateKingPosition(WHITE, start);
+
+      if (abs(start - end) == 2) {
+        // Undo Castle
+        if (end == WHITE_KING_START + 2) {
+          this.removePiece(WHITE_KING_START + 1);
+          this.addPiece(pieceColor, ROOK, WHITE_RIGHT_ROOK_START);
+
+        } else if (end == WHITE_KING_START - 2) {
+          this.removePiece(WHITE_KING_START - 1);
+          this.addPiece(pieceColor, ROOK, WHITE_LEFT_ROOK_START);
+
+        }
+      }
+
+    } else if (piece == -KING) {
+      this.updateKingPosition(BLACK, start);
+
+      if (abs(start - end) == 2) {
+        // Undo Castle
+        if (end == BLACK_KING_START + 2) {
+          this.removePiece(BLACK_KING_START + 1);
+          this.addPiece(pieceColor, ROOK, BLACK_RIGHT_ROOK_START);
+
+        } else if (end == BLACK_KING_START - 2) {
+          this.removePiece(BLACK_KING_START - 1);
+          this.addPiece(pieceColor, ROOK, BLACK_LEFT_ROOK_START);
+
+        }
+      }
+
+    }
+
+    this.restoreState();
+  };
 
   hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
     const pieces = this.bitBoardPieces[color * ROOK + 6] | this.bitBoardPieces[color * QUEEN + 6];

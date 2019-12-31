@@ -17,33 +17,28 @@
  */
 
 
-import { B, K, N, P, Q, QUEEN, R, ROOK } from '../pieces';
+import { B, K, N, P, Q, QUEEN, R } from '../pieces';
 import {
   BLACK_MATE_SCORE,
   decodeMove,
   decodeScore,
   encodeScoredMove,
   evaluatePosition,
-  findBestMove, logScoredMove,
+  findBestMove,
   WHITE_MATE_SCORE
 } from '../engine';
 import {
   __,
-  BLACK, BLACK_KING_MOVED,
+  BLACK,
+  BLACK_KING_MOVED,
   BLACK_LEFT_ROOK_MOVED,
   BLACK_RIGHT_ROOK_MOVED,
   Board,
-  WHITE, WHITE_KING_MOVED,
-  WHITE_LEFT_ROOK_MOVED, WHITE_RIGHT_ROOK_MOVED
+  WHITE,
+  WHITE_KING_MOVED,
+  WHITE_RIGHT_ROOK_MOVED
 } from '../board';
-import {
-  decodeEndIndex,
-  decodePiece,
-  decodeStartIndex,
-  encodeMove, generateMoves, isAttackedDiagonally,
-  isCheckMate, isInCheck, logMove,
-  performEncodedMove
-} from '../move-generation';
+import { encodeMove, isCheckMate } from '../move-generation';
 
 describe('Encode and decode scored moves', () => {
   it('Zero score', () => {
@@ -239,7 +234,7 @@ describe('Finds moves', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
-    performEncodedMove(board, findBestMove(board, BLACK, 2));
+    board.performEncodedMove(findBestMove(board, BLACK, 2));
 
     expect(isCheckMate(board, WHITE)).toBe(true);
   });
@@ -261,9 +256,9 @@ describe('Finds moves', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
-    performEncodedMove(board, findBestMove(board, WHITE, 3));
-    performEncodedMove(board, findBestMove(board, BLACK, 2));
-    performEncodedMove(board, findBestMove(board, WHITE, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 3));
+    board.performEncodedMove(findBestMove(board, BLACK, 2));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
 
     expect(isCheckMate(board, BLACK)).toBe(true);
   });
@@ -285,9 +280,9 @@ describe('Finds moves', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
-    performEncodedMove(board, findBestMove(board, WHITE, 3));
-    performEncodedMove(board, findBestMove(board, BLACK, 2));
-    performEncodedMove(board, findBestMove(board, WHITE, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 3));
+    board.performEncodedMove(findBestMove(board, BLACK, 2));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
 
     expect(isCheckMate(board, BLACK)).toBe(true);
   });
@@ -331,7 +326,7 @@ describe('Finds moves', () => {
     ]);
 
     const move = findBestMove(board, WHITE, 2);
-    performEncodedMove(board, move);
+    board.performEncodedMove(move);
     expect(move).not.toBe(encodeMove(5, 77, 37), "Must not sacrifice queen @37");
     expect(move).not.toBe(encodeMove(5, 77, 44), "Must not sacrifice queen @44");
   });
