@@ -19,13 +19,7 @@
 // The entry file of your WebAssembly module.
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
-import {
-  decodeEndIndex,
-  decodePiece,
-  decodeStartIndex, generateFilteredMoves,
-  isCheckMate as isCheckMateFn,
-  performEncodedMove
-} from './move-generation';
+import { generateFilteredMoves, isCheckMate as isCheckMateFn } from './move-generation';
 import { findBestMoveIncrementally } from './engine';
 import { Board } from './board';
 import { resetTranspositionTable } from './transposition-table';
@@ -69,7 +63,7 @@ export function calculateMove(boardArray: Int32Array, color: i32, difficultyLeve
 
 export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Array {
   const board = createBoard(boardArray);
-  performEncodedMove(board, encodedMove);
+  board.performEncodedMove(encodedMove);
 
   const newBoard = new Int32Array(boardArray.length);
   for (let i = 0; i < boardArray.length; i++) {

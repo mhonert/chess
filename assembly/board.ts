@@ -144,22 +144,40 @@ export class Board {
 
   addPiece(pieceColor: i32, pieceId: i32, pos: i32): void {
     const piece = pieceId * pieceColor;
-    this.score += this.calculateScore(pos, pieceColor, pieceId);
     this.items[pos] = piece;
 
+    this.score += this.calculateScore(pos, pieceColor, pieceId);
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
 
     this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos];
   }
 
+  addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
+    const piece = pieceId * pieceColor;
+    this.items[pos] = piece;
+    this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos];
+  }
+
+  @inline
   removePiece(pos: i32): i32 {
     const piece = this.items[pos];
-    this.score -= this.calculateScore(pos, sign(piece), abs(piece));
-    this.items[pos] = EMPTY;
 
+    this.score -= this.calculateScore(pos, sign(piece), abs(piece));
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
 
+    return this.remove(piece, pos);
+  }
+
+  // Version of removePiece for optimization purposes without incremental update
+  @inline
+  private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
+    const piece = this.items[pos];
+    return this.remove(piece, pos);
+  }
+
+  private remove(piece: i32, pos: i32): i32 {
     this.bitBoardPieces[piece + 6] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+    this.items[pos] = EMPTY;
 
     if (piece == ROOK) {
       if (pos == WHITE_LEFT_ROOK_START) {
@@ -269,19 +287,19 @@ export class Board {
 
   undoMove(piece: i32, start: i32, end: i32, removedPieceId: i32): void {
     const pieceColor = sign(piece);
-    this.removePiece(end);
-    this.addPiece(pieceColor, abs(piece), start);
+    this.removePieceWithoutIncrementalUpdate(end);
+    this.addPieceWithoutIncrementalUpdate(pieceColor, abs(piece), start);
 
     if (removedPieceId == EN_PASSANT_BIT) {
 
       if (abs(start - end) == 9) {
-        this.addPiece(-pieceColor, PAWN, start + pieceColor);
+        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN, start + pieceColor);
       } else if (abs(start - end) == 11) {
-        this.addPiece(-pieceColor, PAWN, start - pieceColor);
+        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN, start - pieceColor);
       }
 
     } else if (removedPieceId != EMPTY) {
-      this.addPiece(-pieceColor, removedPieceId, end);
+      this.addPieceWithoutIncrementalUpdate(-pieceColor, removedPieceId, end);
 
     }
 
@@ -291,12 +309,12 @@ export class Board {
       if (abs(start - end) == 2) {
         // Undo Castle
         if (end == WHITE_KING_START + 2) {
-          this.removePiece(WHITE_KING_START + 1);
-          this.addPiece(pieceColor, ROOK, WHITE_RIGHT_ROOK_START);
+          this.removePieceWithoutIncrementalUpdate(WHITE_KING_START + 1);
+          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, WHITE_RIGHT_ROOK_START);
 
         } else if (end == WHITE_KING_START - 2) {
-          this.removePiece(WHITE_KING_START - 1);
-          this.addPiece(pieceColor, ROOK, WHITE_LEFT_ROOK_START);
+          this.removePieceWithoutIncrementalUpdate(WHITE_KING_START - 1);
+          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, WHITE_LEFT_ROOK_START);
 
         }
       }
@@ -307,12 +325,12 @@ export class Board {
       if (abs(start - end) == 2) {
         // Undo Castle
         if (end == BLACK_KING_START + 2) {
-          this.removePiece(BLACK_KING_START + 1);
-          this.addPiece(pieceColor, ROOK, BLACK_RIGHT_ROOK_START);
+          this.removePieceWithoutIncrementalUpdate(BLACK_KING_START + 1);
+          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, BLACK_RIGHT_ROOK_START);
 
         } else if (end == BLACK_KING_START - 2) {
-          this.removePiece(BLACK_KING_START - 1);
-          this.addPiece(pieceColor, ROOK, BLACK_LEFT_ROOK_START);
+          this.removePieceWithoutIncrementalUpdate(BLACK_KING_START - 1);
+          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, BLACK_LEFT_ROOK_START);
 
         }
       }
@@ -617,33 +635,6 @@ export class Board {
     }
   }
 
-  log(): void {
-    trace("Board");
-
-    let str = "";
-    for (let i = 21; i < 100; i++) {
-      if (this.items[i] == 99) {
-        if (str != "") {
-          trace(str);
-        }
-        str = "";
-        continue;
-      }
-
-      const item = this.items[i];
-      if (item == 0) {
-        str += "[  ]"
-
-      } else if (item < 0) {
-        str += "[-" + pieces[abs(item)] + "]";
-
-      } else {
-        str += "[+" + pieces[item] + "]";
-
-      }
-    }
-  }
-
   logBitBoards(color: i32): void {
     for (let i = 0; i < this.bitBoardPieces.length; i++) {
       trace("Piece " + (i - 6).toString() + ": " + toBitBoardString(this.bitBoardPieces[i]));
@@ -651,8 +642,6 @@ export class Board {
   }
 
 }
-
-const pieces: Array<String> = ["_", "P", "N", "B", "R", "Q", "K"];
 
 export const WHITE_LEFT_ROOK_START = 91;
 export const WHITE_RIGHT_ROOK_START = 98;
