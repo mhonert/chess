@@ -37,9 +37,7 @@ export class Board {
   private whiteKingIndex: i32;
   private blackKingIndex: i32;
   private score: i32 = 0;
-  private orthogonalPieces: Array<u64> = new Array<u64>(2);
-  private diagonalPieces: Array<u64> = new Array<u64>(2);
-  private knights: Array<u64> = new Array<u64>(2);
+  private bitBoardPieces: Array<u64> = new Array<u64>(13);
   private hashCode: u64 = 0; // Hash code for the current position
 
   /* items Array:
@@ -119,102 +117,64 @@ export class Board {
     this.score += this.calculateScore(pos, pieceColor, pieceId);
     this.items[pos] = piece;
 
-    const colIndex = indexFromColor(pieceColor);
-
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
 
-    switch (pieceId) {
-      case KNIGHT:
-        this.knights[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        break;
-
-      case ROOK:
-        this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        break;
-
-      case BISHOP:
-        this.diagonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        break;
-
-      case QUEEN:
-        this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        this.diagonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        break;
-    }
+    this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos];
   }
 
   removePiece(pos: i32): i32 {
     const piece = this.items[pos];
-    if (piece == EMPTY) {
-      return EMPTY;
-    }
     this.score -= this.calculateScore(pos, sign(piece), abs(piece));
     this.items[pos] = EMPTY;
 
-    const colIndex = indexFromColor(sign(piece));
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
 
-    switch (abs(piece)) {
-      case KNIGHT:
-        this.knights[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
-        break;
+    this.bitBoardPieces[piece + 6] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
 
-      case ROOK:
-        this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
-        if (pos == WHITE_LEFT_ROOK_START) {
-          this.setWhiteLeftRookMoved();
-        } else if (pos == WHITE_RIGHT_ROOK_START) {
-          this.setWhiteRightRookMoved();
-        } else if (pos == BLACK_LEFT_ROOK_START) {
-          this.setBlackLeftRookMoved();
-        } else if (pos == BLACK_RIGHT_ROOK_START) {
-          this.setBlackRightRookMoved();
-        }
-        break;
-
-      case BISHOP:
-        this.diagonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
-        break;
-
-      case QUEEN:
-        this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
-        this.diagonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
-        break;
-
+    if (piece == ROOK) {
+      if (pos == WHITE_LEFT_ROOK_START) {
+        this.setWhiteLeftRookMoved();
+      } else if (pos == WHITE_RIGHT_ROOK_START) {
+        this.setWhiteRightRookMoved();
+      }
+    } else if (piece == -ROOK) {
+      if (pos == BLACK_LEFT_ROOK_START) {
+        this.setBlackLeftRookMoved();
+      } else if (pos == BLACK_RIGHT_ROOK_START) {
+        this.setBlackRightRookMoved();
+      }
     }
 
     return piece;
   }
 
   hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
-    const colIndex = indexFromColor(color);
-    return (this.orthogonalPieces[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    const pieces = this.bitBoardPieces[color * ROOK + 6] | this.bitBoardPieces[color * QUEEN + 6];
+    return (pieces & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
   }
 
   hasDiagonalSlidingFigure(color: i32, pos: i32): bool {
-    const colIndex = indexFromColor(color);
-    return (this.diagonalPieces[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    const pieces = this.bitBoardPieces[color * BISHOP + 6] | this.bitBoardPieces[color * QUEEN + 6];
+    return (pieces & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
   }
 
   hasKnight(color: i32, pos: i32): bool {
-    const colIndex = indexFromColor(color);
-    return (this.knights[colIndex] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    return (this.bitBoardPieces[KNIGHT * color + 6] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
   }
 
   @inline
   isKnightAttacked(opponentColor: i32, pos: i32): bool {
-    const colIndex = indexFromColor(opponentColor);
     const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
 
-    return (this.knights[colIndex] & KNIGHT_PATTERNS[bitIndex]) != 0;
+    return (this.bitBoardPieces[KNIGHT * opponentColor + 6] & KNIGHT_PATTERNS[bitIndex]) != 0;
   }
 
   @inline
   isHorizontallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const colIndex = indexFromColor(opponentColor);
     const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
 
-    const result = this.orthogonalPieces[colIndex] & HORIZONTAL_PATTERNS[bitIndex];
+    const pieces = this.bitBoardPieces[opponentColor * ROOK + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
+    const result = pieces & HORIZONTAL_PATTERNS[bitIndex];
     if (result == 0) {
       return 0;
     }
@@ -227,10 +187,10 @@ export class Board {
 
   @inline
   isVerticallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const colIndex = indexFromColor(opponentColor);
     const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
 
-    const result = this.orthogonalPieces[colIndex] & VERTICAL_PATTERNS[bitIndex];
+    const pieces = this.bitBoardPieces[opponentColor * ROOK + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
+    const result = pieces & VERTICAL_PATTERNS[bitIndex];
 
     if (result == 0) {
       return 0;
@@ -244,10 +204,10 @@ export class Board {
 
   @inline
   isDiagonallyDownAttacked(opponentColor: i32, pos: i32): i32 {
-    const colIndex = indexFromColor(opponentColor);
     const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
 
-    const result = this.diagonalPieces[colIndex] & DIAGONAL_DOWN_PATTERNS[bitIndex];
+    const pieces = this.bitBoardPieces[opponentColor * BISHOP + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
+    const result = pieces & DIAGONAL_DOWN_PATTERNS[bitIndex];
     if (result == 0) {
       return 0;
     }
@@ -260,10 +220,10 @@ export class Board {
 
   @inline
   isDiagonallyUpAttacked(opponentColor: i32, pos: i32): i32 {
-    const colIndex = indexFromColor(opponentColor);
     const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
 
-    const result = this.diagonalPieces[colIndex] & DIAGONAL_UP_PATTERNS[bitIndex];
+    const pieces = this.bitBoardPieces[opponentColor * BISHOP + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
+    const result = pieces & DIAGONAL_UP_PATTERNS[bitIndex];
     if (result == 0) {
       return 0;
     }
@@ -516,8 +476,9 @@ export class Board {
   }
 
   logBitBoards(color: i32): void {
-    trace("Orthogonal: " + toBitBoardString(this.orthogonalPieces[indexFromColor(color)]));
-    trace("Diagonal  : " + toBitBoardString(this.diagonalPieces[indexFromColor(color)]));
+    for (let i = 0; i < this.bitBoardPieces.length; i++) {
+      trace("Piece " + (i - 6).toString() + ": " + toBitBoardString(this.bitBoardPieces[i]));
+    }
   }
 
 }

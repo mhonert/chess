@@ -432,14 +432,14 @@ export function performEncodedMove(board: Board, encodedMove: i32): i32 {
 
 /** Applies the given move to the board.
  *
- * @returns The removed piece with the highest bit set to 1, if it was an en passant move.
+ * @returns The removed piece ID or the highest bit set to 1, if it was an en passant move.
  *
  */
 export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i32 {
   const pieceColor = sign(board.getItem(start));
   board.increaseHalfMoveCount();
 
-  let removedPiece = board.removePiece(end);
+  let removedPiece = board.getItem(end) != EMPTY ? board.removePiece(end) : EMPTY;
 
   board.removePiece(start);
 
@@ -522,15 +522,13 @@ export function undoMove(board: Board, piece: i32, start: i32, end: i32, removed
   board.removePiece(end);
   board.addPiece(pieceColor, abs(piece), start);
 
-  const wasEnPassant = removedPieceId == EN_PASSANT_BIT;
-  if (wasEnPassant) {
+  if (removedPieceId == EN_PASSANT_BIT) {
 
     if (abs(start - end) == 9) {
       board.addPiece(-pieceColor, PAWN, start + pieceColor);
     } else if (abs(start - end) == 11) {
       board.addPiece(-pieceColor, PAWN, start - pieceColor);
     }
-
 
   } else if (removedPieceId != EMPTY) {
     board.addPiece(-pieceColor, removedPieceId, end);
