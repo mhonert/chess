@@ -29,6 +29,10 @@ class Engine {
     console.log("Engine initialized");
   };
 
+  newGame() {
+    this.engine.newGame();
+  }
+
   calculateMove(board, playerColor, depth) {
     console.log('Start calculation of move ...');
 

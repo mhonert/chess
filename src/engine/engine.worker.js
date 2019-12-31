@@ -22,3 +22,8 @@ export async function calculateMove(board, playerColor, depth) {
   await engine.init();
   return engine.calculateMove(board, playerColor, depth);
 }
+
+export async function newGame() {
+  await engine.init();
+  return engine.newGame();
+}

@@ -28,15 +28,26 @@ import {
 } from './move-generation';
 import { findBestMoveIncrementally } from './engine';
 import { Board } from './board';
+import { resetTranspositionTable } from './transposition-table';
+import { toFEN } from './fen';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
 
-function createBoard(board: Int32Array): Board {
+
+export function newGame(): void {
+  resetTranspositionTable();
+}
+
+
+function createBoard(items: Int32Array): Board {
   const boardArray: Array<i32> = new Array<i32>();
-  for (let i: i32 = 0; i < board.length; i++) {
-    boardArray.push(board[i]);
+  for (let i: i32 = 0; i < items.length; i++) {
+    boardArray.push(items[i]);
   }
-  return new Board(boardArray);
+  const board = new Board(boardArray);
+  board.recalculateHash();
+
+  return board;
 }
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
@@ -48,14 +59,10 @@ const DIFFICULTY_LEVELS: Array<Array<i32>> = [
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
-  trace("Calculation started");
-
   const board = createBoard(boardArray);
 
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
   const move = findBestMoveIncrementally(board, color, 3, levelSettings[0], levelSettings[1]);
-
-  trace("Found best move", 1, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move));
 
   return move;
 }
@@ -69,8 +76,7 @@ export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Arra
     newBoard[i] = board.getItem(i);
   }
 
-  trace("Full move count: ", 1, board.getFullMoveCount());
-  trace("Half move clock: ", 1, board.getHalfMoveClock());
+  trace("FEN: " + toFEN(board));
 
   return newBoard;
 }

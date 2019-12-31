@@ -153,6 +153,8 @@ export function fromFEN(fen: string): Board {
   readHalfMoveClock(board,fenParts[4]);
   readFullMoveNumber(board, activeColor, fenParts[5]);
 
+  board.recalculateHash();
+
   return board;
 }
 
@@ -257,6 +259,7 @@ function readEnPassantTargetSquare(board: Board, fenPart: string): void {
     throw new Error("Invalid FEN string: unexpected en passant part: " + fenPart);
   }
 
+  board.updateHashForEnPassent(0);
 }
 
 function readHalfMoveClock(board: Board, fenPart: string): void {
@@ -275,6 +278,6 @@ function readFullMoveNumber(board: Board, activeColor: i32, fenPart: string): vo
   }
 
   const halfMoveCount = (fullMoveNumber - 1) * 2 + (activeColor == WHITE ? 0 : 1);
-  board.setHalfMoveCount(halfMoveCount);
+  board.initializeHalfMoveCount(halfMoveCount);
 }
 

@@ -16,18 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-  __,
-  Board,
-  BOARD_POS_TO_BIT_PATTERN,
-  DIAGONAL_UP_PATTERNS,
-  HORIZONTAL_PATTERNS,
-  KNIGHT_PATTERNS,
-  mirrored,
-  PAWN_POSITION_SCORES,
-  VERTICAL_PATTERNS,
-  WHITE
-} from '../board';
+import { __, BLACK, BLACK_KING_MOVED, Board, mirrored, PAWN_POSITION_SCORES, WHITE, WHITE_KING_MOVED } from '../board';
 import { BISHOP, K, KNIGHT, N, P, R, ROOK } from '../pieces';
 import { KNIGHT_DIRECTIONS } from '../move-generation';
 
@@ -285,3 +274,176 @@ describe('Attack detection via bitboards', () => {
 
 });
 
+describe("Board state", () => {
+
+  it("returns correct castling bits", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    expect(board.getCastlingStateBits()).toBe(0);
+
+    board.setWhiteKingMoved();
+    board.setWhiteLeftRookMoved();
+    board.setWhiteRightRookMoved();
+    board.setBlackKingMoved();
+    board.setBlackLeftRookMoved();
+    board.setBlackRightRookMoved();
+
+    expect(board.getCastlingStateBits()).toBe(0b111111);
+  });
+});
+
+
+describe("Zobrist hashing", () => {
+
+  it("updates hash for piece movements", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+
+    board.recalculateHash();
+
+    const initialHash = board.getHash();
+
+    board.removePiece(94);
+    board.addPiece(WHITE, K, 95);
+    const hashAfterMove = board.getHash();
+
+    board.removePiece(95);
+    board.addPiece(WHITE, K, 94);
+    const hashForRevertedMove = board.getHash();
+
+    expect(hashAfterMove).not.toBe(initialHash, "Hash after move should be different");
+    expect(hashForRevertedMove).toBe(initialHash, "Hash after reverted move should match the initial hash");
+  });
+
+  it("updates hash for en passant changes", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0, -P,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +P,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+
+    board.recalculateHash();
+
+    const initialHash = board.getHash();
+    board.setEnPassantPossible(84);
+
+    expect(board.getHash()).not.toBe(initialHash, "Hash after en passant state change should be different");
+  });
+
+  it("updates hash for active player change", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0, -P,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +P,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+
+    board.recalculateHash();
+
+    const initialHash = board.getHash();
+    board.increaseHalfMoveCount();
+    expect(board.getHash()).not.toBe(initialHash, "Hash after active player change should be different");
+
+    board.increaseHalfMoveCount();
+    expect(board.getHash()).toBe(initialHash, "Hash should be the same if the initial player is the active player again");
+  });
+
+  it("updates hash for castling state change", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0, +K, +R,  0,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    board.recalculateHash();
+    const initialHash = board.getHash();
+
+    board.setWhiteLeftRookMoved();
+    board.setWhiteKingMoved();
+    expect(board.getHash()).not.toBe(initialHash, "Hash after castling state change should be different");
+  });
+
+  it("incrementally updates hash correctly", () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    board.recalculateHash();
+
+    board.addPiece(WHITE, P, 81);
+    board.addPiece(BLACK, K, 22);
+    board.setWhiteKingMoved();
+    board.setBlackLeftRookMoved();
+
+    board.increaseHalfMoveCount();
+
+    const incrementallyUpdatedHash = board.getHash();
+    board.recalculateHash();
+    const recalculatedHash = board.getHash();
+
+    expect(incrementallyUpdatedHash).toBe(recalculatedHash);
+  });
+
+});

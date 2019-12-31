@@ -26,10 +26,16 @@ import {
   performMove,
   undoMove
 } from './move-generation';
+import {
+  decodeTranspositionDepth, decodeTranspositionScore, encodeTranspositionEntry,
+  matchesTranspositionHash,
+  TRANSPOSITION_INDEX_BITMASK, TRANSPOSITION_MAX_DEPTH,
+  TRANSPOSITION_TABLE
+} from './transposition-table';
 
 
-const MIN_SCORE = -16383;
-const MAX_SCORE = 16383;
+export const MIN_SCORE = -16383;
+export const MAX_SCORE = 16383;
 
 export const WHITE_MATE_SCORE: i32 = -16000;
 export const BLACK_MATE_SCORE: i32 = 16000;
@@ -61,6 +67,7 @@ export function findBestMoveIncrementally(board: Board, playerColor: i32, starti
 let startTime: i64 = 0;
 let moveCount = 0;
 let skippedRootMoves = 0;
+let cacheHits = 0;
 
 // Recursively calls itself with alternating player colors to
 // find the best possible move in response to the current board position.
@@ -74,6 +81,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
   if (depth == 0) {
     startTime = Date.now();
     skippedRootMoves = 0;
+    cacheHits = 0;
     moves = sortMovesByScore(board, generateFilteredMoves(board, playerColor), playerColor);
   } else {
     moves = sortMovesByScore(board, generateMoves(board, playerColor), playerColor);
@@ -117,12 +125,24 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       const moveEnd = decodeEndIndex(move);
       const previousPiece = board.getItem(moveStart);
       const previousHalfMoveClock = board.getHalfMoveClock();
+      const previousHash = board.getHash();
 
       const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
       moveCount++;
 
+
       let score = i32.MIN_VALUE; // Score for invalid move
-      if (!isInCheck(board, playerColor)) {
+
+      const transpositionIndex = i32(board.getHash() & TRANSPOSITION_INDEX_BITMASK);
+      const cacheEntry = TRANSPOSITION_TABLE[transpositionIndex];
+      let existingEntryDepth = decodeTranspositionDepth(cacheEntry);
+
+      if (cacheEntry != 0 && existingEntryDepth >= remainingLevels && matchesTranspositionHash(board.getHash(), cacheEntry)) {
+        score = decodeTranspositionScore(cacheEntry);
+        cacheHits++;
+
+      } else if (!isInCheck(board, playerColor)) {
+        existingEntryDepth = 1;
         const result = recFindBestMove(
           board,
           -beta,
@@ -144,9 +164,13 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         let unadjustedScore: i32 = decodeScore(result);
 
         score = -unadjustedScore;
+
+        if (remainingLevels >= existingEntryDepth) {
+          TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(board.getHash(), remainingLevels, score);
+        }
       }
 
-      undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock);
+      undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock, previousHash);
 
       if (score == i32.MIN_VALUE) {
         continue; // skip this invalid move
@@ -197,10 +221,11 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
 
     const move = moves[0];
 
-    if (remainingLevels >= minimumDepth && (Date.now() - startTime >= timeLimitMillis || remainingLevels > 64)) {
+    if (remainingLevels >= minimumDepth && (Date.now() - startTime >= timeLimitMillis || (remainingLevels + 2) > TRANSPOSITION_MAX_DEPTH)) {
       trace('---------------------------------------------------');
       trace('Evaluated ' + moveCount.toString() + ' moves');
       trace('Skipped ' + skippedRootMoves.toString() + ' root moves');
+      trace('Cache hits ' + cacheHits.toString());
       logScoredMove(move, 'Selected move');
       moveCount = 0;
       return move;
@@ -241,19 +266,19 @@ function resetScores(moves: Array<i32>): void {
 // (low values are better for black and high values are better for white)
 function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
   const previousState = board.getState();
+  const previousHash = board.getHash();
 
   const targetPieceId = decodePiece(encodedMove);
   const moveStart = decodeStartIndex(encodedMove);
   const moveEnd = decodeEndIndex(encodedMove);
   const previousPiece = board.getItem(moveStart);
 
-
   const previousHalfMoveClock = board.getHalfMoveClock();
   const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
 
   const score = evaluatePosition(board);
 
-  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock);
+  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock, previousHash);
 
   return score;
 };

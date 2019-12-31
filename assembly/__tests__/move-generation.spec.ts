@@ -1047,7 +1047,7 @@ describe("Half move clock", () => {
 
     performEncodedMove(board, encodeMove(P, 84, 64));
     performEncodedMove(board, encodeMove(-P, 34, 54));
-    undoMove(board, -P, 34, 54, EMPTY, 0, 0);
+    undoMove(board, -P, 34, 54, EMPTY, 0, 0, 0);
 
     expect(board.getHalfMoveCount()).toBe(1);
   });

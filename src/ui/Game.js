@@ -110,16 +110,19 @@ const Game = () => {
   };
 
   const startNewGame = () => {
-    setRotateBoard(false);
-    setPreviousMoveState(undefined);
-    setBoard(initialBoard);
-    setActivePlayer(WHITE);
-    setHumanPlayerColor(WHITE);
-    setGameEnded(false);
-    setLastMove({ start: -1, end: -1 });
-    setWinningPlayer(undefined);
-    setAvailableMoves(engine.generateMoves(initialBoard, WHITE));
-    setCurrentPieceMoves(new Set());
+    engineWebWorker.newGame()
+      .then(() => {
+        setRotateBoard(false);
+        setPreviousMoveState(undefined);
+        setBoard(initialBoard);
+        setActivePlayer(WHITE);
+        setHumanPlayerColor(WHITE);
+        setGameEnded(false);
+        setLastMove({ start: -1, end: -1 });
+        setWinningPlayer(undefined);
+        setAvailableMoves(engine.generateMoves(initialBoard, WHITE));
+        setCurrentPieceMoves(new Set());
+      });
   };
 
   const undoMove = () => {

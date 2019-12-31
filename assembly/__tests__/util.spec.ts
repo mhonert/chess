@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { differentColor, fromBitBoardString, rand, sameColor, toBitBoardString } from '../util';
+import { differentColor, fromBitBoardString, rand32, rand64, sameColor, toBitBoardString } from '../util';
 
 
 describe("fromBitBoardString", () => {
@@ -96,7 +96,7 @@ describe("Random number generated", () => {
     const iterations = 1_000_000;
 
     for (let i = 0; i < iterations; i++) {
-      const number = rand() % 6;
+      const number = u32(rand64() % 6);
       numberCounts[number]++;
     }
 

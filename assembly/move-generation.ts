@@ -515,7 +515,7 @@ export function performMove(board: Board, pieceId: i32, start: i32, end: i32): i
 };
 
 
-export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32, previousState: i32, previousHalfMoveClock: i32): void {
+export function undoMove(board: Board, piece: i32, start: i32, end: i32, removedPieceId: i32, previousState: i32, previousHalfMoveClock: i32, previousHash: u64): void {
   board.setState(previousState);
   board.restorePreviousHalfMoveState(previousHalfMoveClock);
   const pieceColor = sign(piece);
@@ -570,6 +570,8 @@ export function undoMove(board: Board, piece: i32, start: i32, end: i32, removed
     }
 
   }
+
+  board.restoreHash(previousHash);
 };
 
 
@@ -580,13 +582,14 @@ export function isInCheck(board: Board, activeColor: i32): bool {
 
 export function moveResultsInCheck(board: Board, pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
   const previousState = board.getState();
+  const previousHash = board.getHash();
   const previousPiece = board.getItem(start); // might be different from piece in case of pawn promotions
   const previousHalfMoveClock = board.getHalfMoveClock();
 
   const removedFigure = performMove(board, pieceId, start, end);
   const check = isInCheck(board, activeColor);
 
-  undoMove(board, previousPiece, start, end, removedFigure, previousState, previousHalfMoveClock);
+  undoMove(board, previousPiece, start, end, removedFigure, previousState, previousHalfMoveClock, previousHash);
 
   return check;
 };

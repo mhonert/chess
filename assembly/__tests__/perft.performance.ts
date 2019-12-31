@@ -38,7 +38,7 @@ function measurePerft(fen: string, depth: i32, expectedResult: u64): void {
   const start = Date.now();
   expect(perft(board, depth)).toBe(expectedResult, "Depth: " + depth.toString());
   const duration = Date.now() - start;
-  const nodesPerSecond = expectedResult / (duration / 1000);
+  const nodesPerSecond = expectedResult * 1000 / duration;
 
   trace(fen + ": Duration (ms)   : " + duration.toString());
   trace(fen + ": Nodes per second: " + nodesPerSecond.toString());

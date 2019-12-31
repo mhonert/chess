@@ -16,9 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BISHOP, KING, KNIGHT, QUEEN, ROOK } from './pieces';
+import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { sign, toBitBoardString } from './util';
 import { KNIGHT_DIRECTIONS } from './move-generation';
+import {
+  CASTLING_RNG_NUMBERS,
+  EN_PASSANT_RNG_NUMBERS,
+  PIECE_RNG_NUMBERS,
+  PLAYER_RNG_NUMBER
+} from './zobrist';
 
 const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
 
@@ -34,6 +40,7 @@ export class Board {
   private orthogonalPieces: Array<u64> = new Array<u64>(2);
   private diagonalPieces: Array<u64> = new Array<u64>(2);
   private knights: Array<u64> = new Array<u64>(2);
+  private hashCode: u64 = 0; // Hash code for the current position
 
   /* items Array:
      Index 0 - 119: Board representation (10 columns * 12 rows)
@@ -65,6 +72,32 @@ export class Board {
     }
   }
 
+  getHash(): u64 {
+    return this.hashCode;
+  }
+
+  recalculateHash(): void {
+    this.hashCode = 0;
+
+    for (let pos: i32 = 21; pos <= 98; pos++) {
+      const piece = this.items[pos];
+      if (piece != EMPTY && piece != BOARD_BORDER) {
+        this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
+      }
+    }
+
+    if (this.getActivePlayer() == BLACK) {
+      this.hashCode ^= PLAYER_RNG_NUMBER;
+    }
+
+    this.updateHashForCastling(0);
+    this.updateHashForEnPassent(0);
+  }
+
+  restoreHash(previousHash: u64): void {
+    this.hashCode = previousHash;
+  }
+
   getItem(pos: i32): i32 {
     return this.items[pos];
   }
@@ -88,7 +121,13 @@ export class Board {
 
     const colIndex = indexFromColor(pieceColor);
 
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
+
     switch (pieceId) {
+      case KNIGHT:
+        this.knights[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
+        break;
+
       case ROOK:
         this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
         break;
@@ -100,10 +139,6 @@ export class Board {
       case QUEEN:
         this.orthogonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
         this.diagonalPieces[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
-        break;
-
-      case KNIGHT:
-        this.knights[colIndex] |= BOARD_POS_TO_BIT_PATTERN[pos];
         break;
     }
   }
@@ -117,7 +152,13 @@ export class Board {
     this.items[pos] = EMPTY;
 
     const colIndex = indexFromColor(sign(piece));
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
+
     switch (abs(piece)) {
+      case KNIGHT:
+        this.knights[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+        break;
+
       case ROOK:
         this.orthogonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
         if (pos == WHITE_LEFT_ROOK_START) {
@@ -140,8 +181,6 @@ export class Board {
         this.diagonalPieces[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
         break;
 
-      case KNIGHT:
-        this.knights[colIndex] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
     }
 
     return piece;
@@ -260,24 +299,50 @@ export class Board {
   };
 
   setEnPassantPossible(boardIndex: i32): void {
+    const previousEnPassantState = this.getEnPassantStateBits();
+
     const enPassentBitIndex = (boardIndex >= WHITE_PAWNS_BASELINE_START)
       ? boardIndex - WHITE_PAWNS_BASELINE_START + 8
       : boardIndex - BLACK_PAWNS_BASELINE_START;
 
     this.setStateBit(EN_PASSANT_BITMASKS[enPassentBitIndex]);
+    this.updateHashForEnPassent(previousEnPassantState);
   }
 
-
   clearEnPassentPossible(): void {
-    this.items[this.items.length - 1] &= (EN_PASSANT_BITMASKS[0] - 1);
+    const previousEnPassantState = this.getEnPassantStateBits();
+
+    if (previousEnPassantState != 0) {
+      this.items[this.items.length - 1] &= (EN_PASSANT_BITMASKS[0] - 1);
+      this.updateHashForEnPassent(previousEnPassantState);
+    }
   };
+
+  updateHashForEnPassent(previousEnPassantState: i32): void {
+    const newEnPassantState = this.getEnPassantStateBits();
+
+    if (previousEnPassantState != newEnPassantState) {
+      if (previousEnPassantState != 0) {
+        this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(previousEnPassantState)];
+      }
+      if (newEnPassantState != 0) {
+        this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(newEnPassantState)];
+      }
+    }
+  }
+
+  getEnPassantStateBits(): i32 {
+    return (this.getState() >> EN_PASSANT_BITSTART) & 0xFFFF; // en passant bits occupy 16 bits of the state
+  }
 
   increaseHalfMoveCount(): void {
     this.items[HALFMOVE_COUNT_INDEX]++;
     this.items[HALFMOVE_CLOCK_INDEX]++;
+
+    this.hashCode ^= PLAYER_RNG_NUMBER;
   }
 
-  setHalfMoveCount(value: i32): void {
+  initializeHalfMoveCount(value: i32): void {
     this.items[HALFMOVE_COUNT_INDEX] = value;
   }
 
@@ -339,28 +404,61 @@ export class Board {
   }
 
   setWhiteKingMoved(): void {
-    this.setStateBit(WHITE_KING_MOVED);
+    if (!this.whiteKingMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(WHITE_KING_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
 
   setBlackKingMoved(): void {
-    this.setStateBit(BLACK_KING_MOVED);
+    if (!this.blackKingMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(BLACK_KING_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
 
   setWhiteLeftRookMoved(): void {
-    this.setStateBit(WHITE_LEFT_ROOK_MOVED);
+    if (!this.whiteLeftRookMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(WHITE_LEFT_ROOK_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
 
   setWhiteRightRookMoved(): void {
-    this.setStateBit(WHITE_RIGHT_ROOK_MOVED);
+    if (!this.whiteRightRookMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(WHITE_RIGHT_ROOK_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
 
   setBlackLeftRookMoved(): void {
-    this.setStateBit(BLACK_LEFT_ROOK_MOVED);
+    if (!this.blackLeftRookMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(BLACK_LEFT_ROOK_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
 
   setBlackRightRookMoved(): void {
-    this.setStateBit(BLACK_RIGHT_ROOK_MOVED);
+    if (!this.blackRightRookMoved()) {
+      const previousCastlingState = this.getCastlingStateBits();
+      this.setStateBit(BLACK_RIGHT_ROOK_MOVED);
+      this.updateHashForCastling(previousCastlingState);
+    }
   };
+
+  updateHashForCastling(previousCastlingState: i32): void {
+    this.hashCode ^= CASTLING_RNG_NUMBERS[previousCastlingState];
+    this.hashCode ^= CASTLING_RNG_NUMBERS[this.getCastlingStateBits()];
+  }
+
+  getCastlingStateBits(): i32 {
+    return (this.getState() >> CASTLING_BITSTART) & 0x3f; // extract 6-bits from state which describe the castling state
+  }
 
   setStateBit(bitMask: i32): void {
     this.items[this.items.length - 1] |= bitMask;
@@ -615,12 +713,15 @@ export const WHITE_RIGHT_ROOK_MOVED: i32 = 1 << 10;
 export const BLACK_LEFT_ROOK_MOVED: i32 = 1 << 11;
 export const BLACK_RIGHT_ROOK_MOVED: i32 = 1 << 12;
 
+const CASTLING_BITSTART = 7;
+
 
 // Encode 'en passant' move possibilities for
 // white pawns in bits 13 to 20 and for
 // black pawns in bits 21 to 28
 
 const BITS: Array<i32> = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28];
+const EN_PASSANT_BITSTART = 13;
 const EN_PASSANT_BITMASKS: Array<i32> = BITS.map<i32>(calculateEnPassantBitMask);
 
 function calculateEnPassantBitMask(bit: i32, index: i32, array: Array<i32>): i32 {
