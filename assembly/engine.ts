@@ -118,14 +118,11 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       }
 
       const move = decodeMove(scoredMove);
-      const previousState = board.getState();
 
       const targetPieceId = decodePiece(move);
       const moveStart = decodeStartIndex(move);
       const moveEnd = decodeEndIndex(move);
       const previousPiece = board.getItem(moveStart);
-      const previousHalfMoveClock = board.getHalfMoveClock();
-      const previousHash = board.getHash();
 
       const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
       moveCount++;
@@ -170,7 +167,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         }
       }
 
-      undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock, previousHash);
+      undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
 
       if (score == i32.MIN_VALUE) {
         continue; // skip this invalid move
@@ -265,20 +262,17 @@ function resetScores(moves: Array<i32>): void {
 // Evaluate board position with the given move performed
 // (low values are better for black and high values are better for white)
 function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
-  const previousState = board.getState();
-  const previousHash = board.getHash();
 
   const targetPieceId = decodePiece(encodedMove);
   const moveStart = decodeStartIndex(encodedMove);
   const moveEnd = decodeEndIndex(encodedMove);
   const previousPiece = board.getItem(moveStart);
 
-  const previousHalfMoveClock = board.getHalfMoveClock();
   const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
 
   const score = evaluatePosition(board);
 
-  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock, previousHash);
+  undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
 
   return score;
 };

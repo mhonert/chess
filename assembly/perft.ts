@@ -45,21 +45,18 @@ export function perft(board: Board, depth: i32): u64 {
   const moves = generateMoves(board, activePlayer);
   for (let i = 0; i < moves.length; i++) {
     const move = moves[i];
-    const previousState = board.getState();
-    const previousHash = board.getHash();
 
     const targetPieceId = decodePiece(move);
     const moveStart = decodeStartIndex(move);
     const moveEnd = decodeEndIndex(move);
     const previousPiece = board.getItem(moveStart);
-    const previousHalfMoveClock = board.getHalfMoveClock();
 
     const removedPiece = performMove(board, targetPieceId, moveStart, moveEnd);
 
     if (!isInCheck(board, activePlayer)) {
       nodes += perft(board, depth - 1);
     }
-    undoMove(board, previousPiece, moveStart, moveEnd, removedPiece, previousState, previousHalfMoveClock, previousHash);
+    undoMove(board, previousPiece, moveStart, moveEnd, removedPiece);
   }
 
   return nodes;

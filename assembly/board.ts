@@ -32,6 +32,8 @@ const HALFMOVE_CLOCK_INDEX = 120;
 const HALFMOVE_COUNT_INDEX = 121;
 const STATE_INDEX = 122;
 
+const MAX_GAME_HALFMOVES = 5898 * 2;
+
 export class Board {
   private items: Array<i32>;
   private whiteKingIndex: i32;
@@ -39,6 +41,12 @@ export class Board {
   private score: i32 = 0;
   private bitBoardPieces: Array<u64> = new Array<u64>(13);
   private hashCode: u64 = 0; // Hash code for the current position
+
+  private historyCounter: i32 = 0;
+  private stateHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
+  private hashCodeHistory: Array<u64> = new Array<u64>(MAX_GAME_HALFMOVES);
+  private scoreHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
+  private halfMoveClockHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
 
   /* items Array:
      Index 0 - 119: Board representation (10 columns * 12 rows)
@@ -70,6 +78,26 @@ export class Board {
     }
   }
 
+  /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
+   *  However, the board representation itself is not stored.
+   */
+  storeState(): void {
+    this.stateHistory[this.historyCounter] = this.items[STATE_INDEX];
+    this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX];
+    this.hashCodeHistory[this.historyCounter] = this.hashCode;
+    this.scoreHistory[this.historyCounter] = this.score;
+    this.historyCounter++;
+  }
+
+  restoreState(): void {
+    this.historyCounter--;
+    this.items[STATE_INDEX] = this.stateHistory[this.historyCounter];
+    this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter];
+    this.hashCode = this.hashCodeHistory[this.historyCounter];
+    this.score = this.scoreHistory[this.historyCounter];
+    this.items[HALFMOVE_COUNT_INDEX]--;
+  }
+
   getHash(): u64 {
     return this.hashCode;
   }
@@ -90,10 +118,6 @@ export class Board {
 
     this.updateHashForCastling(0);
     this.updateHashForEnPassent(0);
-  }
-
-  restoreHash(previousHash: u64): void {
-    this.hashCode = previousHash;
   }
 
   getItem(pos: i32): i32 {
@@ -312,11 +336,6 @@ export class Board {
 
   resetHalfMoveClock(): void {
     this.items[HALFMOVE_CLOCK_INDEX] = 0;
-  }
-
-  restorePreviousHalfMoveState(newValue: i32): void {
-    this.items[HALFMOVE_COUNT_INDEX]--;
-    this.items[HALFMOVE_CLOCK_INDEX] = newValue;
   }
 
   getHalfMoveClock(): i32 {
