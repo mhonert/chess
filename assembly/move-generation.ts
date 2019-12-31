@@ -36,54 +36,31 @@ import { differentColor, sameColor } from './util';
 export function generateMoves(board: Board, activeColor: i32): Array<i32> {
   const moves = new Array<i32>();
 
-  for (let i = 21; i <= 98; i++) {
-    const item = board.getItem(i);
+  generatePieceMoves(moves, board, PAWN * activeColor, activeColor, generatePawnMoves);
+  generatePieceMoves(moves, board, KNIGHT * activeColor, activeColor, generateKnightMoves);
+  generatePieceMoves(moves, board, BISHOP * activeColor, activeColor, generateBishopMoves);
+  generatePieceMoves(moves, board, ROOK * activeColor, activeColor, generateRookMoves);
+  generatePieceMoves(moves, board, QUEEN * activeColor, activeColor, generateQueenMoves);
 
-    if (item == EMPTY || item == BOARD_BORDER) {
-      continue;
-    }
-
-    const pieceColor = item < 0 ? BLACK : WHITE;
-    if (pieceColor != activeColor) {
-      continue;
-    }
-
-    switch (item) {
-      case PAWN:
-      case -PAWN:
-        generatePawnMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case KNIGHT:
-      case -KNIGHT:
-        generateKnightMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case BISHOP:
-      case -BISHOP:
-        generateBishopMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case ROOK:
-      case -ROOK:
-        generateRookMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case QUEEN:
-      case -QUEEN:
-        generateQueenMoves(moves, board, activeColor, item, i);
-        continue;
-
-      case KING:
-      case -KING:
-        generateKingMoves(moves, board, activeColor, item, i);
-        continue;
-
-    }
-  }
+  // King moves
+  const pos = board.findKingPosition(activeColor);
+  generateKingMoves(moves, board, activeColor, KING * activeColor, pos);
 
   return moves;
-};
+}
+
+@inline
+function generatePieceMoves(moves: Array<i32>, board: Board, piece: i32, activeColor: i32,
+                            generate: (moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32) => void): void {
+  let bitboard = board.getBitBoard(piece + 6);
+
+  while (bitboard != 0) {
+    const bitPos: u64 = ctz(bitboard);
+    bitboard ^= 1 << bitPos; // unset bit
+    const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+    generate(moves, board, activeColor, piece, pos);
+  }
+}
 
 
 // Generates and filters out any moves that would leave the own king in check.

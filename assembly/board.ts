@@ -84,6 +84,11 @@ export class Board {
     }
   }
 
+  @inline
+  getBitBoard(index: i32): u64 {
+    return this.bitBoardPieces[index];
+  }
+
   /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
    *  However, the board representation itself is not stored.
    */
@@ -147,9 +152,10 @@ export class Board {
     this.items[pos] = piece;
 
     this.score += this.calculateScore(pos, pieceColor, pieceId);
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
-    this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos];
+    this.bitBoardPieces[piece + 6] |= (1 << bitIndex);
   }
 
   addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
@@ -163,20 +169,21 @@ export class Board {
     const piece = this.items[pos];
 
     this.score -= this.calculateScore(pos, sign(piece), abs(piece));
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][BOARD_POS_TO_BIT_INDEX[pos]];
+    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
-    return this.remove(piece, pos);
+    return this.remove(piece, pos, bitIndex);
   }
 
   // Version of removePiece for optimization purposes without incremental update
   @inline
   private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
     const piece = this.items[pos];
-    return this.remove(piece, pos);
+    return this.remove(piece, pos, BOARD_POS_TO_BIT_INDEX[pos]);
   }
 
-  private remove(piece: i32, pos: i32): i32 {
-    this.bitBoardPieces[piece + 6] &= BOARD_POS_TO_BIT_NOT_PATTERN[pos];
+  private remove(piece: i32, pos: i32, bitIndex: i32): i32 {
+    this.bitBoardPieces[piece + 6] &= ~(1 << bitIndex);
     this.items[pos] = EMPTY;
 
     if (piece == ROOK) {
@@ -342,16 +349,16 @@ export class Board {
 
   hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
     const pieces = this.bitBoardPieces[color * ROOK + 6] | this.bitBoardPieces[color * QUEEN + 6];
-    return (pieces & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    return (pieces & (1 << pos)) != 0;
   }
 
   hasDiagonalSlidingFigure(color: i32, pos: i32): bool {
     const pieces = this.bitBoardPieces[color * BISHOP + 6] | this.bitBoardPieces[color * QUEEN + 6];
-    return (pieces & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    return (pieces & (1 << pos)) != 0;
   }
 
   hasKnight(color: i32, pos: i32): bool {
-    return (this.bitBoardPieces[KNIGHT * color + 6] & BOARD_POS_TO_BIT_PATTERN[pos]) != 0;
+    return (this.bitBoardPieces[KNIGHT * color + 6] & (1 << pos)) != 0;
   }
 
   @inline
@@ -683,7 +690,8 @@ function calculateBoardPosToBitIndex(): Array<i32> {
   return bitIndices;
 }
 
-const BOARD_POS_TO_BIT_INDEX = calculateBoardPosToBitIndex();
+
+export const BOARD_POS_TO_BIT_INDEX = calculateBoardPosToBitIndex();
 
 function calculateBoardPosToBitPattern(bitIndices: Array<i32>): Array<u64> {
   const bitPatterns = new Array<u64>(bitIndices.length);
@@ -697,18 +705,8 @@ function calculateBoardPosToBitPattern(bitIndices: Array<i32>): Array<u64> {
   return bitPatterns;
 }
 
+
 export const BOARD_POS_TO_BIT_PATTERN: Array<u64> = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
-
-function calculateBoardPosToNotBitPattern(boardPosToBitPattern: Array<u64>): Array<u64> {
-  const bitPatterns = new Array<u64>(boardPosToBitPattern.length);
-  for (let i = 0; i < boardPosToBitPattern.length; i++) {
-    bitPatterns[i] = ~boardPosToBitPattern[i];
-  }
-  return bitPatterns;
-}
-
-const BOARD_POS_TO_BIT_NOT_PATTERN: Array<u64> = calculateBoardPosToNotBitPattern(BOARD_POS_TO_BIT_PATTERN);
-
 
 function calculateHorizontalPatterns(): Array<u64> {
   const patterns = new Array<u64>(64);
