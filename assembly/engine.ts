@@ -129,7 +129,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       let score = i32.MIN_VALUE; // Score for invalid move
 
       const transpositionIndex = i32(board.getHash() & TRANSPOSITION_INDEX_BITMASK);
-      const cacheEntry = TRANSPOSITION_TABLE[transpositionIndex];
+      const cacheEntry = unchecked(TRANSPOSITION_TABLE[transpositionIndex]);
       let existingEntryDepth = decodeTranspositionDepth(cacheEntry);
 
       if (cacheEntry != 0 && existingEntryDepth >= remainingLevels && matchesTranspositionHash(board.getHash(), cacheEntry)) {

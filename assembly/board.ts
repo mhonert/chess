@@ -17,7 +17,7 @@
  */
 
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { sign, toBitBoardString } from './util';
+import { sign, toBitBoardString, toInt32Array } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex, KNIGHT_DIRECTIONS } from './move-generation';
 import {
   CASTLING_RNG_NUMBERS,
@@ -41,18 +41,18 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 const EN_PASSANT_BIT = 1 << 31;
 
 export class Board {
-  private items: Array<i32>;
+  private items: Int32Array;
   private whiteKingIndex: i32;
   private blackKingIndex: i32;
   private score: i32 = 0;
-  private bitBoardPieces: Array<u64> = new Array<u64>(13);
+  private bitBoardPieces: Uint64Array = new Uint64Array(13);
   private hashCode: u64 = 0; // Hash code for the current position
 
   private historyCounter: i32 = 0;
-  private stateHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
-  private hashCodeHistory: Array<u64> = new Array<u64>(MAX_GAME_HALFMOVES);
-  private scoreHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
-  private halfMoveClockHistory: Array<i32> = new Array<i32>(MAX_GAME_HALFMOVES);
+  private stateHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
+  private hashCodeHistory: Uint64Array = new Uint64Array(MAX_GAME_HALFMOVES);
+  private scoreHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
+  private halfMoveClockHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
 
   /* items Array:
      Index 0 - 119: Board representation (10 columns * 12 rows)
@@ -64,7 +64,7 @@ export class Board {
     if (items.length < (STATE_INDEX + 1)) {
       throw new Error("Invalid board item length: " + items.length.toString());
     }
-    this.items = items;
+    this.items = new Int32Array(items.length);
     this.whiteKingIndex = items.findIndex(isWhiteKing)
     this.blackKingIndex = items.findIndex(isBlackKing);
 
@@ -76,36 +76,41 @@ export class Board {
       throw new Error("Black king is missing on the board!");
     }
 
-    for (let i: i32 = 21; i <= 98; i++) {
-      const piece = this.items[i];
+    for (let i: i32 = 0; i < 120; i++) {
+      const piece = items[i];
       if (piece != EMPTY && piece != BOARD_BORDER) {
         this.addPiece(sign(piece), abs(piece), i);
+      } else {
+        this.items[i] = items[i];
       }
     }
+    this.items[STATE_INDEX] = items[STATE_INDEX];
+    this.items[HALFMOVE_CLOCK_INDEX] = items[HALFMOVE_CLOCK_INDEX];
+    this.items[HALFMOVE_COUNT_INDEX] = items[HALFMOVE_COUNT_INDEX];
   }
 
   @inline
   getBitBoard(index: i32): u64 {
-    return this.bitBoardPieces[index];
+    return unchecked(this.bitBoardPieces[index]);
   }
 
   /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
    *  However, the board representation itself is not stored.
    */
   storeState(): void {
-    this.stateHistory[this.historyCounter] = this.items[STATE_INDEX];
-    this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX];
-    this.hashCodeHistory[this.historyCounter] = this.hashCode;
-    this.scoreHistory[this.historyCounter] = this.score;
+    unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
+    unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
+    unchecked(this.hashCodeHistory[this.historyCounter] = this.hashCode);
+    unchecked(this.scoreHistory[this.historyCounter] = this.score);
     this.historyCounter++;
   }
 
   restoreState(): void {
     this.historyCounter--;
-    this.items[STATE_INDEX] = this.stateHistory[this.historyCounter];
-    this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter];
-    this.hashCode = this.hashCodeHistory[this.historyCounter];
-    this.score = this.scoreHistory[this.historyCounter];
+    unchecked(this.items[STATE_INDEX] = unchecked(this.stateHistory[this.historyCounter]));
+    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter]);
+    this.hashCode = unchecked(this.hashCodeHistory[this.historyCounter]);
+    this.score = unchecked(this.scoreHistory[this.historyCounter]);
     this.items[HALFMOVE_COUNT_INDEX]--;
   }
 
@@ -132,15 +137,15 @@ export class Board {
   }
 
   getItem(pos: i32): i32 {
-    return this.items[pos];
+    return unchecked(this.items[pos]);
   }
 
   isEmpty(pos: i32): bool {
-    return this.items[pos] == EMPTY;
+    return unchecked(this.items[pos]) == EMPTY;
   }
 
   isBorder(pos: i32): bool {
-    return this.items[pos] == BOARD_BORDER;
+    return unchecked(this.items[pos]) == BOARD_BORDER;
   }
 
   getScore(): i32 {
@@ -149,28 +154,28 @@ export class Board {
 
   addPiece(pieceColor: i32, pieceId: i32, pos: i32): void {
     const piece = pieceId * pieceColor;
-    this.items[pos] = piece;
+    unchecked(this.items[pos] = piece);
 
     this.score += this.calculateScore(pos, pieceColor, pieceId);
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
 
-    this.bitBoardPieces[piece + 6] |= (1 << bitIndex);
+    unchecked(this.bitBoardPieces[piece + 6] |= (1 << bitIndex));
   }
 
   addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
     const piece = pieceId * pieceColor;
-    this.items[pos] = piece;
-    this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos];
+    unchecked(this.items[pos] = piece);
+    unchecked(this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos]);
   }
 
   @inline
   removePiece(pos: i32): i32 {
-    const piece = this.items[pos];
+    const piece = unchecked(this.items[pos]);
 
     this.score -= this.calculateScore(pos, sign(piece), abs(piece));
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
+    unchecked(this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
 
     return this.remove(piece, pos, bitIndex);
   }
@@ -178,13 +183,13 @@ export class Board {
   // Version of removePiece for optimization purposes without incremental update
   @inline
   private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
-    const piece = this.items[pos];
-    return this.remove(piece, pos, BOARD_POS_TO_BIT_INDEX[pos]);
+    const piece = unchecked(this.items[pos]);
+    return this.remove(piece, pos, unchecked(BOARD_POS_TO_BIT_INDEX[pos]));
   }
 
   private remove(piece: i32, pos: i32, bitIndex: i32): i32 {
-    this.bitBoardPieces[piece + 6] &= ~(1 << bitIndex);
-    this.items[pos] = EMPTY;
+    unchecked(this.bitBoardPieces[piece + 6] &= ~(1 << bitIndex));
+    unchecked(this.items[pos] = EMPTY);
 
     if (piece == ROOK) {
       if (pos == WHITE_LEFT_ROOK_START) {
@@ -348,36 +353,36 @@ export class Board {
   };
 
   hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
-    const pieces = this.bitBoardPieces[color * ROOK + 6] | this.bitBoardPieces[color * QUEEN + 6];
+    const pieces = unchecked(this.bitBoardPieces[color * ROOK + 6]) | unchecked(this.bitBoardPieces[color * QUEEN + 6]);
     return (pieces & (1 << pos)) != 0;
   }
 
   hasDiagonalSlidingFigure(color: i32, pos: i32): bool {
-    const pieces = this.bitBoardPieces[color * BISHOP + 6] | this.bitBoardPieces[color * QUEEN + 6];
+    const pieces = unchecked(this.bitBoardPieces[color * BISHOP + 6]) | unchecked(this.bitBoardPieces[color * QUEEN + 6]);
     return (pieces & (1 << pos)) != 0;
   }
 
   hasKnight(color: i32, pos: i32): bool {
-    return (this.bitBoardPieces[KNIGHT * color + 6] & (1 << pos)) != 0;
+    return (unchecked(this.bitBoardPieces[KNIGHT * color + 6]) & (1 << pos)) != 0;
   }
 
   @inline
   isKnightAttacked(opponentColor: i32, pos: i32): bool {
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
 
-    return (this.bitBoardPieces[KNIGHT * opponentColor + 6] & KNIGHT_PATTERNS[bitIndex]) != 0;
+    return (unchecked(this.bitBoardPieces[KNIGHT * opponentColor + 6]) & unchecked(KNIGHT_PATTERNS[bitIndex])) != 0;
   }
 
   @inline
   isHorizontallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
 
-    const pieces = this.bitBoardPieces[opponentColor * ROOK + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
-    const result = pieces & HORIZONTAL_PATTERNS[bitIndex];
+    const pieces = unchecked(this.bitBoardPieces[opponentColor * ROOK + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
+    const result = pieces & unchecked(HORIZONTAL_PATTERNS[bitIndex]);
     if (result == 0) {
       return 0;
     }
-    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
       return -1;
     }
 
@@ -386,15 +391,15 @@ export class Board {
 
   @inline
   isVerticallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
 
-    const pieces = this.bitBoardPieces[opponentColor * ROOK + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
-    const result = pieces & VERTICAL_PATTERNS[bitIndex];
+    const pieces = unchecked(this.bitBoardPieces[opponentColor * ROOK + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
+    const result = pieces & unchecked(VERTICAL_PATTERNS[bitIndex]);
 
     if (result == 0) {
       return 0;
     }
-    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
       return -10;
     }
 
@@ -403,14 +408,14 @@ export class Board {
 
   @inline
   isDiagonallyDownAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
 
-    const pieces = this.bitBoardPieces[opponentColor * BISHOP + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
-    const result = pieces & DIAGONAL_DOWN_PATTERNS[bitIndex];
+    const pieces = unchecked(this.bitBoardPieces[opponentColor * BISHOP + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
+    const result = pieces & unchecked(DIAGONAL_DOWN_PATTERNS[bitIndex]);
     if (result == 0) {
       return 0;
     }
-    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
       return -11;
     }
 
@@ -419,14 +424,14 @@ export class Board {
 
   @inline
   isDiagonallyUpAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = BOARD_POS_TO_BIT_INDEX[pos];
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
 
-    const pieces = this.bitBoardPieces[opponentColor * BISHOP + 6] | this.bitBoardPieces[opponentColor * QUEEN + 6];
-    const result = pieces & DIAGONAL_UP_PATTERNS[bitIndex];
+    const pieces = unchecked(this.bitBoardPieces[opponentColor * BISHOP + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
+    const result = pieces & unchecked(DIAGONAL_UP_PATTERNS[bitIndex]);
     if (result == 0) {
       return 0;
     }
-    if (result < BOARD_POS_TO_BIT_PATTERN[pos]) {
+    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
       return -9;
     }
 
@@ -435,10 +440,10 @@ export class Board {
 
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return PIECE_VALUES[pieceId - 1] * 10 + WHITE_POSITION_SCORES[pieceId - 1][pos - 20];
+      return unchecked(PIECE_VALUES[pieceId - 1]) * 10 + unchecked(WHITE_POSITION_SCORES[pieceId - 1][pos - 20]);
 
     } else {
-      return PIECE_VALUES[pieceId - 1] * -10 - BLACK_POSITION_SCORES[pieceId - 1][pos - 20];
+      return unchecked(PIECE_VALUES[pieceId - 1]) * -10 - unchecked(BLACK_POSITION_SCORES[pieceId - 1][pos - 20]);
 
     }
   }
@@ -447,10 +452,10 @@ export class Board {
     const state = this.getState();
 
     if (pieceColor == WHITE && boardIndex >= WHITE_ENPASSANT_LINE_START && boardIndex <= WHITE_ENPASSANT_LINE_END) {
-      return (state & EN_PASSANT_BITMASKS[boardIndex - WHITE_ENPASSANT_LINE_START]) != 0;
+      return (state & unchecked(EN_PASSANT_BITMASKS[boardIndex - WHITE_ENPASSANT_LINE_START])) != 0;
 
     } else if (pieceColor == BLACK && boardIndex >= BLACK_ENPASSANT_LINE_START && boardIndex <= BLACK_ENPASSANT_LINE_END) {
-      return (state & EN_PASSANT_BITMASKS[boardIndex - BLACK_ENPASSANT_LINE_START + 8]) != 0;
+      return (state & unchecked(EN_PASSANT_BITMASKS[boardIndex - BLACK_ENPASSANT_LINE_START + 8])) != 0;
 
     }
 
@@ -464,7 +469,7 @@ export class Board {
       ? boardIndex - WHITE_PAWNS_BASELINE_START + 8
       : boardIndex - BLACK_PAWNS_BASELINE_START;
 
-    this.setStateBit(EN_PASSANT_BITMASKS[enPassentBitIndex]);
+    this.setStateBit(unchecked(EN_PASSANT_BITMASKS[enPassentBitIndex]));
     this.updateHashForEnPassent(previousEnPassantState);
   }
 
@@ -472,7 +477,7 @@ export class Board {
     const previousEnPassantState = this.getEnPassantStateBits();
 
     if (previousEnPassantState != 0) {
-      this.items[this.items.length - 1] &= (EN_PASSANT_BITMASKS[0] - 1);
+      unchecked(this.items[this.items.length - 1] &= (EN_PASSANT_BITMASKS[0] - 1));
       this.updateHashForEnPassent(previousEnPassantState);
     }
   };
@@ -482,10 +487,10 @@ export class Board {
 
     if (previousEnPassantState != newEnPassantState) {
       if (previousEnPassantState != 0) {
-        this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(previousEnPassantState)];
+        unchecked(this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(previousEnPassantState)]);
       }
       if (newEnPassantState != 0) {
-        this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(newEnPassantState)];
+        unchecked(this.hashCode ^= EN_PASSANT_RNG_NUMBERS[ctz(newEnPassantState)]);
       }
     }
   }
@@ -495,8 +500,8 @@ export class Board {
   }
 
   increaseHalfMoveCount(): void {
-    this.items[HALFMOVE_COUNT_INDEX]++;
-    this.items[HALFMOVE_CLOCK_INDEX]++;
+    unchecked(this.items[HALFMOVE_COUNT_INDEX]++);
+    unchecked(this.items[HALFMOVE_CLOCK_INDEX]++);
 
     this.hashCode ^= PLAYER_RNG_NUMBER;
   }
@@ -510,7 +515,7 @@ export class Board {
   }
 
   resetHalfMoveClock(): void {
-    this.items[HALFMOVE_CLOCK_INDEX] = 0;
+    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = 0);
   }
 
   getHalfMoveClock(): i32 {
@@ -526,11 +531,11 @@ export class Board {
   }
 
   getActivePlayer(): i32 {
-    return (this.items[HALFMOVE_COUNT_INDEX] & 1) === 0 ? WHITE : BLACK;
+    return (unchecked(this.items[HALFMOVE_COUNT_INDEX]) & 1) === 0 ? WHITE : BLACK;
   }
 
   getState(): i32 {
-    return this.items[this.items.length - 1];
+    return unchecked(this.items[this.items.length - 1]);
   }
 
   whiteKingMoved(): bool {
@@ -606,8 +611,8 @@ export class Board {
   };
 
   updateHashForCastling(previousCastlingState: i32): void {
-    this.hashCode ^= CASTLING_RNG_NUMBERS[previousCastlingState];
-    this.hashCode ^= CASTLING_RNG_NUMBERS[this.getCastlingStateBits()];
+    unchecked(this.hashCode ^= CASTLING_RNG_NUMBERS[previousCastlingState]);
+    unchecked(this.hashCode ^= CASTLING_RNG_NUMBERS[this.getCastlingStateBits()]);
   }
 
   getCastlingStateBits(): i32 {
@@ -615,11 +620,11 @@ export class Board {
   }
 
   setStateBit(bitMask: i32): void {
-    this.items[this.items.length - 1] |= bitMask;
+    unchecked(this.items[this.items.length - 1] |= bitMask);
   }
 
   clearStateBit(bitMask: i32): void {
-    this.items[this.items.length - 1] &= ~bitMask;
+    unchecked(this.items[this.items.length - 1] &= ~bitMask);
   }
 
   findKingPosition(playerColor: i32): i32 {
@@ -631,7 +636,7 @@ export class Board {
   }
 
   setState(state: i32): void {
-    this.items[this.items.length - 1] = state;
+    unchecked(this.items[this.items.length - 1] = state);
   }
 
   updateKingPosition(playerColor: i32, boardIndex: i32): void {
@@ -691,10 +696,10 @@ function calculateBoardPosToBitIndex(): Array<i32> {
 }
 
 
-export const BOARD_POS_TO_BIT_INDEX = calculateBoardPosToBitIndex();
+export const BOARD_POS_TO_BIT_INDEX = toInt32Array(calculateBoardPosToBitIndex());
 
-function calculateBoardPosToBitPattern(bitIndices: Array<i32>): Array<u64> {
-  const bitPatterns = new Array<u64>(bitIndices.length);
+function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
+  const bitPatterns = new Uint64Array(bitIndices.length);
   for (let i = 0; i < bitIndices.length; i++) {
     if (bitIndices[i] != -1) {
       bitPatterns[i] = 1 << u64(bitIndices[i]);
@@ -706,10 +711,10 @@ function calculateBoardPosToBitPattern(bitIndices: Array<i32>): Array<u64> {
 }
 
 
-export const BOARD_POS_TO_BIT_PATTERN: Array<u64> = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
+export const BOARD_POS_TO_BIT_PATTERN: Uint64Array = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
 
-function calculateHorizontalPatterns(): Array<u64> {
-  const patterns = new Array<u64>(64);
+function calculateHorizontalPatterns(): Uint64Array {
+  const patterns = new Uint64Array(64);
   for (let bit = 0; bit < 64; bit++) {
     const pattern: u64 = 0xFF << ((bit >> 3) << 3)
     patterns[bit] = pattern;
@@ -718,10 +723,10 @@ function calculateHorizontalPatterns(): Array<u64> {
   return patterns
 }
 
-export const HORIZONTAL_PATTERNS: Array<u64> = calculateHorizontalPatterns();
+export const HORIZONTAL_PATTERNS: Uint64Array = calculateHorizontalPatterns();
 
-function calculateVerticalPatterns(): Array<u64> {
-  const patterns = new Array<u64>(64);
+function calculateVerticalPatterns(): Uint64Array {
+  const patterns = new Uint64Array(64);
   const startPattern: u64 = 0x0101010101010101;
   for (let bit = 0; bit < 64; bit++) {
     const pattern: u64 = startPattern << (bit & 0x7);
@@ -731,10 +736,10 @@ function calculateVerticalPatterns(): Array<u64> {
   return patterns
 }
 
-export const VERTICAL_PATTERNS: Array<u64> = calculateVerticalPatterns();
+export const VERTICAL_PATTERNS: Uint64Array = calculateVerticalPatterns();
 
-function calculateDiagonalUpPatterns(): Array<u64> {
-  const patterns = new Array<u64>(64);
+function calculateDiagonalUpPatterns(): Uint64Array {
+  const patterns = new Uint64Array(64);
   for (let bit = 0; bit < 64; bit++) {
     const startCol = bit % 8;
     const startRow = bit / 8;
@@ -755,10 +760,10 @@ function calculateDiagonalUpPatterns(): Array<u64> {
   return patterns
 }
 
-export const DIAGONAL_UP_PATTERNS: Array<u64> = calculateDiagonalUpPatterns();
+export const DIAGONAL_UP_PATTERNS: Uint64Array = calculateDiagonalUpPatterns();
 
-function calculateDiagonalDownPatterns(): Array<u64> {
-  const patterns = new Array<u64>(64);
+function calculateDiagonalDownPatterns(): Uint64Array {
+  const patterns = new Uint64Array(64);
   for (let bit = 0; bit < 64; bit++) {
     const startCol = bit % 8;
     const startRow = bit / 8;
@@ -779,7 +784,7 @@ function calculateDiagonalDownPatterns(): Array<u64> {
   return patterns
 }
 
-export const DIAGONAL_DOWN_PATTERNS: Array<u64> = calculateDiagonalDownPatterns();
+export const DIAGONAL_DOWN_PATTERNS: Uint64Array = calculateDiagonalDownPatterns();
 
 
 export function isBorder(boardPos: i32): bool {
@@ -790,8 +795,9 @@ export function isBorder(boardPos: i32): bool {
   return boardPos % 10 == 0 || boardPos % 10 == 9;
 }
 
-function calculateKnightPatterns(): Array<u64> {
-  const patterns = new Array<u64>();
+function calculateKnightPatterns(): Uint64Array {
+  const patterns = new Uint64Array(64);
+  let index = 0;
   for (let boardPos = 21; boardPos <= 98; boardPos++) {
     if (isBorder(boardPos)) {
       continue;
@@ -806,13 +812,13 @@ function calculateKnightPatterns(): Array<u64> {
       }
     }
 
-    patterns.push(pattern);
+    patterns[index++] = pattern;
   }
 
   return patterns;
 }
 
-export const KNIGHT_PATTERNS: Array<u64> = calculateKnightPatterns();
+export const KNIGHT_PATTERNS: Uint64Array = calculateKnightPatterns();
 
 export const BLACK: i32 = -1;
 export const WHITE: i32 = 1;
@@ -839,7 +845,7 @@ const CASTLING_BITSTART = 7;
 
 const BITS: Array<i32> = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28];
 const EN_PASSANT_BITSTART = 13;
-const EN_PASSANT_BITMASKS: Array<i32> = BITS.map<i32>(calculateEnPassantBitMask);
+const EN_PASSANT_BITMASKS: Int32Array = toInt32Array(BITS.map<i32>(calculateEnPassantBitMask));
 
 function calculateEnPassantBitMask(bit: i32, index: i32, array: Array<i32>): i32 {
   return 1 << bit;
@@ -856,7 +862,7 @@ export const BLACK_ENPASSANT_LINE_START = 71;
 export const BLACK_ENPASSANT_LINE_END = 78
 
 
-export const PAWN_POSITION_SCORES: Array<i32> = [
+export const PAWN_POSITION_SCORES: Int32Array = toInt32Array([
   __,  0,  0,  0,  0,  0,  0,  0,  0, __,
   __, 10, 10, 10, 10, 10, 10, 10, 10, __,
   __,  2,  2,  4,  6,  6,  4,  2,  2, __,
@@ -865,9 +871,9 @@ export const PAWN_POSITION_SCORES: Array<i32> = [
   __,  1, -1, -2,  0,  0, -2, -1,  1, __,
   __,  1,  2,  2, -4, -4,  2,  2,  1, __,
   __,  0,  0,  0,  0,  0,  0,  0,  0, __
-];
+]);
 
-const KNIGHT_POSITION_SCORES: Array<i32> = [
+const KNIGHT_POSITION_SCORES: Int32Array = toInt32Array([
   __, -10, -8, -6, -6, -6, -6, -8,-10, __,
   __,  -8, -4,  0,  0,  0,  0, -4, -8, __,
   __,  -6,  0,  2,  3,  3,  2,  0, -6, __,
@@ -876,9 +882,9 @@ const KNIGHT_POSITION_SCORES: Array<i32> = [
   __,  -6,  1,  2,  3,  3,  2,  1, -6, __,
   __,  -8, -4,  0,  1,  1,  0, -4, -8, __,
   __, -10, -8, -6, -6, -6, -6, -8,-10, __,
-]
+]);
 
-const BISHOP_POSITION_SCORES: Array<i32> = [
+const BISHOP_POSITION_SCORES: Int32Array = toInt32Array([
   __, -4, -2, -2, -2, -2, -2, -2, -4, __,
   __, -2,  0,  0,  0,  0,  0,  0, -2, __,
   __, -2,  0,  1,  2,  2,  1,  0, -2, __,
@@ -887,9 +893,9 @@ const BISHOP_POSITION_SCORES: Array<i32> = [
   __, -2,  2,  2,  2,  2,  2,  2, -2, __,
   __, -2,  1,  0,  0,  0,  0,  1, -2, __,
   __, -4, -2, -2, -2, -2, -2, -2, -4, __
-]
+]);
 
-const ROOK_POSITION_SCORES: Array<i32> = [
+const ROOK_POSITION_SCORES: Int32Array = toInt32Array([
   __,  0,  0,  0,  0,  0,  0,  0,  0, __,
   __,  1,  2,  2,  2,  2,  2,  2,  1, __,
   __, -1,  0,  0,  0,  0,  0,  0, -1, __,
@@ -898,9 +904,9 @@ const ROOK_POSITION_SCORES: Array<i32> = [
   __, -1,  0,  0,  0,  0,  0,  0, -1, __,
   __, -1,  0,  0,  0,  0,  0,  0, -1, __,
   __,  0,  0,  0,  1,  1,  0,  0,  0, __
-]
+]);
 
-const QUEEN_POSITION_SCORES: Array<i32> = [
+const QUEEN_POSITION_SCORES: Int32Array = toInt32Array([
   __, -4, -2, -2, -1, -1, -2, -2, -4, __,
   __, -2,  0,  0,  0,  0,  0,  0, -2, __,
   __, -2,  0,  1,  1,  1,  1,  0, -2, __,
@@ -909,9 +915,9 @@ const QUEEN_POSITION_SCORES: Array<i32> = [
   __, -2,  1,  1,  1,  1,  1,  0, -2, __,
   __, -2,  0,  1,  0,  0,  0,  0, -2, __,
   __, -4, -2, -2, -1, -1, -2, -2, -4, __
-]
+]);
 
-const KING_POSITION_SCORES: Array<i32> = [
+const KING_POSITION_SCORES: Int32Array = toInt32Array([
   __, -6, -8, -8, -10, -10, -8, -8, -6, __,
   __, -6, -8, -8, -10, -10, -8, -8, -6, __,
   __, -6, -8, -8, -10, -10, -8, -8, -6, __,
@@ -920,15 +926,15 @@ const KING_POSITION_SCORES: Array<i32> = [
   __, -2, -4, -4,  -4,  -4, -4, -4, -2, __,
   __,  4,  4,  0,   0,   0,  0,  4,  4, __,
   __,  4,  6,  2,   0,   0,  2,  6,  4, __
-]
+]);
 
-const WHITE_POSITION_SCORES: Array<Array<i32>> = [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
+const WHITE_POSITION_SCORES: Array<Int32Array> = [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
                                                   ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES];
 
-const BLACK_POSITION_SCORES: Array<Array<i32>> = [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
+const BLACK_POSITION_SCORES: Array<Int32Array> = [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
                                                   mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)];
 
-export function mirrored(input: Array<i32>): Array<i32> {
+export function mirrored(input: Int32Array): Int32Array {
   let output = input.slice(0);
   for (let column: i32 = 0; column < 10; column++) {
     for (let row: i32 = 0; row < 4; row++) {

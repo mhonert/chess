@@ -17,7 +17,7 @@
     "styled-components": "^4.4.1"
   },
   "scripts": {
-    "asbuild": "asc assembly/index.ts -O3 -b public/as-api.wasm",
+    "asbuild": "asc assembly/index.ts --validate --optimizeLevel 3 --shrinkLevel 0 -b public/as-api.wasm",
     "asbuild:debug": "asc assembly/index.ts --debug -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",
     "jsbuild": "react-scripts build",
