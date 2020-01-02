@@ -67,6 +67,7 @@ let moveCount = 0;
 let skippedRootMoves = 0;
 let cacheHits = 0;
 
+
 // Recursively calls itself with alternating player colors to
 // find the best possible move in response to the current board position.
 function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i32, depth: i32): i32 {
@@ -75,7 +76,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
     return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
   }
 
-  let moves: Array<i32>;
+  let moves: Int32Array;
   if (depth == 0) {
     startTime = Date.now();
     skippedRootMoves = 0;
@@ -92,8 +93,8 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
 
 
   if (depth == 0 && moves.length == 1) {
-    const score = decodeScore(moves[0]);
-    const move = decodeMove(moves[0]);
+    const score = decodeScore(unchecked(moves[0]));
+    const move = decodeMove(unchecked(moves[0]));
     return encodeScoredMove(move, score * playerColor);
   }
 
@@ -108,7 +109,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
     let scoredMoves = 0;
 
     for (let i: i32 = 0; i < moves.length; i++) {
-      const scoredMove = moves[i];
+      const scoredMove = unchecked(moves[i]);
 
       if (depth == 0 && remainingLevels >= 5 && decodeScore(scoredMove) < medianScore) {
         skippedRootMoves++;
@@ -161,7 +162,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         score = -unadjustedScore;
 
         if (remainingLevels >= existingEntryDepth) {
-          TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(board.getHash(), remainingLevels, score);
+          unchecked(TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(board.getHash(), remainingLevels, score));
         }
       }
 
@@ -178,7 +179,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       }
 
       if (depth == 0) {
-        moves[i] = encodeScoredMove(move, score);
+        unchecked(moves[i] = encodeScoredMove(move, score));
         scoredMoves++;
 
         if (remainingLevels > minimumDepth && Date.now() - startTime >= timeLimitMillis) {
@@ -212,9 +213,9 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       return encodeScoredMove(bestMove, bestScore);
     }
 
-    moves.sort(whiteScoringComparator);
+    sortByScoreDescending(moves);
 
-    const move = moves[0];
+    const move = unchecked(moves[0]);
 
     if (remainingLevels >= minimumDepth && (Date.now() - startTime >= timeLimitMillis || (remainingLevels + 2) > TRANSPOSITION_MAX_DEPTH)) {
       trace('---------------------------------------------------');
@@ -228,7 +229,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
 
     resetScores(moves);
     if (moves.length > 8) {
-      medianScore = decodeScore(moves[moves.length / 2]);
+      medianScore = unchecked(decodeScore(moves[moves.length / 2]));
     } else {
       medianScore = MIN_SCORE;
     }
@@ -245,14 +246,13 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
 };
 
 
-function resetScores(moves: Array<i32>): void {
-  // const resetScore = WHITE_MATE_SCORE + 100 + moves.length;
+function resetScores(moves: Int32Array): void {
   for (let i: i32 = 0; i < moves.length; i++) {
-    let score: i32 = decodeScore(moves[i]) - 9;
+    let score: i32 = decodeScore(unchecked(moves[i])) - 9;
     if (score < WHITE_MATE_SCORE) {
       score = WHITE_MATE_SCORE;
     }
-    moves[i] = encodeScoredMove(decodeMove(moves[i]), score);
+    moves[i] = encodeScoredMove(decodeMove(unchecked(moves[i])), score);
   }
 }
 
@@ -281,28 +281,56 @@ function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
 //
 // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
 // the moves array can be modified and sorted in-place.
-function sortMovesByScore(board: Board, moves: Array<i32>, playerColor: i32): Array<i32> {
+export function sortMovesByScore(board: Board, moves: Int32Array, playerColor: i32): Int32Array {
 
   for (let i: i32 = 0; i < moves.length; i++) {
-    const score: i32 = evaluateMoveScore(board, moves[i]);
-    moves[i] = encodeScoredMove(moves[i], score);
+    const score: i32 = evaluateMoveScore(board, unchecked(moves[i]));
+    unchecked(moves[i] = encodeScoredMove(moves[i], score));
   }
 
   if (playerColor == WHITE) {
-    moves.sort(whiteScoringComparator);
+    sortByScoreDescending(moves);
   } else {
-    moves.sort(blackScoringComparator);
+    sortByScoreAscending(moves);
   }
 
   return moves;
 };
 
-function whiteScoringComparator(a: i32, b: i32): i32 {
-  return decodeScore(b) - decodeScore(a);
+export function sortByScoreDescending(moves: Int32Array): void {
+  // Basic insertion sort
+  for (let i = 1; i < moves.length; i++) {
+    const x = unchecked(moves[i]);
+    const xScore = decodeScore(x);
+    let j = i - 1;
+    while (j >= 0) {
+      const y = unchecked(moves[j]);
+      if (decodeScore(y) >= xScore) {
+        break;
+      }
+      unchecked(moves[j + 1] = y);
+      j--;
+    }
+    unchecked(moves[j + 1] = x);
+  }
 }
 
-function blackScoringComparator(a: i32, b: i32): i32 {
-  return decodeScore(a) - decodeScore(b);
+export function sortByScoreAscending(moves: Int32Array): void {
+  // Basic insertion sort
+  for (let i = 1; i < moves.length; i++) {
+    const x = unchecked(moves[i]);
+    const xScore = decodeScore(x);
+    let j = i - 1;
+    while (j >= 0) {
+      const y = unchecked(moves[j]);
+      if (decodeScore(y) <= xScore) {
+        break;
+      }
+      unchecked(moves[j + 1] = y);
+      j--;
+    }
+    unchecked(moves[j + 1] = x);
+  }
 }
 
 

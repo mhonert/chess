@@ -6,6 +6,7 @@ module.exports = {
     "--optimizeLevel": "3",
     "--shrinkLevel": "0",
   },
+
   disclude: [/node_modules/],
   outputBinary: false,
 };

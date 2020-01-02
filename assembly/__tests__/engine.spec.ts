@@ -25,6 +25,8 @@ import {
   encodeScoredMove,
   evaluatePosition,
   findBestMove,
+  sortByScoreAscending,
+  sortByScoreDescending,
   WHITE_MATE_SCORE
 } from '../engine';
 import {
@@ -39,6 +41,7 @@ import {
   WHITE_RIGHT_ROOK_MOVED
 } from '../board';
 import { encodeMove, isCheckMate } from '../move-generation';
+import { toInt32Array } from '../util';
 
 describe('Encode and decode scored moves', () => {
   it('Zero score', () => {
@@ -355,3 +358,60 @@ describe('Finds moves', () => {
   });
 });
 
+describe("Move list sorting", () => {
+  it("sorts moves descending by score", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
+
+    sortByScoreDescending(moves);
+
+    expect(decodeScore(moves[0])).toBe(27);
+    expect(decodeScore(moves[1])).toBe(15);
+    expect(decodeScore(moves[2])).toBe(12);
+    expect(decodeScore(moves[3])).toBe(5);
+  });
+
+  it("sorts empty move list descending", () => {
+    sortByScoreDescending(new Int32Array(0));
+  });
+
+  it("sorts moves with 1 element descending", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
+    sortByScoreDescending(moves);
+    expect(decodeScore(moves[0])).toBe(12);
+  });
+
+  it("sorts moves with 2 elements descending", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 5), encodeScoredMove(1, 12)]);
+    sortByScoreDescending(moves);
+    expect(decodeScore(moves[0])).toBe(12);
+    expect(decodeScore(moves[1])).toBe(5);
+  });
+
+  it("sorts moves ascending by score for black player", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
+
+    sortByScoreAscending(moves);
+
+    expect(decodeScore(moves[0])).toBe(5);
+    expect(decodeScore(moves[1])).toBe(12);
+    expect(decodeScore(moves[2])).toBe(15);
+    expect(decodeScore(moves[3])).toBe(27);
+  });
+
+  it("sorts empty move list ascending", () => {
+    sortByScoreAscending(new Int32Array(0));
+  });
+
+  it("sorts moves with 1 element ascending", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
+    sortByScoreAscending(moves);
+    expect(decodeScore(moves[0])).toBe(12);
+  });
+
+  it("sorts moves with 2 elements ascending", () => {
+    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5)]);
+    sortByScoreAscending(moves);
+    expect(decodeScore(moves[0])).toBe(5);
+    expect(decodeScore(moves[1])).toBe(12);
+  });
+});

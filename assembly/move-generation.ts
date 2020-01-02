@@ -30,139 +30,154 @@ import {
   WHITE_PAWNS_BASELINE_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { differentColor, sameColor } from './util';
+import { differentColor, sameColor, toInt32Array } from './util';
 
 
-export function generateMoves(board: Board, activeColor: i32): Array<i32> {
-  const moves = new Array<i32>();
+const MAX_MOVES = 218;
 
-  generatePieceMoves(moves, board, PAWN * activeColor, activeColor, generatePawnMoves);
-  generatePieceMoves(moves, board, KNIGHT * activeColor, activeColor, generateKnightMoves);
-  generatePieceMoves(moves, board, BISHOP * activeColor, activeColor, generateBishopMoves);
-  generatePieceMoves(moves, board, ROOK * activeColor, activeColor, generateRookMoves);
-  generatePieceMoves(moves, board, QUEEN * activeColor, activeColor, generateQueenMoves);
+export function generateMoves(board: Board, activeColor: i32): Int32Array {
+  const moves = new Int32Array(MAX_MOVES);
+
+  let count = generatePieceMoves(moves, 0, board, PAWN * activeColor, activeColor, generatePawnMoves);
+  count = generatePieceMoves(moves, count, board, KNIGHT * activeColor, activeColor, generateKnightMoves);
+  count = generatePieceMoves(moves, count, board, BISHOP * activeColor, activeColor, generateBishopMoves);
+  count = generatePieceMoves(moves, count, board, ROOK * activeColor, activeColor, generateRookMoves);
+  count = generatePieceMoves(moves, count, board, QUEEN * activeColor, activeColor, generateQueenMoves);
 
   // King moves
   const pos = board.findKingPosition(activeColor);
-  generateKingMoves(moves, board, activeColor, KING * activeColor, pos);
+  count = generateKingMoves(moves, count, board, activeColor, KING * activeColor, pos);
 
-  return moves;
+  return moves.subarray(0, count);
 }
 
+
 @inline
-function generatePieceMoves(moves: Array<i32>, board: Board, piece: i32, activeColor: i32,
-                            generate: (moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32) => void): void {
+function generatePieceMoves(moves: Int32Array, count: i32, board: Board, piece: i32, activeColor: i32,
+                            generate: (moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32) => i32): i32 {
   let bitboard = board.getBitBoard(piece + 6);
 
   while (bitboard != 0) {
     const bitPos: u64 = ctz(bitboard);
     bitboard ^= 1 << bitPos; // unset bit
     const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-    generate(moves, board, activeColor, piece, pos);
+    count = generate(moves, count, board, activeColor, piece, pos);
   }
+
+  return count;
 }
 
 
 // Generates and filters out any moves that would leave the own king in check.
-export function generateFilteredMoves(board: Board, activeColor: i32): Array<i32> {
+export function generateFilteredMoves(board: Board, activeColor: i32): Int32Array {
   const moves = generateMoves(board, activeColor);
-  const filteredMoves: Array<i32> = new Array<i32>();
+  const filteredMoves: Int32Array = new Int32Array(moves.length);
 
+  let index = 0;
   for (let i = 0; i < moves.length; i++) {
     const startIndex = decodeStartIndex(moves[i]);
     if (moveResultsInCheck(board, decodePiece(moves[i]), startIndex, decodeEndIndex(moves[i]), activeColor )) {
       continue;
     }
 
-    filteredMoves.push(moves[i]);
+    filteredMoves[index++] = moves[i];
   }
 
-  return filteredMoves;
+  return filteredMoves.subarray(0, index);
 }
 
 
-function generatePawnMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
+function generatePawnMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
   const moveDirection = -activeColor;
 
   if ((activeColor == WHITE && start < 39) || (activeColor == BLACK && start > 80)) {
-    generateDiagonalPawnMove(moves, board, activeColor, piece, start, start + 9 * moveDirection, true);
-    generateStraightPawnMove(moves, board, activeColor, piece, start, start + 10 * moveDirection, true);
-    generateDiagonalPawnMove(moves, board, activeColor, piece, start, start + 11 * moveDirection, true);
-    return;
+    count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 9 * moveDirection, true);
+    count = generateStraightPawnMove(moves, count, board, activeColor, piece, start, start + 10 * moveDirection, true);
+    count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 11 * moveDirection, true);
+    return count;
   }
 
-  generateDiagonalPawnMove(moves, board, activeColor, piece, start, start + 9 * moveDirection, false);
-  generateStraightPawnMove(moves, board, activeColor, piece, start, start + 10 * moveDirection, false);
-  generateDiagonalPawnMove(moves, board, activeColor, piece, start, start + 11 * moveDirection, false);
+  count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 9 * moveDirection, false);
+  count = generateStraightPawnMove(moves, count, board, activeColor, piece, start, start + 10 * moveDirection, false);
+  count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 11 * moveDirection, false);
 
   if (activeColor == WHITE && start >= WHITE_PAWNS_BASELINE_START && start <= WHITE_PAWNS_BASELINE_END) {
-    generateStraightDoublePawnMove(moves, board, activeColor, piece, start, start + 20 * moveDirection);
+    count = generateStraightDoublePawnMove(moves, count, board, activeColor, piece, start, start + 20 * moveDirection);
   } else if (activeColor == BLACK && start >= BLACK_PAWNS_BASELINE_START && start <= BLACK_PAWNS_BASELINE_END) {
-    generateStraightDoublePawnMove(moves, board, activeColor, piece, start, start + 20 * moveDirection);
+    count = generateStraightDoublePawnMove(moves, count, board, activeColor, piece, start, start + 20 * moveDirection);
   }
+
+  return count;
 };
 
-function generateStraightPawnMove(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
+
+function generateStraightPawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): i32 {
   if (!board.isEmpty(end)) {
-    return;
+    return count;
   }
 
   if (createPromotions) {
-    moves.push(encodeMove(KNIGHT, start, end));
-    moves.push(encodeMove(BISHOP, start, end));
-    moves.push(encodeMove(ROOK, start, end));
-    moves.push(encodeMove(QUEEN, start, end));
+    unchecked(moves[count++] = encodeMove(KNIGHT, start, end));
+    unchecked(moves[count++] = encodeMove(BISHOP, start, end));
+    unchecked(moves[count++] = encodeMove(ROOK, start, end));
+    unchecked(moves[count++] = encodeMove(QUEEN, start, end));
 
   } else {
-    moves.push(encodeMove(piece, start, end));
+    unchecked(moves[count++] = encodeMove(piece, start, end));
 
   }
+
+  return count;
 }
 
-function generateStraightDoublePawnMove(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32, end: i32): void {
+function generateStraightDoublePawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
   if (!board.isEmpty(end)) {
-    return;
+    return count;
   }
 
   const direction = -activeColor;
   if (!board.isEmpty(start + direction * 10)) {
-    return;
+    return count;
   }
 
-  moves.push(encodeMove(piece, start, end));
+  unchecked(moves[count++] = encodeMove(piece, start, end));
+
+  return count;
 }
 
-function generateDiagonalPawnMove(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
+function generateDiagonalPawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): i32 {
   const targetPiece = board.getItem(end);
   if (targetPiece == BOARD_BORDER) {
-    return;
+    return count;
   }
 
   if (targetPiece == EMPTY) {
     if (!board.isEnPassentPossible(activeColor, end)) {
-      return;
+      return count;
     }
   } else if (!differentColor(targetPiece, activeColor)) {
-    return;
+    return count;
   }
 
   if (createPromotions) {
-    moves.push(encodeMove(KNIGHT, start, end));
-    moves.push(encodeMove(BISHOP, start, end));
-    moves.push(encodeMove(ROOK, start, end));
-    moves.push(encodeMove(QUEEN, start, end));
+    unchecked(moves[count++] = encodeMove(KNIGHT, start, end));
+    unchecked(moves[count++] = encodeMove(BISHOP, start, end));
+    unchecked(moves[count++] = encodeMove(ROOK, start, end));
+    unchecked(moves[count++] = encodeMove(QUEEN, start, end));
 
   } else {
-    moves.push(encodeMove(piece, start, end));
+    unchecked(moves[count++] = encodeMove(piece, start, end));
 
   }
+
+  return count;
 }
 
-export const KNIGHT_DIRECTIONS: Array<i32> = [21, 19, 12, 8, -12, -21, -19, -8];
+export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
 
-function generateKnightMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
+function generateKnightMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
   for (let i: i32 = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-    const offset = KNIGHT_DIRECTIONS[i];
+    const offset = unchecked(KNIGHT_DIRECTIONS[i]);
 
     const end = start + offset;
     if (board.isBorder(end)) {
@@ -174,64 +189,64 @@ function generateKnightMoves(moves: Array<i32>, board: Board, activeColor: i32, 
       continue;
     }
 
-    moves.push(encodeMove(piece, start, start + offset));
+    unchecked(moves[count++] = encodeMove(piece, start, start + offset));
   }
+  return count;
 };
 
 
-const DIAGONAL_DIRECTIONS: Array<i32> = [9, 11, -9, -11];
+@inline
+function generateBishopMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 9);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 11);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -9);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -11);
+  return count;
+};
+
+@inline
+function generateRookMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 1);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 10);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -1);
+  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -10);
+  return count;
+};
+
+
 const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
 
-@inline
-function generateBishopMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
-  for (let i: i32 = 0; i < DIAGONAL_DIRECTIONS.length; i++) {
-    const direction = DIAGONAL_DIRECTIONS[i];
-    generateSlidingPieceMoves(moves, board, activeColor, piece, start, direction);
-  }
-};
-
-const ORTHOGONAL_DIRECTIONS: Array<i32> = [1, 10, -1, -10];
-
-@inline
-function generateRookMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
-  for (let i: i32 = 0; i < ORTHOGONAL_DIRECTIONS.length; i++) {
-    const direction = ORTHOGONAL_DIRECTIONS[i];
-
-    generateSlidingPieceMoves(moves, board, activeColor, piece, start, direction);
-  }
-};
-
-function generateSlidingPieceMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32, direction: i32): void {
+function generateSlidingPieceMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, direction: i32): i32 {
   for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
     const end = start + direction * distance;
 
     const targetPiece = board.getItem(end);
     if (targetPiece == EMPTY) {
-      moves.push(encodeMove(piece, start, end));
+      unchecked(moves[count++] = encodeMove(piece, start, end));
       continue;
     }
 
     if (sameColor(targetPiece, activeColor)) {
-      return;
+      return count;
     }
 
     if (targetPiece == BOARD_BORDER) {
-      return;
+      return count;
     }
 
-    moves.push(encodeMove(piece, start, end));
-    return;
+    unchecked(moves[count++] = encodeMove(piece, start, end));
+    return count;
   }
+
+  return count;
 }
 
-function generateQueenMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
+function generateQueenMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
   // reuse move generators
-  generateBishopMoves(moves, board, activeColor, piece, start);
-  generateRookMoves(moves, board, activeColor, piece, start);
+  count = generateBishopMoves(moves, count, board, activeColor, piece, start);
+  return generateRookMoves(moves, count, board, activeColor, piece, start);
 };
 
-
-const KING_DIRECTIONS: Array<i32> = ORTHOGONAL_DIRECTIONS.concat(DIAGONAL_DIRECTIONS);
 
 function isValidWhiteSmallCastlingMove(board: Board): bool {
   return (board.isEmpty(WHITE_KING_START + 1) && board.isEmpty(WHITE_KING_START + 2)) &&
@@ -262,9 +277,11 @@ function isValidBlackBigCastlingMove(board: Board): bool {
   !isAttacked(board, WHITE, BLACK_KING_START - 2);
 }
 
-function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, piece: i32, start: i32): void {
+const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
+
+function generateKingMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
   for (let i = 0; i < KING_DIRECTIONS.length; i++) {
-    const end = start + KING_DIRECTIONS[i];
+    const end = start + unchecked(KING_DIRECTIONS[i]);
 
     const targetPiece = board.getItem(end);
     if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
@@ -275,27 +292,29 @@ function generateKingMoves(moves: Array<i32>, board: Board, activeColor: i32, pi
       continue;
     }
 
-    moves.push(encodeMove(piece, start, end));
+    unchecked(moves[count++] = encodeMove(piece, start, end));
   }
 
   if (activeColor == WHITE && start == WHITE_KING_START && !board.whiteKingMoved()) {
     if (!board.whiteRightRookMoved() && isValidWhiteSmallCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start + 2));
+      unchecked(moves[count++] = encodeMove(piece, start, start + 2));
     }
 
     if (!board.whiteLeftRookMoved() && isValidWhiteBigCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start - 2));
+      unchecked(moves[count++] = encodeMove(piece, start, start - 2));
     }
 
   } else if (activeColor == BLACK && start == BLACK_KING_START && !board.blackKingMoved()) {
     if (!board.blackRightRookMoved() && isValidBlackSmallCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start + 2));
+      unchecked(moves[count++] = encodeMove(piece, start, start + 2));
     }
 
     if (!board.blackLeftRookMoved() && isValidBlackBigCastlingMove(board)) {
-      moves.push(encodeMove(piece, start, start - 2));
+      unchecked(moves[count++] = encodeMove(piece, start, start - 2));
     }
   }
+
+  return count;
 };
 
 
@@ -435,9 +454,9 @@ export function isCheckMate(board: Board, activeColor: i32): bool {
 }
 
 
-function hasNoValidMoves(board: Board, activeColor: i32, moves: Array<i32>): bool {
+function hasNoValidMoves(board: Board, activeColor: i32, moves: Int32Array): bool {
   for (let i = 0; i < moves.length; i++) {
-    const move = moves[i];
+    const move = unchecked(moves[i]);
     if (!moveResultsInCheck(board, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move), activeColor)) {
       return false;
     }
@@ -464,7 +483,7 @@ export function decodeEndIndex(encodedMove: i32): i32 {
   return (encodedMove >> 10) & 0x7F;
 }
 
-export function logMoves(moves: Array<i32>): void {
+export function logMoves(moves: Int32Array): void {
   trace("# of moves:", 1, moves.length);
 
   for (let i = 0; i < moves.length; i++) {

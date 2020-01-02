@@ -42,8 +42,9 @@ export function perft(board: Board, depth: i32): u64 {
 
   const activePlayer = board.getActivePlayer();
   const moves = generateMoves(board, activePlayer);
+
   for (let i = 0; i < moves.length; i++) {
-    const move = moves[i];
+    const move = unchecked(moves[i]);
 
     const targetPieceId = decodePiece(move);
     const moveStart = decodeStartIndex(move);
