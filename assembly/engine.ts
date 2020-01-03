@@ -42,10 +42,359 @@ export const MAX_SCORE = 16383;
 export const WHITE_MATE_SCORE: i32 = -16000;
 export const BLACK_MATE_SCORE: i32 = 16000;
 
+export class Engine {
+
+  private board: Board;
+  private startTime: i64 = 0;
+  private moveCount: i32 = 0;
+  private cacheHits: i32 = 0;
+  private timeLimitMillis: i32;
+  private minimumDepth: i32;
+
+  setBoard(board: Board): void {
+    this.board = board;
+  }
+
+  // Find the best possible move in response to the current board position.
+  findBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i32, depth: i32): i32 {
+
+    this.timeLimitMillis = timeLimitMillis;
+    this.minimumDepth = minimumDepth;
+    this.startTime = Date.now();
+    this.moveCount = 0;
+    this.cacheHits = 0;
+
+    const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor);
+
+    if (moves.length == 1) {
+      const score = decodeScore(unchecked(moves[0]));
+      const move = decodeMove(unchecked(moves[0]));
+      return encodeScoredMove(move, score * playerColor);
+    }
+
+    if (moves.length == 0) {
+      // no more moves possible (i.e. check mate or stale mate)
+      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+    }
+
+
+    let bestMove: i32 = 0;
+
+    const initialAlpha = alpha;
+
+    // Use iterative deepening, i.e. increase the search depth after each iteration
+    do {
+      trace('---------------------------------------------------');
+      trace('Start with search depth: ', 1, remainingLevels);
+
+      alpha = initialAlpha;
+      let bestScore: i32 = MIN_SCORE;
+      let scoredMoves = 0;
+
+      for (let i: i32 = 0; i < moves.length; i++) {
+        const scoredMove = unchecked(moves[i]);
+
+        const move = decodeMove(scoredMove);
+
+        const targetPieceId = decodePiece(move);
+        const moveStart = decodeStartIndex(move);
+        const moveEnd = decodeEndIndex(move);
+        const previousPiece = this.board.getItem(moveStart);
+
+        const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+        this.moveCount++;
+
+
+        const result = this.recFindBestMove(
+          -beta,
+          -alpha,
+          -playerColor,
+          remainingLevels - 1,
+          depth + 1
+        );
+        if (result == -1) {
+          if (depth > 0) {
+            return -1;
+          }
+          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+          break;
+        }
+
+        let unadjustedScore: i32 = decodeScore(result);
+
+        const score = -unadjustedScore;
+
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+
+        // Use mini-max algorithm ...
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
+
+        unchecked(moves[i] = encodeScoredMove(move, score));
+        scoredMoves++;
+
+        if (remainingLevels > minimumDepth && Date.now() - this.startTime >= timeLimitMillis) {
+          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+          break;
+        }
+
+        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+        alpha = max(alpha, bestScore);
+        if (alpha >= beta) {
+          break;
+        }
+      }
+
+      this.sortByScoreDescending(moves);
+
+      const move = unchecked(moves[0]);
+
+      if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 2) > TRANSPOSITION_MAX_DEPTH)) {
+        trace('---------------------------------------------------');
+        trace('Evaluated ' + this.moveCount.toString() + ' moves');
+        trace('Cache hits ' + this.cacheHits.toString());
+        logScoredMove(move, 'Selected move');
+        return move;
+      }
+
+      this.resetScores(moves);
+
+      logScoredMove(move, 'Current best move');
+
+      remainingLevels += 2;
+
+    } while (true);
+
+    return 0;
+  };
+
+  // Recursively calls itself with alternating player colors to
+  // find the best possible move in response to the current board position.
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32): i32 {
+
+    if (remainingLevels <= 0) {
+      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+    }
+
+    const moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+
+    if (moves.length == 0) {
+      // no more moves possible (i.e. check mate or stale mate)
+      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+    }
+
+    let bestMove: i32 = 0;
+
+    let bestScore: i32 = MIN_SCORE;
+
+    const len = moves.length;
+    for (let i: i32 = 0; i < len; i++) {
+      const scoredMove = unchecked(moves[i]);
+
+      const move = decodeMove(scoredMove);
+
+      const targetPieceId = decodePiece(move);
+      const moveStart = decodeStartIndex(move);
+      const moveEnd = decodeEndIndex(move);
+      const previousPiece = this.board.getItem(moveStart);
+
+      const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+      this.moveCount++;
+
+
+      let score = i32.MIN_VALUE; // Score for invalid move
+
+      const transpositionIndex = i32(this.board.getHash() & TRANSPOSITION_INDEX_BITMASK);
+      const cacheEntry = unchecked(TRANSPOSITION_TABLE[transpositionIndex]);
+
+      if (cacheEntry != 0 && decodeTranspositionDepth(cacheEntry) == remainingLevels && matchesTranspositionHash(this.board.getHash(), cacheEntry)) {
+        score = decodeTranspositionScore(cacheEntry);
+        this.cacheHits++;
+
+      } else if (!this.board.isInCheck(playerColor)) {
+        const result = this.recFindBestMove(
+          -beta,
+          -alpha,
+          -playerColor,
+          remainingLevels - 1,
+          depth + 1
+        );
+        if (result == -1) {
+          return -1;
+        }
+
+        let unadjustedScore: i32 = decodeScore(result);
+
+        score = -unadjustedScore;
+
+        unchecked(TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(this.board.getHash(), remainingLevels, score));
+      }
+
+      this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+
+      if (score == i32.MIN_VALUE) {
+        continue; // skip this invalid move
+      }
+
+      // Use mini-max algorithm ...
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = move;
+      }
+
+      if (depth == this.minimumDepth && Date.now() - this.startTime >= this.timeLimitMillis) {
+        // Cancel search
+        return -1;
+      }
+
+      // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+      alpha = max(alpha, bestScore);
+      if (alpha >= beta) {
+        break;
+      }
+    }
+
+    if (bestMove == 0) { // no legal move found?
+      if (this.board.isInCheck(playerColor)) {
+        // Check mate
+        return encodeScoredMove(0, WHITE_MATE_SCORE - (100 - depth));
+      }
+
+      // Stalemate
+      return encodeScoredMove(0, 0);
+    }
+
+    return encodeScoredMove(bestMove, bestScore);
+  };
+
+
+  resetScores(moves: Int32Array): void {
+    for (let i: i32 = 0; i < moves.length; i++) {
+      let score: i32 = decodeScore(unchecked(moves[i])) - 9;
+      if (score < WHITE_MATE_SCORE) {
+        score = WHITE_MATE_SCORE;
+      }
+      moves[i] = encodeScoredMove(decodeMove(unchecked(moves[i])), score);
+    }
+  }
+
+
+  // Evaluate board position with the given move performed
+  // (low values are better for black and high values are better for white)
+  evaluateMoveScore(encodedMove: i32): i32 {
+
+    const targetPieceId = decodePiece(encodedMove);
+    const moveStart = decodeStartIndex(encodedMove);
+    const moveEnd = decodeEndIndex(encodedMove);
+    const previousPiece = this.board.getItem(moveStart);
+
+    const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+
+    const score = this.evaluatePosition();
+
+    this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+
+    return score;
+  };
+
+
+  // Evaluates and sorts all given moves.
+  // The moves will be sorted in descending order starting with the best scored moved for the given player color.
+  //
+  // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
+  // the moves array can be modified and sorted in-place.
+  sortMovesByScore(moves: Int32Array, playerColor: i32): Int32Array {
+
+    for (let i: i32 = 0; i < moves.length; i++) {
+      const score: i32 = this.evaluateMoveScore(unchecked(moves[i]));
+      unchecked(moves[i] = encodeScoredMove(moves[i], score));
+    }
+
+    if (playerColor == WHITE) {
+      this.sortByScoreDescending(moves);
+    } else {
+      this.sortByScoreAscending(moves);
+    }
+
+    return moves;
+  };
+
+  sortByScoreDescending(moves: Int32Array): void {
+    // Basic insertion sort
+    for (let i = 1; i < moves.length; i++) {
+      const x = unchecked(moves[i]);
+      const xScore = decodeScore(x);
+      let j = i - 1;
+      while (j >= 0) {
+        const y = unchecked(moves[j]);
+        if (decodeScore(y) >= xScore) {
+          break;
+        }
+        unchecked(moves[j + 1] = y);
+        j--;
+      }
+      unchecked(moves[j + 1] = x);
+    }
+  }
+
+  sortByScoreAscending(moves: Int32Array): void {
+    // Basic insertion sort
+    for (let i = 1; i < moves.length; i++) {
+      const x = unchecked(moves[i]);
+      const xScore = decodeScore(x);
+      let j = i - 1;
+      while (j >= 0) {
+        const y = unchecked(moves[j]);
+        if (decodeScore(y) <= xScore) {
+          break;
+        }
+        unchecked(moves[j + 1] = y);
+        j--;
+      }
+      unchecked(moves[j + 1] = x);
+    }
+  }
+
+
+  /** Evaluates the current position and generates a score.
+   *  Scores below 0 are better for the black and above 0 better for the white player.
+   *
+   * @param board
+   * @returns {number} Position score
+   */
+  evaluatePosition(): i32 {
+    // Check mate is the best possible score for the other player
+    if (isCheckMate(this.board, BLACK)) {
+      return BLACK_MATE_SCORE;
+    } else if (isCheckMate(this.board, WHITE)) {
+      return WHITE_MATE_SCORE;
+    }
+
+    return this.board.getScore();
+  };
+
+  // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
+  // to prevent unnecessary delays.
+  adjustedPositionScore( depth: i32): i32 {
+    const score = this.evaluatePosition();
+
+    if (score == BLACK_MATE_SCORE) {
+      return score + (100 - depth);
+    } else if (score == WHITE_MATE_SCORE) {
+      return score - (100 - depth);
+    }
+
+    return score;
+  };
+}
+
+const ENGINE = new Engine();
+
 export function findBestMove(board: Board, playerColor: i32, exactDepth: i32): i32 {
   return findBestMoveIncrementally(board, playerColor, exactDepth, exactDepth, 0);
 }
-
 
 /** Finds the best move for the current player color.
  *
@@ -59,316 +408,14 @@ export function findBestMoveIncrementally(board: Board, playerColor: i32, starti
   let alpha: i32 = MIN_SCORE;
   let beta: i32 = MAX_SCORE;
 
-  const result = recFindBestMove(board, alpha, beta, playerColor, startingDepth, minimumDepth, timeLimitMillis, 0);
+  ENGINE.setBoard(board);
+  const result = ENGINE.findBestMove(alpha, beta, playerColor, startingDepth, minimumDepth, timeLimitMillis, 0);
 
   return decodeMove(result);
 };
 
 
-// Used within recFindBestMove for time management and statistics
-let startTime: i64 = 0;
-let moveCount = 0;
-let skippedRootMoves = 0;
-let cacheHits = 0;
-
-
-// Recursively calls itself with alternating player colors to
-// find the best possible move in response to the current board position.
-function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i32, depth: i32): i32 {
-
-  if (remainingLevels <= 0) {
-    return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
-  }
-
-  let moves: Int32Array;
-  if (depth == 0) {
-    startTime = Date.now();
-    skippedRootMoves = 0;
-    cacheHits = 0;
-    moves = sortMovesByScore(board, generateFilteredMoves(board, playerColor), playerColor);
-  } else {
-    moves = sortMovesByScore(board, generateMoves(board, playerColor), playerColor);
-  }
-
-  if (moves.length == 0) {
-    // no more moves possible (i.e. check mate or stale mate)
-    return encodeScoredMove(0, adjustedPositionScore(board, depth) * playerColor);
-  }
-
-
-  if (depth == 0 && moves.length == 1) {
-    const score = decodeScore(unchecked(moves[0]));
-    const move = decodeMove(unchecked(moves[0]));
-    return encodeScoredMove(move, score * playerColor);
-  }
-
-  let bestMove: i32 = 0;
-  let medianScore: i32 = MIN_SCORE;
-
-  const initialAlpha = alpha;
-
-  do {
-    alpha = initialAlpha;
-    let bestScore: i32 = MIN_SCORE;
-    let scoredMoves = 0;
-
-    for (let i: i32 = 0; i < moves.length; i++) {
-      const scoredMove = unchecked(moves[i]);
-
-      if (depth == 0 && remainingLevels >= 5 && decodeScore(scoredMove) < medianScore) {
-        skippedRootMoves++;
-        continue;
-      }
-
-      const move = decodeMove(scoredMove);
-
-      const targetPieceId = decodePiece(move);
-      const moveStart = decodeStartIndex(move);
-      const moveEnd = decodeEndIndex(move);
-      const previousPiece = board.getItem(moveStart);
-
-      const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
-      moveCount++;
-
-
-      let score = i32.MIN_VALUE; // Score for invalid move
-
-      const transpositionIndex = i32(board.getHash() & TRANSPOSITION_INDEX_BITMASK);
-      const cacheEntry = unchecked(TRANSPOSITION_TABLE[transpositionIndex]);
-      let existingEntryDepth = decodeTranspositionDepth(cacheEntry);
-
-      if (cacheEntry != 0 && existingEntryDepth == remainingLevels && matchesTranspositionHash(board.getHash(), cacheEntry)) {
-        score = decodeTranspositionScore(cacheEntry);
-        cacheHits++;
-
-      } else if (!board.isInCheck(playerColor)) {
-        existingEntryDepth = 1;
-        const result = recFindBestMove(
-          board,
-          -beta,
-          -alpha,
-          -playerColor,
-          remainingLevels - 1,
-          minimumDepth,
-          timeLimitMillis,
-          depth + 1
-        );
-        if (result == -1) {
-          if (depth > 0) {
-            return -1;
-          }
-          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
-          break;
-        }
-
-        let unadjustedScore: i32 = decodeScore(result);
-
-        score = -unadjustedScore;
-
-        if (remainingLevels >= existingEntryDepth) {
-          unchecked(TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(board.getHash(), remainingLevels, score));
-        }
-      }
-
-      board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-
-      if (score == i32.MIN_VALUE) {
-        continue; // skip this invalid move
-      }
-
-      // Use mini-max algorithm ...
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = move;
-      }
-
-      if (depth == 0) {
-        unchecked(moves[i] = encodeScoredMove(move, score));
-        scoredMoves++;
-
-        if (remainingLevels > minimumDepth && Date.now() - startTime >= timeLimitMillis) {
-          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
-          break;
-        }
-
-      } else if (depth == minimumDepth && Date.now() - startTime >= timeLimitMillis) {
-        // Cancel search
-        return -1;
-      }
-
-      // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-      alpha = max(alpha, bestScore);
-      if (alpha >= beta) {
-        break;
-      }
-    }
-
-    if (depth > 0) {
-      if (bestMove == 0) { // no legal move found?
-        if (board.isInCheck(playerColor)) {
-          // Check mate
-          return encodeScoredMove(0, WHITE_MATE_SCORE - (100 - depth));
-        }
-
-        // Stalemate
-        return encodeScoredMove(0, 0);
-      }
-
-      return encodeScoredMove(bestMove, bestScore);
-    }
-
-    sortByScoreDescending(moves);
-
-    const move = unchecked(moves[0]);
-
-    if (remainingLevels >= minimumDepth && (Date.now() - startTime >= timeLimitMillis || (remainingLevels + 2) > TRANSPOSITION_MAX_DEPTH)) {
-      trace('---------------------------------------------------');
-      trace('Evaluated ' + moveCount.toString() + ' moves');
-      trace('Skipped ' + skippedRootMoves.toString() + ' root moves');
-      trace('Cache hits ' + cacheHits.toString());
-      logScoredMove(move, 'Selected move');
-      moveCount = 0;
-      return move;
-    }
-
-    resetScores(moves);
-    if (moves.length > 8) {
-      medianScore = unchecked(decodeScore(moves[moves.length / 2]));
-    } else {
-      medianScore = MIN_SCORE;
-    }
-
-    trace('---------------------------------------------------');
-    trace('Finished depth: ', 1, remainingLevels);
-    logScoredMove(move, 'Current best move');
-
-    remainingLevels += 2;
-
-  } while (true);
-
-  return 0;
-};
-
-
-function resetScores(moves: Int32Array): void {
-  for (let i: i32 = 0; i < moves.length; i++) {
-    let score: i32 = decodeScore(unchecked(moves[i])) - 9;
-    if (score < WHITE_MATE_SCORE) {
-      score = WHITE_MATE_SCORE;
-    }
-    moves[i] = encodeScoredMove(decodeMove(unchecked(moves[i])), score);
-  }
-}
-
-
-// Evaluate board position with the given move performed
-// (low values are better for black and high values are better for white)
-function evaluateMoveScore(board: Board, encodedMove: i32): i32 {
-
-  const targetPieceId = decodePiece(encodedMove);
-  const moveStart = decodeStartIndex(encodedMove);
-  const moveEnd = decodeEndIndex(encodedMove);
-  const previousPiece = board.getItem(moveStart);
-
-  const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
-
-  const score = evaluatePosition(board);
-
-  board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-
-  return score;
-};
-
-
-// Evaluates and sorts all given moves.
-// The moves will be sorted in descending order starting with the best scored moved for the given player color.
-//
-// The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
-// the moves array can be modified and sorted in-place.
-export function sortMovesByScore(board: Board, moves: Int32Array, playerColor: i32): Int32Array {
-
-  for (let i: i32 = 0; i < moves.length; i++) {
-    const score: i32 = evaluateMoveScore(board, unchecked(moves[i]));
-    unchecked(moves[i] = encodeScoredMove(moves[i], score));
-  }
-
-  if (playerColor == WHITE) {
-    sortByScoreDescending(moves);
-  } else {
-    sortByScoreAscending(moves);
-  }
-
-  return moves;
-};
-
-export function sortByScoreDescending(moves: Int32Array): void {
-  // Basic insertion sort
-  for (let i = 1; i < moves.length; i++) {
-    const x = unchecked(moves[i]);
-    const xScore = decodeScore(x);
-    let j = i - 1;
-    while (j >= 0) {
-      const y = unchecked(moves[j]);
-      if (decodeScore(y) >= xScore) {
-        break;
-      }
-      unchecked(moves[j + 1] = y);
-      j--;
-    }
-    unchecked(moves[j + 1] = x);
-  }
-}
-
-export function sortByScoreAscending(moves: Int32Array): void {
-  // Basic insertion sort
-  for (let i = 1; i < moves.length; i++) {
-    const x = unchecked(moves[i]);
-    const xScore = decodeScore(x);
-    let j = i - 1;
-    while (j >= 0) {
-      const y = unchecked(moves[j]);
-      if (decodeScore(y) <= xScore) {
-        break;
-      }
-      unchecked(moves[j + 1] = y);
-      j--;
-    }
-    unchecked(moves[j + 1] = x);
-  }
-}
-
-
-/** Evaluates the current position and generates a score.
- *  Scores below 0 are better for the black and above 0 better for the white player.
- *
- * @param board
- * @returns {number} Position score
- */
-export function evaluatePosition(board: Board): i32 {
-  // Check mate is the best possible score for the other player
-  if (isCheckMate(board, BLACK)) {
-    return BLACK_MATE_SCORE;
-  } else if (isCheckMate(board, WHITE)) {
-    return WHITE_MATE_SCORE;
-  }
-
-  return board.getScore();
-};
-
-// If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
-// to prevent unnecessary delays.
-function adjustedPositionScore(board: Board, depth: i32): i32 {
-  const score = evaluatePosition(board);
-
-  if (score == BLACK_MATE_SCORE) {
-    return score + (100 - depth);
-  } else if (score == WHITE_MATE_SCORE) {
-    return score - (100 - depth);
-  }
-
-  return score;
-};
-
+// Helper functions
 
 export function encodeScoredMove(move: i32, score: i32): i32 {
   if (score < 0) {

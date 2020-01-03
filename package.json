@@ -28,6 +28,7 @@
     "test": "asp",
     "perft:full": "asp --nortrace -c as-pect-perft.config.js --test='.*#full.*'",
     "perft:quick": "asp --nortrace -c as-pect-perft.config.js --test='.*#quick.*'",
+    "perft:engine": "asp --nortrace -c as-pect-perft.config.js --test='.*#engine.*'",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build"

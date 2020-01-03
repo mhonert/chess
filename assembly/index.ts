@@ -48,8 +48,8 @@ const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [3, 0],
   [3, 200],
   [5, 250],
-  [5, 2500],
-  [7, 5000]
+  [5, 750],
+  [7, 750]
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {

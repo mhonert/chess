@@ -22,11 +22,8 @@ import {
   BLACK_MATE_SCORE,
   decodeMove,
   decodeScore,
-  encodeScoredMove,
-  evaluatePosition,
+  encodeScoredMove, Engine,
   findBestMove, findBestMoveIncrementally,
-  sortByScoreAscending,
-  sortByScoreDescending,
   WHITE_MATE_SCORE
 } from '../engine';
 import {
@@ -93,7 +90,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
-    const score = evaluatePosition(new Board(board));
+    const engine = new Engine();
+    engine.setBoard(new Board(board));
+    const score = engine.evaluatePosition();
+
     expect(score).toBe(0);
   });
 
@@ -134,7 +134,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
-    const score = evaluatePosition(new Board(board));
+    const engine = new Engine();
+    engine.setBoard(new Board(board));
+    const score = engine.evaluatePosition();
+
     expect(score).toBeGreaterThan(0);
   });
 
@@ -154,7 +157,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ];
 
-    const score = evaluatePosition(new Board(board));
+    const engine = new Engine();
+    engine.setBoard(new Board(board));
+    const score = engine.evaluatePosition();
+
     expect(score).toBeGreaterThan(0);
   });
 
@@ -174,7 +180,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
     ];
 
-    const score = evaluatePosition(new Board(board));
+    const engine = new Engine();
+    engine.setBoard(new Board(board));
+    const score = engine.evaluatePosition();
+
     expect(score).toBeGreaterThan(0);
   });
 
@@ -194,7 +203,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    const score = evaluatePosition(board);
+    const engine = new Engine();
+    engine.setBoard(board);
+    const score = engine.evaluatePosition();
+
     expect(score).toBe(WHITE_MATE_SCORE);
   });
 
@@ -214,7 +226,10 @@ describe('Evaluate position', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    const score = evaluatePosition(board);
+    const engine = new Engine();
+    engine.setBoard(board);
+    const score = engine.evaluatePosition();
+
     expect(score).toBe(BLACK_MATE_SCORE);
   });
 });
@@ -386,10 +401,12 @@ describe('Finds moves', () => {
 });
 
 describe("Move list sorting", () => {
+
   it("sorts moves descending by score", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
 
-    sortByScoreDescending(moves);
+    const engine = new Engine();
+    engine.sortByScoreDescending(moves);
 
     expect(decodeScore(moves[0])).toBe(27);
     expect(decodeScore(moves[1])).toBe(15);
@@ -398,18 +415,23 @@ describe("Move list sorting", () => {
   });
 
   it("sorts empty move list descending", () => {
-    sortByScoreDescending(new Int32Array(0));
+    const engine = new Engine();
+    engine.sortByScoreDescending(new Int32Array(0));
   });
 
   it("sorts moves with 1 element descending", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
-    sortByScoreDescending(moves);
+    const engine = new Engine();
+    engine.sortByScoreDescending(moves);
+
     expect(decodeScore(moves[0])).toBe(12);
   });
 
   it("sorts moves with 2 elements descending", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 5), encodeScoredMove(1, 12)]);
-    sortByScoreDescending(moves);
+    const engine = new Engine();
+    engine.sortByScoreDescending(moves);
+
     expect(decodeScore(moves[0])).toBe(12);
     expect(decodeScore(moves[1])).toBe(5);
   });
@@ -417,7 +439,8 @@ describe("Move list sorting", () => {
   it("sorts moves ascending by score for black player", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
 
-    sortByScoreAscending(moves);
+    const engine = new Engine();
+    engine.sortByScoreAscending(moves);
 
     expect(decodeScore(moves[0])).toBe(5);
     expect(decodeScore(moves[1])).toBe(12);
@@ -426,18 +449,23 @@ describe("Move list sorting", () => {
   });
 
   it("sorts empty move list ascending", () => {
-    sortByScoreAscending(new Int32Array(0));
+    const engine = new Engine();
+    engine.sortByScoreAscending(new Int32Array(0));
   });
 
   it("sorts moves with 1 element ascending", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
-    sortByScoreAscending(moves);
+    const engine = new Engine();
+    engine.sortByScoreAscending(moves);
+
     expect(decodeScore(moves[0])).toBe(12);
   });
 
   it("sorts moves with 2 elements ascending", () => {
     const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5)]);
-    sortByScoreAscending(moves);
+    const engine = new Engine();
+    engine.sortByScoreAscending(moves);
+
     expect(decodeScore(moves[0])).toBe(5);
     expect(decodeScore(moves[1])).toBe(12);
   });
