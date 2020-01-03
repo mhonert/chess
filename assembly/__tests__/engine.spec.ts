@@ -24,7 +24,7 @@ import {
   decodeScore,
   encodeScoredMove,
   evaluatePosition,
-  findBestMove,
+  findBestMove, findBestMoveIncrementally,
   sortByScoreAscending,
   sortByScoreDescending,
   WHITE_MATE_SCORE
@@ -355,6 +355,33 @@ describe('Finds moves', () => {
     const move = findBestMove(board, WHITE, 2);
     expect(move).not.toBe(encodeMove(4, 38, 78), "Using the rook to capture the black rook causes a stalemate");
     expect(move).toBe(encodeMove(1, 87, 78), "Using the pawn for the capture lets the game proceed");
+  });
+
+  it('Finds mate in 3 moves (bug reproduction)', () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0,  0,  0,  0, -K,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  K, -P,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0, -Q,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0, -R,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+    board.increaseHalfMoveCount();
+
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 3, 7, 0)); // bug only occured with search depth 7
+    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 3, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 3, 5, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 3, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 3, 3, 0));
+
+    expect(isCheckMate(board, WHITE)).toBe(true);
   });
 });
 

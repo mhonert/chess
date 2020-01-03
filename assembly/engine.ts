@@ -133,7 +133,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
       const cacheEntry = unchecked(TRANSPOSITION_TABLE[transpositionIndex]);
       let existingEntryDepth = decodeTranspositionDepth(cacheEntry);
 
-      if (cacheEntry != 0 && existingEntryDepth >= remainingLevels && matchesTranspositionHash(board.getHash(), cacheEntry)) {
+      if (cacheEntry != 0 && existingEntryDepth == remainingLevels && matchesTranspositionHash(board.getHash(), cacheEntry)) {
         score = decodeTranspositionScore(cacheEntry);
         cacheHits++;
 
