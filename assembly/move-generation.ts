@@ -23,7 +23,7 @@ import {
   BLACK_PAWNS_BASELINE_START,
   Board,
   BOARD_BORDER,
-  EMPTY,
+  EMPTY, MAX_FIELD_DISTANCE,
   WHITE,
   WHITE_KING_START,
   WHITE_PAWNS_BASELINE_END,
@@ -35,433 +35,355 @@ import { differentColor, sameColor, toInt32Array } from './util';
 
 const MAX_MOVES = 218;
 
-export function generateMoves(board: Board, activeColor: i32): Int32Array {
-  const moves = new Int32Array(MAX_MOVES);
-
-  let count = generatePieceMoves(moves, 0, board, PAWN * activeColor, activeColor, generatePawnMoves);
-  count = generatePieceMoves(moves, count, board, KNIGHT * activeColor, activeColor, generateKnightMoves);
-  count = generatePieceMoves(moves, count, board, BISHOP * activeColor, activeColor, generateBishopMoves);
-  count = generatePieceMoves(moves, count, board, ROOK * activeColor, activeColor, generateRookMoves);
-  count = generatePieceMoves(moves, count, board, QUEEN * activeColor, activeColor, generateQueenMoves);
-
-  // King moves
-  const pos = board.findKingPosition(activeColor);
-  count = generateKingMoves(moves, count, board, activeColor, KING * activeColor, pos);
-
-  return moves.subarray(0, count);
-}
+export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
+const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
 
 
-@inline
-function generatePieceMoves(moves: Int32Array, count: i32, board: Board, piece: i32, activeColor: i32,
-                            generate: (moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32) => i32): i32 {
-  let bitboard = board.getBitBoard(piece + 6);
+class MoveGenerator {
+  private moves: Int32Array = new Int32Array(MAX_MOVES);
+  private count: i32;
+  private board: Board;
 
-  while (bitboard != 0) {
-    const bitPos: u64 = ctz(bitboard);
-    bitboard ^= 1 << bitPos; // unset bit
-    const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-    count = generate(moves, count, board, activeColor, piece, pos);
+  generateMoves(board: Board, activeColor: i32): void {
+    this.board = board;
+    this.count = 0;
+
+    let piece = PAWN * activeColor;
+    let bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      this.generatePawnMoves(activeColor, piece, pos);
+    }
+
+    piece = KNIGHT * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      this.generateKnightMoves(activeColor, piece, pos);
+    }
+
+    piece = BISHOP * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      this.generateBishopMoves(activeColor, piece, pos);
+    }
+
+    piece = ROOK * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      this.generateRookMoves(activeColor, piece, pos);
+    }
+
+    piece = QUEEN * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      this.generateQueenMoves(activeColor, piece, pos);
+    }
+
+    // King moves
+    const pos = board.findKingPosition(activeColor);
+    this.generateKingMoves(activeColor, KING * activeColor, pos);
   }
 
-  return count;
+  getGeneratedMoves(): Int32Array {
+    return this.moves.slice(0, this.count);
+  }
+
+
+  // Filters out any moves that would leave the own king in check.
+  getFilteredGeneratedMoves(activeColor: i32): Int32Array {
+    const filteredMoves: Int32Array = new Int32Array(this.moves.length);
+
+    let index = 0;
+    for (let i = 0; i < this.count; i++) {
+      const startIndex = decodeStartIndex(this.moves[i]);
+      if (DEFAULT_INSTANCE.moveResultsInCheck(decodePiece(this.moves[i]), startIndex, decodeEndIndex(this.moves[i]), activeColor)) {
+        continue;
+      }
+
+      unchecked(filteredMoves[index++] = this.moves[i]);
+    }
+
+    return filteredMoves.subarray(0, index);
+  }
+
+
+  generatePawnMoves(activeColor: i32, piece: i32, start: i32): void {
+    const moveDirection = -activeColor;
+
+    if ((activeColor == WHITE && start < 39) || (activeColor == BLACK && start > 80)) {
+      this.generateDiagonalPawnMove(activeColor, piece, start, start + 9 * moveDirection, true);
+      this.generateStraightPawnMove(activeColor, piece, start, start + 10 * moveDirection, true);
+      this.generateDiagonalPawnMove(activeColor, piece, start, start + 11 * moveDirection, true);
+      return;
+    }
+
+    this.generateDiagonalPawnMove(activeColor, piece, start, start + 9 * moveDirection, false);
+    this.generateStraightPawnMove(activeColor, piece, start, start + 10 * moveDirection, false);
+    this.generateDiagonalPawnMove(activeColor, piece, start, start + 11 * moveDirection, false);
+
+    if (activeColor == WHITE && start >= WHITE_PAWNS_BASELINE_START && start <= WHITE_PAWNS_BASELINE_END) {
+      this.generateStraightDoublePawnMove(activeColor, piece, start, start + 20 * moveDirection);
+    } else if (activeColor == BLACK && start >= BLACK_PAWNS_BASELINE_START && start <= BLACK_PAWNS_BASELINE_END) {
+      this.generateStraightDoublePawnMove(activeColor, piece, start, start + 20 * moveDirection);
+    }
+  };
+
+
+  generateStraightPawnMove(activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
+    if (!this.board.isEmpty(end)) {
+      return;
+    }
+
+    if (createPromotions) {
+      unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(ROOK, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(QUEEN, start, end));
+
+    } else {
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+
+    }
+  }
+
+  generateStraightDoublePawnMove(activeColor: i32, piece: i32, start: i32, end: i32): void {
+    if (!this.board.isEmpty(end)) {
+      return;
+    }
+
+    const direction = -activeColor;
+    if (!this.board.isEmpty(start + direction * 10)) {
+      return;
+    }
+
+    unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+  }
+
+  generateDiagonalPawnMove(activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
+    const targetPiece = this.board.getItem(end);
+    if (targetPiece == BOARD_BORDER) {
+      return;
+    }
+
+    if (targetPiece == EMPTY) {
+      if (!this.board.isEnPassentPossible(activeColor, end)) {
+        return;
+      }
+    } else if (!differentColor(targetPiece, activeColor)) {
+      return;
+    }
+
+    if (createPromotions) {
+      unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(ROOK, start, end));
+      unchecked(this.moves[this.count++] = encodeMove(QUEEN, start, end));
+
+    } else {
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+
+    }
+  }
+
+  generateKnightMoves(activeColor: i32, piece: i32, start: i32): void {
+    for (let i: i32 = 0; i < KNIGHT_DIRECTIONS.length; i++) {
+      const offset = unchecked(KNIGHT_DIRECTIONS[i]);
+
+      const end = start + offset;
+      if (this.board.isBorder(end)) {
+        continue;
+      }
+
+      const targetPiece = this.board.getItem(end);
+      if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
+        continue;
+      }
+
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, start + offset));
+    }
+  };
+
+
+  @inline
+  generateBishopMoves(activeColor: i32, piece: i32, start: i32): void {
+    this.generateSlidingPieceMoves(activeColor, piece, start, 9);
+    this.generateSlidingPieceMoves(activeColor, piece, start, 11);
+    this.generateSlidingPieceMoves(activeColor, piece, start, -9);
+    this.generateSlidingPieceMoves(activeColor, piece, start, -11);
+  };
+
+  @inline
+  generateRookMoves(activeColor: i32, piece: i32, start: i32): void {
+    this.generateSlidingPieceMoves(activeColor, piece, start, 1);
+    this.generateSlidingPieceMoves(activeColor, piece, start, 10);
+    this.generateSlidingPieceMoves(activeColor, piece, start, -1);
+    this.generateSlidingPieceMoves(activeColor, piece, start, -10);
+  };
+
+
+  generateSlidingPieceMoves(activeColor: i32, piece: i32, start: i32, direction: i32): void {
+    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
+      const end = start + direction * distance;
+
+      const targetPiece = this.board.getItem(end);
+      if (targetPiece == EMPTY) {
+        unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+        continue;
+      }
+
+      if (sameColor(targetPiece, activeColor)) {
+        return;
+      }
+
+      if (targetPiece == BOARD_BORDER) {
+        return;
+      }
+
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+      return;
+    }
+
+  }
+
+  generateQueenMoves(activeColor: i32, piece: i32, start: i32): void {
+    // reuse move generators
+    this.generateBishopMoves(activeColor, piece, start);
+    this.generateRookMoves(activeColor, piece, start);
+  };
+
+
+  @inline
+  isValidWhiteSmallCastlingMove(): bool {
+    return (this.board.isEmpty(WHITE_KING_START + 1) && this.board.isEmpty(WHITE_KING_START + 2)) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START + 1) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START + 2);
+  }
+
+  @inline
+  isValidWhiteBigCastlingMove(): bool {
+    return this.board.isEmpty(WHITE_KING_START - 1) && this.board.isEmpty(WHITE_KING_START - 2) &&
+      this.board.isEmpty(WHITE_KING_START - 3) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START - 1) &&
+      !this.board.isAttacked(BLACK, WHITE_KING_START - 2);
+  }
+
+  @inline
+  isValidBlackSmallCastlingMove(): bool {
+    return this.board.isEmpty(BLACK_KING_START + 1) && this.board.isEmpty(BLACK_KING_START + 2) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START + 1) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START + 2);
+  }
+
+  @inline
+  isValidBlackBigCastlingMove(): bool {
+    return this.board.isEmpty(BLACK_KING_START - 1) && this.board.isEmpty(BLACK_KING_START - 2) && this.board.isEmpty(BLACK_KING_START - 3) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START - 1) &&
+      !this.board.isAttacked(WHITE, BLACK_KING_START - 2);
+  }
+
+
+  generateKingMoves(activeColor: i32, piece: i32, start: i32): void {
+    for (let i = 0; i < KING_DIRECTIONS.length; i++) {
+      const end = start + unchecked(KING_DIRECTIONS[i]);
+
+      const targetPiece = this.board.getItem(end);
+      if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
+        continue;
+      }
+
+      if (targetPiece == BOARD_BORDER) {
+        continue;
+      }
+
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+    }
+
+    if (activeColor == WHITE && start == WHITE_KING_START && !this.board.whiteKingMoved()) {
+      if (!this.board.whiteRightRookMoved() && this.isValidWhiteSmallCastlingMove()) {
+        unchecked(this.moves[this.count++] = encodeMove(piece, start, start + 2));
+      }
+
+      if (!this.board.whiteLeftRookMoved() && this.isValidWhiteBigCastlingMove()) {
+        unchecked(this.moves[this.count++] = encodeMove(piece, start, start - 2));
+      }
+
+    } else if (activeColor == BLACK && start == BLACK_KING_START && !this.board.blackKingMoved()) {
+      if (!this.board.blackRightRookMoved() && this.isValidBlackSmallCastlingMove()) {
+        unchecked(this.moves[this.count++] = encodeMove(piece, start, start + 2));
+      }
+
+      if (!this.board.blackLeftRookMoved() && this.isValidBlackBigCastlingMove()) {
+        unchecked(this.moves[this.count++] = encodeMove(piece, start, start - 2));
+      }
+    }
+  };
+
+
+  moveResultsInCheck(pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
+    const previousPiece = this.board.getItem(start); // might be different from piece in case of pawn promotions
+
+    const removedFigure = this.board.performMove(pieceId, start, end);
+    const check = this.board.isInCheck(activeColor);
+
+    this.board.undoMove(previousPiece, start, end, removedFigure);
+
+    return check;
+  };
+
+  hasNoValidMoves(activeColor: i32): bool {
+    for (let i = 0; i < this.count; i++) {
+      const move = unchecked(this.moves[i]);
+      if (!this.moveResultsInCheck(decodePiece(move), decodeStartIndex(move), decodeEndIndex(move), activeColor)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
 }
 
+
+const DEFAULT_INSTANCE = new MoveGenerator();
+const MATE_CHECK_INSTANCE = new MoveGenerator();
+
+export function generateMoves(board: Board, activeColor: i32): Int32Array {
+  DEFAULT_INSTANCE.generateMoves(board, activeColor);
+  return DEFAULT_INSTANCE.getGeneratedMoves();
+}
 
 // Generates and filters out any moves that would leave the own king in check.
 export function generateFilteredMoves(board: Board, activeColor: i32): Int32Array {
-  const moves = generateMoves(board, activeColor);
-  const filteredMoves: Int32Array = new Int32Array(moves.length);
-
-  let index = 0;
-  for (let i = 0; i < moves.length; i++) {
-    const startIndex = decodeStartIndex(moves[i]);
-    if (moveResultsInCheck(board, decodePiece(moves[i]), startIndex, decodeEndIndex(moves[i]), activeColor )) {
-      continue;
-    }
-
-    filteredMoves[index++] = moves[i];
-  }
-
-  return filteredMoves.subarray(0, index);
+  DEFAULT_INSTANCE.generateMoves(board, activeColor);
+  return DEFAULT_INSTANCE.getFilteredGeneratedMoves(activeColor);
 }
-
-
-function generatePawnMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  const moveDirection = -activeColor;
-
-  if ((activeColor == WHITE && start < 39) || (activeColor == BLACK && start > 80)) {
-    count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 9 * moveDirection, true);
-    count = generateStraightPawnMove(moves, count, board, activeColor, piece, start, start + 10 * moveDirection, true);
-    count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 11 * moveDirection, true);
-    return count;
-  }
-
-  count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 9 * moveDirection, false);
-  count = generateStraightPawnMove(moves, count, board, activeColor, piece, start, start + 10 * moveDirection, false);
-  count = generateDiagonalPawnMove(moves, count, board, activeColor, piece, start, start + 11 * moveDirection, false);
-
-  if (activeColor == WHITE && start >= WHITE_PAWNS_BASELINE_START && start <= WHITE_PAWNS_BASELINE_END) {
-    count = generateStraightDoublePawnMove(moves, count, board, activeColor, piece, start, start + 20 * moveDirection);
-  } else if (activeColor == BLACK && start >= BLACK_PAWNS_BASELINE_START && start <= BLACK_PAWNS_BASELINE_END) {
-    count = generateStraightDoublePawnMove(moves, count, board, activeColor, piece, start, start + 20 * moveDirection);
-  }
-
-  return count;
-};
-
-
-function generateStraightPawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): i32 {
-  if (!board.isEmpty(end)) {
-    return count;
-  }
-
-  if (createPromotions) {
-    unchecked(moves[count++] = encodeMove(KNIGHT, start, end));
-    unchecked(moves[count++] = encodeMove(BISHOP, start, end));
-    unchecked(moves[count++] = encodeMove(ROOK, start, end));
-    unchecked(moves[count++] = encodeMove(QUEEN, start, end));
-
-  } else {
-    unchecked(moves[count++] = encodeMove(piece, start, end));
-
-  }
-
-  return count;
-}
-
-function generateStraightDoublePawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32): i32 {
-  if (!board.isEmpty(end)) {
-    return count;
-  }
-
-  const direction = -activeColor;
-  if (!board.isEmpty(start + direction * 10)) {
-    return count;
-  }
-
-  unchecked(moves[count++] = encodeMove(piece, start, end));
-
-  return count;
-}
-
-function generateDiagonalPawnMove(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): i32 {
-  const targetPiece = board.getItem(end);
-  if (targetPiece == BOARD_BORDER) {
-    return count;
-  }
-
-  if (targetPiece == EMPTY) {
-    if (!board.isEnPassentPossible(activeColor, end)) {
-      return count;
-    }
-  } else if (!differentColor(targetPiece, activeColor)) {
-    return count;
-  }
-
-  if (createPromotions) {
-    unchecked(moves[count++] = encodeMove(KNIGHT, start, end));
-    unchecked(moves[count++] = encodeMove(BISHOP, start, end));
-    unchecked(moves[count++] = encodeMove(ROOK, start, end));
-    unchecked(moves[count++] = encodeMove(QUEEN, start, end));
-
-  } else {
-    unchecked(moves[count++] = encodeMove(piece, start, end));
-
-  }
-
-  return count;
-}
-
-export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
-
-function generateKnightMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  for (let i: i32 = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-    const offset = unchecked(KNIGHT_DIRECTIONS[i]);
-
-    const end = start + offset;
-    if (board.isBorder(end)) {
-      continue;
-    }
-
-    const targetPiece = board.getItem(end);
-    if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
-      continue;
-    }
-
-    unchecked(moves[count++] = encodeMove(piece, start, start + offset));
-  }
-  return count;
-};
 
 
 @inline
-function generateBishopMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 9);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 11);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -9);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -11);
-  return count;
-};
-
-@inline
-function generateRookMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 1);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, 10);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -1);
-  count = generateSlidingPieceMoves(moves, count, board, activeColor, piece, start, -10);
-  return count;
-};
-
-
-const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
-
-function generateSlidingPieceMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32, direction: i32): i32 {
-  for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-    const end = start + direction * distance;
-
-    const targetPiece = board.getItem(end);
-    if (targetPiece == EMPTY) {
-      unchecked(moves[count++] = encodeMove(piece, start, end));
-      continue;
-    }
-
-    if (sameColor(targetPiece, activeColor)) {
-      return count;
-    }
-
-    if (targetPiece == BOARD_BORDER) {
-      return count;
-    }
-
-    unchecked(moves[count++] = encodeMove(piece, start, end));
-    return count;
-  }
-
-  return count;
-}
-
-function generateQueenMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  // reuse move generators
-  count = generateBishopMoves(moves, count, board, activeColor, piece, start);
-  return generateRookMoves(moves, count, board, activeColor, piece, start);
-};
-
-
-function isValidWhiteSmallCastlingMove(board: Board): bool {
-  return (board.isEmpty(WHITE_KING_START + 1) && board.isEmpty(WHITE_KING_START + 2)) &&
-    !isAttacked(board, BLACK, WHITE_KING_START) &&
-    !isAttacked(board, BLACK, WHITE_KING_START + 1) &&
-    !isAttacked(board, BLACK, WHITE_KING_START + 2);
-}
-
-function isValidWhiteBigCastlingMove(board: Board): bool {
-  return board.isEmpty(WHITE_KING_START - 1) && board.isEmpty(WHITE_KING_START - 2) &&
-    board.isEmpty(WHITE_KING_START - 3) &&
-    !isAttacked(board, BLACK, WHITE_KING_START) &&
-    !isAttacked(board, BLACK, WHITE_KING_START - 1) &&
-    !isAttacked(board, BLACK, WHITE_KING_START - 2);
-}
-
-function isValidBlackSmallCastlingMove(board: Board): bool {
-  return board.isEmpty(BLACK_KING_START + 1) && board.isEmpty(BLACK_KING_START + 2) &&
-    !isAttacked(board, WHITE, BLACK_KING_START) &&
-    !isAttacked(board, WHITE, BLACK_KING_START + 1) &&
-    !isAttacked(board, WHITE, BLACK_KING_START + 2);
-}
-
-function isValidBlackBigCastlingMove(board: Board): bool {
-  return board.isEmpty(BLACK_KING_START - 1) && board.isEmpty(BLACK_KING_START - 2) && board.isEmpty(BLACK_KING_START - 3) &&
-  !isAttacked(board, WHITE, BLACK_KING_START) &&
-  !isAttacked(board, WHITE, BLACK_KING_START - 1) &&
-  !isAttacked(board, WHITE, BLACK_KING_START - 2);
-}
-
-const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
-
-function generateKingMoves(moves: Int32Array, count: i32, board: Board, activeColor: i32, piece: i32, start: i32): i32 {
-  for (let i = 0; i < KING_DIRECTIONS.length; i++) {
-    const end = start + unchecked(KING_DIRECTIONS[i]);
-
-    const targetPiece = board.getItem(end);
-    if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
-      continue;
-    }
-
-    if (targetPiece == BOARD_BORDER) {
-      continue;
-    }
-
-    unchecked(moves[count++] = encodeMove(piece, start, end));
-  }
-
-  if (activeColor == WHITE && start == WHITE_KING_START && !board.whiteKingMoved()) {
-    if (!board.whiteRightRookMoved() && isValidWhiteSmallCastlingMove(board)) {
-      unchecked(moves[count++] = encodeMove(piece, start, start + 2));
-    }
-
-    if (!board.whiteLeftRookMoved() && isValidWhiteBigCastlingMove(board)) {
-      unchecked(moves[count++] = encodeMove(piece, start, start - 2));
-    }
-
-  } else if (activeColor == BLACK && start == BLACK_KING_START && !board.blackKingMoved()) {
-    if (!board.blackRightRookMoved() && isValidBlackSmallCastlingMove(board)) {
-      unchecked(moves[count++] = encodeMove(piece, start, start + 2));
-    }
-
-    if (!board.blackLeftRookMoved() && isValidBlackBigCastlingMove(board)) {
-      unchecked(moves[count++] = encodeMove(piece, start, start - 2));
-    }
-  }
-
-  return count;
-};
-
-
-export function isInCheck(board: Board, activeColor: i32): bool {
-  return isAttacked(board, -activeColor, board.findKingPosition(activeColor));
-};
-
-
-export function moveResultsInCheck(board: Board, pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
-  const previousPiece = board.getItem(start); // might be different from piece in case of pawn promotions
-
-  const removedFigure = board.performMove(pieceId, start, end);
-  const check = isInCheck(board, activeColor);
-
-  board.undoMove(previousPiece, start, end, removedFigure);
-
-  return check;
-};
-
-
-function isAttacked(board: Board, opponentColor: i32, pos: i32): bool {
-  if (isAttackedByPawns(board, opponentColor, pos)) {
-    return true;
-  }
-
-  if (board.isKnightAttacked(opponentColor, pos)) {
-    return true;
-  }
-
-  if (isAttackedDiagonally(board, opponentColor, pos)) {
-    return true;
-  }
-
-  if (isAttackedOrthogonally(board, opponentColor, pos)) {
-    return true;
-  }
-
-  return false;
-};
-
-function isAttackedByPawns(board: Board, opponentColor: i32, pos: i32): bool {
-  if (board.getItem(pos + 9 * opponentColor) == PAWN * opponentColor) {
-    return true;
-  }
-
-  if (board.getItem(pos + 11 * opponentColor) == PAWN * opponentColor) {
-    return true;
-  }
-
-  return false;
-}
-
-export function isAttackedDiagonally(board: Board, opponentColor: i32, pos: i32): bool {
-  const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
-  if (kingDistance == 9 || kingDistance == 11) {
-    return true;
-  }
-
-  const diaUpAttack = board.isDiagonallyUpAttacked(opponentColor, pos);
-
-  if (diaUpAttack < 0) {
-    if (isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack)) {
-      return true;
-    }
-  } else if (diaUpAttack > 0) {
-    if (isAttackedInDirection(board, BISHOP, opponentColor, pos, diaUpAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaUpAttack)) {
-      return true;
-    }
-  }
-
-  const diaDownAttack = board.isDiagonallyDownAttacked(opponentColor, pos);
-
-  if (diaDownAttack < 0) {
-    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaDownAttack);
-  } else if (diaDownAttack > 0) {
-    return isAttackedInDirection(board, BISHOP, opponentColor, pos, diaDownAttack) || isAttackedInDirection(board, BISHOP, opponentColor, pos, -diaDownAttack);
-
-  }
-
-  return false;
-}
-
-
-function isAttackedInDirection(board: Board, slidingPiece: i32, opponentColor: i32, pos: i32, direction: i32): bool {
-  const opponentPiece = slidingPiece * opponentColor;
-  const opponentQueen = QUEEN * opponentColor;
-
-  for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-    pos += direction
-    const piece = board.getItem(pos);
-    if (piece == EMPTY) {
-      continue;
-    }
-
-    if (piece == opponentPiece || piece == opponentQueen) {
-      return true;
-    }
-
-    return false;
-
-  }
-
-  return false;
-}
-
-function isAttackedOrthogonally(board: Board, opponentColor: i32, pos: i32): bool {
-  const kingDistance = abs(board.findKingPosition(opponentColor) - pos);
-  if (kingDistance == 1 || kingDistance == 10) {
-    return true;
-  }
-
-  const horAttack = board.isHorizontallyAttacked(opponentColor, pos);
-  if (horAttack < 0) {
-    if (isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack)) {
-      return true;
-    }
-  } else if (horAttack > 0) {
-    if (isAttackedInDirection(board, ROOK, opponentColor, pos, horAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -horAttack)) {
-      return true;
-    }
-  }
-
-  const verAttack = board.isVerticallyAttacked(opponentColor, pos);
-  if (verAttack < 0) {
-    return isAttackedInDirection(board, ROOK, opponentColor, pos, verAttack);
-  } else if (verAttack > 0) {
-    return isAttackedInDirection(board, ROOK, opponentColor, pos, verAttack) || isAttackedInDirection(board, ROOK, opponentColor, pos, -verAttack);
-
-  }
-
-  return false;
-}
-
-
 export function isCheckMate(board: Board, activeColor: i32): bool {
-  return isInCheck(board, activeColor) && hasNoValidMoves(board, activeColor, generateMoves(board, activeColor));
-}
-
-
-function hasNoValidMoves(board: Board, activeColor: i32, moves: Int32Array): bool {
-  for (let i = 0; i < moves.length; i++) {
-    const move = unchecked(moves[i]);
-    if (!moveResultsInCheck(board, decodePiece(move), decodeStartIndex(move), decodeEndIndex(move), activeColor)) {
-      return false;
-    }
+  if (!board.isInCheck(activeColor)) {
+    return false;
   }
-  return true;
+
+  MATE_CHECK_INSTANCE.generateMoves(board, activeColor);
+  return MATE_CHECK_INSTANCE.hasNoValidMoves(activeColor);
 }
 
 

@@ -36,6 +36,8 @@ const HALFMOVE_CLOCK_INDEX = 120;
 const HALFMOVE_COUNT_INDEX = 121;
 const STATE_INDEX = 122;
 
+export const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields on the board
+
 const MAX_GAME_HALFMOVES = 5898 * 2;
 
 const EN_PASSANT_BIT = 1 << 31;
@@ -647,6 +649,120 @@ export class Board {
     }
   }
 
+  isInCheck(activeColor: i32): bool {
+    return this.isAttacked(-activeColor, this.findKingPosition(activeColor));
+  };
+
+  isAttacked(opponentColor: i32, pos: i32): bool {
+    if (this.isAttackedByPawns(opponentColor, pos)) {
+      return true;
+    }
+
+    if (this.isKnightAttacked(opponentColor, pos)) {
+      return true;
+    }
+
+    if (this.isAttackedDiagonally(opponentColor, pos)) {
+      return true;
+    }
+
+    if (this.isAttackedOrthogonally(opponentColor, pos)) {
+      return true;
+    }
+
+    return false;
+  };
+
+  isAttackedByPawns(opponentColor: i32, pos: i32): bool {
+    if (this.getItem(pos + 9 * opponentColor) == PAWN * opponentColor) {
+      return true;
+    }
+
+    if (this.getItem(pos + 11 * opponentColor) == PAWN * opponentColor) {
+      return true;
+    }
+
+    return false;
+  }
+
+  isAttackedDiagonally(opponentColor: i32, pos: i32): bool {
+    const kingDistance = abs(this.findKingPosition(opponentColor) - pos);
+    if (kingDistance == 9 || kingDistance == 11) {
+      return true;
+    }
+
+    const diaUpAttack = this.isDiagonallyUpAttacked(opponentColor, pos);
+
+    if (diaUpAttack < 0) {
+      if (this.isAttackedInDirection(BISHOP, opponentColor, pos, diaUpAttack)) {
+        return true;
+      }
+    } else if (diaUpAttack > 0) {
+      if (this.isAttackedInDirection(BISHOP, opponentColor, pos, diaUpAttack) || this.isAttackedInDirection(BISHOP, opponentColor, pos, -diaUpAttack)) {
+        return true;
+      }
+    }
+
+    const diaDownAttack = this.isDiagonallyDownAttacked(opponentColor, pos);
+
+    if (diaDownAttack < 0) {
+      return this.isAttackedInDirection(BISHOP, opponentColor, pos, diaDownAttack);
+    } else if (diaDownAttack > 0) {
+      return this.isAttackedInDirection(BISHOP, opponentColor, pos, diaDownAttack) || this.isAttackedInDirection(BISHOP, opponentColor, pos, -diaDownAttack);
+    }
+
+    return false;
+  }
+
+
+  isAttackedInDirection(slidingPiece: i32, opponentColor: i32, pos: i32, direction: i32): bool {
+    const opponentPiece = slidingPiece * opponentColor;
+    const opponentQueen = QUEEN * opponentColor;
+
+    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
+      pos += direction
+      const piece = this.getItem(pos);
+      if (piece == EMPTY) {
+        continue;
+      }
+
+      if (piece == opponentPiece || piece == opponentQueen) {
+        return true;
+      }
+
+      return false;
+
+    }
+
+    return false;
+  }
+
+  isAttackedOrthogonally(opponentColor: i32, pos: i32): bool {
+    const kingDistance = abs(this.findKingPosition(opponentColor) - pos);
+    if (kingDistance == 1 || kingDistance == 10) {
+      return true;
+    }
+
+    const horAttack = this.isHorizontallyAttacked(opponentColor, pos);
+    if (horAttack < 0) {
+      if (this.isAttackedInDirection(ROOK, opponentColor, pos, horAttack)) {
+        return true;
+      }
+    } else if (horAttack > 0) {
+      if (this.isAttackedInDirection(ROOK, opponentColor, pos, horAttack) || this.isAttackedInDirection(ROOK, opponentColor, pos, -horAttack)) {
+        return true;
+      }
+    }
+
+    const verAttack = this.isVerticallyAttacked(opponentColor, pos);
+    if (verAttack < 0) {
+      return this.isAttackedInDirection(ROOK, opponentColor, pos, verAttack);
+    } else if (verAttack > 0) {
+      return this.isAttackedInDirection(ROOK, opponentColor, pos, verAttack) || this.isAttackedInDirection(ROOK, opponentColor, pos, -verAttack);
+    }
+
+    return false;
+  }
   logBitBoards(color: i32): void {
     for (let i = 0; i < this.bitBoardPieces.length; i++) {
       trace("Piece " + (i - 6).toString() + ": " + toBitBoardString(this.bitBoardPieces[i]));

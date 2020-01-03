@@ -20,14 +20,18 @@ import { BLACK, Board, WHITE } from './board';
 import {
   decodeEndIndex,
   decodePiece,
-  decodeStartIndex, generateFilteredMoves,
+  decodeStartIndex,
+  generateFilteredMoves,
   generateMoves,
-  isCheckMate, isInCheck,
+  isCheckMate,
 } from './move-generation';
 import {
-  decodeTranspositionDepth, decodeTranspositionScore, encodeTranspositionEntry,
+  decodeTranspositionDepth,
+  decodeTranspositionScore,
+  encodeTranspositionEntry,
   matchesTranspositionHash,
-  TRANSPOSITION_INDEX_BITMASK, TRANSPOSITION_MAX_DEPTH,
+  TRANSPOSITION_INDEX_BITMASK,
+  TRANSPOSITION_MAX_DEPTH,
   TRANSPOSITION_TABLE
 } from './transposition-table';
 
@@ -137,7 +141,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
         score = decodeTranspositionScore(cacheEntry);
         cacheHits++;
 
-      } else if (!isInCheck(board, playerColor)) {
+      } else if (!board.isInCheck(playerColor)) {
         existingEntryDepth = 1;
         const result = recFindBestMove(
           board,
@@ -201,7 +205,7 @@ function recFindBestMove(board: Board, alpha: i32, beta: i32, playerColor: i32, 
 
     if (depth > 0) {
       if (bestMove == 0) { // no legal move found?
-        if (isInCheck(board, playerColor)) {
+        if (board.isInCheck(playerColor)) {
           // Check mate
           return encodeScoredMove(0, WHITE_MATE_SCORE - (100 - depth));
         }
