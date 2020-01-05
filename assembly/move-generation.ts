@@ -405,18 +405,22 @@ export function decodeEndIndex(encodedMove: i32): i32 {
   return (encodedMove >> 10) & 0x7F;
 }
 
-export function logMoves(moves: Int32Array): void {
-  trace("# of moves:", 1, moves.length);
 
-  for (let i = 0; i < moves.length; i++) {
-    logMove(moves[i]);
+export function encodeScoredMove(move: i32, score: i32): i32 {
+  if (score < 0) {
+    return move | 0x80000000 | (-score << 17);
+
+  } else {
+    return move | (score << 17);
   }
 }
 
-export function logMove(move: i32, prefix: string = ""): void {
+export function decodeScore(scoredMove: i32): i32 {
+  return (scoredMove & 0x80000000) != 0
+    ? -((scoredMove & 0x7FFE0000) >>> 17)
+    : scoredMove >>> 17;
+}
 
-  const piece = decodePiece(move);
-  const start = decodeStartIndex(move);
-  const end = decodeEndIndex(move);
-  trace(prefix + " - Move " + piece.toString() + " from " + start.toString() + " to " + end.toString());
+export function decodeMove(scoredMove: i32): i32 {
+  return scoredMove & 0x1FFFF;
 }

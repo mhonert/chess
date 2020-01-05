@@ -20,16 +20,15 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 import { generateFilteredMoves, isCheckMate as isCheckMateFn } from './move-generation';
-import { findBestMoveIncrementally } from './engine';
+import { findBestMoveIncrementally, reset } from './engine';
 import { Board } from './board';
-import { resetTranspositionTable } from './transposition-table';
 import { toFEN } from './fen';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
 
 
 export function newGame(): void {
-  resetTranspositionTable();
+  reset();
 }
 
 
@@ -45,18 +44,18 @@ function createBoard(items: Int32Array): Board {
 }
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
-  [3, 0],
-  [3, 200],
-  [5, 250],
-  [5, 750],
-  [7, 750]
+  [3, 3, 0],
+  [3, 3, 200],
+  [3, 5, 250],
+  [3, 5, 500],
+  [5, 7, 750]
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
   const board = createBoard(boardArray);
 
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
-  const move = findBestMoveIncrementally(board, color, 3, levelSettings[0], levelSettings[1]);
+  const move = findBestMoveIncrementally(board, color, levelSettings[0], levelSettings[1], levelSettings[2]);
 
   return move;
 }

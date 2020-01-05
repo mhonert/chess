@@ -20,9 +20,7 @@
 import { B, K, N, P, Q, QUEEN, R } from '../pieces';
 import {
   BLACK_MATE_SCORE,
-  decodeMove,
-  decodeScore,
-  encodeScoredMove, Engine,
+  Engine,
   findBestMove, findBestMoveIncrementally,
   WHITE_MATE_SCORE
 } from '../engine';
@@ -37,7 +35,7 @@ import {
   WHITE_KING_MOVED,
   WHITE_RIGHT_ROOK_MOVED
 } from '../board';
-import { encodeMove, isCheckMate } from '../move-generation';
+import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
 import { toInt32Array } from '../util';
 
 describe('Encode and decode scored moves', () => {

@@ -18,41 +18,39 @@
 
 import { BLACK, Board, WHITE } from './board';
 import {
-  decodeEndIndex,
-  decodePiece,
-  decodeStartIndex,
+  decodeEndIndex, decodeMove,
+  decodePiece, decodeScore,
+  decodeStartIndex, encodeScoredMove,
   generateFilteredMoves,
   generateMoves,
-  isCheckMate,
+  isCheckMate
 } from './move-generation';
-import {
-  decodeTranspositionDepth,
-  decodeTranspositionScore,
-  encodeTranspositionEntry,
-  matchesTranspositionHash,
-  TRANSPOSITION_INDEX_BITMASK,
-  TRANSPOSITION_MAX_DEPTH,
-  TRANSPOSITION_TABLE
-} from './transposition-table';
+import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
 
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
 
-export const WHITE_MATE_SCORE: i32 = -16000;
-export const BLACK_MATE_SCORE: i32 = 16000;
+export const WHITE_MATE_SCORE: i32 = -8000;
+export const BLACK_MATE_SCORE: i32 = 8000;
 
 export class Engine {
 
+  private transpositionTable: TranspositionTable = new TranspositionTable();
   private board: Board;
   private startTime: i64 = 0;
   private moveCount: i32 = 0;
   private cacheHits: i32 = 0;
   private timeLimitMillis: i32;
   private minimumDepth: i32;
+  private moveHits: i32 = 0;
 
   setBoard(board: Board): void {
     this.board = board;
+  }
+
+  reset(): void {
+    this.transpositionTable.clear();
   }
 
   // Find the best possible move in response to the current board position.
@@ -63,6 +61,7 @@ export class Engine {
     this.startTime = Date.now();
     this.moveCount = 0;
     this.cacheHits = 0;
+    this.moveHits = 0;
 
     const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor);
 
@@ -113,6 +112,7 @@ export class Engine {
           depth + 1
         );
         if (result == -1) {
+          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
           if (depth > 0) {
             return -1;
           }
@@ -142,28 +142,29 @@ export class Engine {
 
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
         alpha = max(alpha, bestScore);
-        if (alpha >= beta) {
-          break;
-        }
       }
 
-      this.sortByScoreDescending(moves);
 
-      const move = unchecked(moves[0]);
 
-      if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 2) > TRANSPOSITION_MAX_DEPTH)) {
+      if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
         trace('---------------------------------------------------');
         trace('Evaluated ' + this.moveCount.toString() + ' moves');
         trace('Cache hits ' + this.cacheHits.toString());
-        logScoredMove(move, 'Selected move');
-        return move;
+        trace('Best move hits ' + this.moveHits.toString());
+
+        const evaluatedMoveSubSet: Int32Array = moves.subarray(0, max(1, scoredMoves));
+        this.sortByScoreDescending(evaluatedMoveSubSet);
+
+        const selectedMove = evaluatedMoveSubSet[0];
+        logScoredMove(selectedMove, 'Selected move');
+        return selectedMove;
       }
 
-      this.resetScores(moves);
+      let currentBestMove = encodeScoredMove(bestMove, bestScore);
+      logScoredMove(currentBestMove, 'Current best move');
 
-      logScoredMove(move, 'Current best move');
-
-      remainingLevels += 2;
+      this.sortByScoreDescending(moves);
+      remainingLevels += 1;
 
     } while (true);
 
@@ -178,21 +179,36 @@ export class Engine {
       return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
     }
 
-    const moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+    const ttHash = this.board.getHash();
+    let scoredMove = this.transpositionTable.getScoredMove(ttHash);
 
-    if (moves.length == 0) {
-      // no more moves possible (i.e. check mate or stale mate)
-      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+    let moves: Int32Array | null = null;
+
+    let moveIndex: i32 = 0;
+    if (scoredMove != 0) {
+      if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
+        this.cacheHits++;
+        return scoredMove;
+      }
+
+      this.moveHits++;
+
+    } else {
+      moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+      if (moves.length == 0) {
+        // no more moves possible (i.e. check mate or stale mate)
+        return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+      }
+      scoredMove = moves![0];
+      moveIndex++;
     }
 
     let bestMove: i32 = 0;
-
     let bestScore: i32 = MIN_SCORE;
 
-    const len = moves.length;
-    for (let i: i32 = 0; i < len; i++) {
-      const scoredMove = unchecked(moves[i]);
+    let resultType = ScoreType.NO_CUTOFF;
 
+    do {
       const move = decodeMove(scoredMove);
 
       const targetPieceId = decodePiece(move);
@@ -206,14 +222,7 @@ export class Engine {
 
       let score = i32.MIN_VALUE; // Score for invalid move
 
-      const transpositionIndex = i32(this.board.getHash() & TRANSPOSITION_INDEX_BITMASK);
-      const cacheEntry = unchecked(TRANSPOSITION_TABLE[transpositionIndex]);
-
-      if (cacheEntry != 0 && decodeTranspositionDepth(cacheEntry) == remainingLevels && matchesTranspositionHash(this.board.getHash(), cacheEntry)) {
-        score = decodeTranspositionScore(cacheEntry);
-        this.cacheHits++;
-
-      } else if (!this.board.isInCheck(playerColor)) {
+      if (!this.board.isInCheck(playerColor)) {
         const result = this.recFindBestMove(
           -beta,
           -alpha,
@@ -222,26 +231,31 @@ export class Engine {
           depth + 1
         );
         if (result == -1) {
+          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
           return -1;
         }
 
         let unadjustedScore: i32 = decodeScore(result);
 
         score = -unadjustedScore;
-
-        unchecked(TRANSPOSITION_TABLE[transpositionIndex] = encodeTranspositionEntry(this.board.getHash(), remainingLevels, score));
       }
 
       this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
-      if (score == i32.MIN_VALUE) {
-        continue; // skip this invalid move
-      }
+      if (score != i32.MIN_VALUE) {
+        // Use mini-max algorithm ...
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
 
-      // Use mini-max algorithm ...
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = move;
+        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+        alpha = max(alpha, bestScore);
+        if (alpha >= beta) {
+          resultType = ScoreType.CUTOFF;
+
+          break;
+        }
       }
 
       if (depth == this.minimumDepth && Date.now() - this.startTime >= this.timeLimitMillis) {
@@ -249,36 +263,38 @@ export class Engine {
         return -1;
       }
 
-      // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-      alpha = max(alpha, bestScore);
-      if (alpha >= beta) {
-        break;
+      if (moves == null) {
+        moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+
+        if (moves.length == 0) {
+          // no more moves possible (i.e. check mate or stale mate)
+          return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+        }
+
+      } else if (moveIndex == moves.length) {
+          break;
       }
-    }
+
+      scoredMove = moves![moveIndex];
+      moveIndex++;
+
+    } while (true);
 
     if (bestMove == 0) { // no legal move found?
       if (this.board.isInCheck(playerColor)) {
         // Check mate
-        return encodeScoredMove(0, WHITE_MATE_SCORE - (100 - depth));
+        return encodeScoredMove(0, WHITE_MATE_SCORE + depth);
       }
 
       // Stalemate
       return encodeScoredMove(0, 0);
     }
 
-    return encodeScoredMove(bestMove, bestScore);
+    this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, resultType);
+
+    const scoredBestMove = encodeScoredMove(bestMove, bestScore);
+    return scoredBestMove;
   };
-
-
-  resetScores(moves: Int32Array): void {
-    for (let i: i32 = 0; i < moves.length; i++) {
-      let score: i32 = decodeScore(unchecked(moves[i])) - 9;
-      if (score < WHITE_MATE_SCORE) {
-        score = WHITE_MATE_SCORE;
-      }
-      moves[i] = encodeScoredMove(decodeMove(unchecked(moves[i])), score);
-    }
-  }
 
 
   // Evaluate board position with the given move performed
@@ -381,9 +397,9 @@ export class Engine {
     const score = this.evaluatePosition();
 
     if (score == BLACK_MATE_SCORE) {
-      return score + (100 - depth);
+      return score - depth;
     } else if (score == WHITE_MATE_SCORE) {
-      return score - (100 - depth);
+      return score + depth;
     }
 
     return score;
@@ -391,6 +407,10 @@ export class Engine {
 }
 
 const ENGINE = new Engine();
+
+export function reset(): void {
+  ENGINE.reset();
+}
 
 export function findBestMove(board: Board, playerColor: i32, exactDepth: i32): i32 {
   return findBestMoveIncrementally(board, playerColor, exactDepth, exactDepth, 0);
@@ -414,36 +434,6 @@ export function findBestMoveIncrementally(board: Board, playerColor: i32, starti
   return decodeMove(result);
 };
 
-
-// Helper functions
-
-export function encodeScoredMove(move: i32, score: i32): i32 {
-  if (score < 0) {
-    return move | 0x80000000 | (-score << 17);
-
-  } else {
-    return move | (score << 17);
-  }
-}
-
-export function decodeScore(scoredMove: i32): i32 {
-  return (scoredMove & 0x80000000) != 0
-    ? -((scoredMove & 0x7FFE0000) >>> 17)
-    : scoredMove >>> 17;
-}
-
-export function decodeMove(scoredMove: i32): i32 {
-  return scoredMove & 0x1FFFF;
-}
-
-
-export function logScoredMoves(moves: Array<i32>): void {
-  trace('# of moves:', 1, moves.length);
-
-  for (let i = 0; i < moves.length; i++) {
-    logScoredMove(moves[i]);
-  }
-}
 
 export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
   const move = decodeMove(scoredMove);

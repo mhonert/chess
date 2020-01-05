@@ -16,60 +16,109 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-const TRANSPOSITION_INDEX_BITS = 21;
-export const TRANSPOSITION_INDEX_BITMASK = (1 << TRANSPOSITION_INDEX_BITS) - 1;
-export const TRANSPOSITION_TABLE = new Uint64Array(1 << TRANSPOSITION_INDEX_BITS);
-export const TRANSPOSITION_MAX_DEPTH = 64;
+import { encodeScoredMove } from './move-generation';
 
-// Transposition entry
-// Bits 63 - 21: 43 highest bits of the hash
-export const HASH_BITSIZE = 43;
-const HASH_BITMASK: u64 = 0xFFFFFFFFFFE00000;
 
-// Bits 20 - 15: Depth
-const DEPTH_BITSHIFT = 15;
-const DEPTH_BITMASK: u64 = 0b111111;
+const HASH_BITSIZE = 64;
+
+// Transposition table entry
+// Bits 63 - 23: 41 highest bits of the hash
+const HASHCHECK_BITSIZE = 41;
+const HASHCHECK_MASK: u64 = 0b1111111111111111111111111111111111111111100000000000000000000000;
+
+// Bits 22 - 17: Depth
+export const TRANSPOSITION_MAX_DEPTH = 63;
+const DEPTH_BITSHIFT = 17;
+const DEPTH_MASK: u64 = 0b111111;
+
+// Bits 16 - 15: Score Type
+export enum ScoreType {
+  NO_CUTOFF = 0,
+  CUTOFF
+}
+
+const SCORE_TYPE_BITSHIFT = 15;
+const SCORE_TYPE_MASK: u64 = 0b11;
 
 // Bit 14: Score sign (1 = -, 0 = +)
 const SCORE_SIGN_BITMASK: u64 = 0b100000000000000;
 
-// Bits 13 -  0 : Score
+// Bits 13 - 0 : Score
 const SCORE_BITMASK: u64 = 0b11111111111111;
 
 
-export function decodeTranspositionDepth(entry: u64): i32 {
-  return i32((entry >> DEPTH_BITSHIFT) & DEPTH_BITMASK) + 1;
-}
 
-export function matchesTranspositionHash(entry: u64, hash: u64): bool {
-  return (entry & HASH_BITMASK) == (hash & HASH_BITMASK);
-}
+// Transposition data
+const TRANSPOSITION_INDEX_BITS = 21;
+export const TRANSPOSITION_INDEX_MASK: u64 = (1 << TRANSPOSITION_INDEX_BITS) - 1;
 
-export function decodeTranspositionScore(entry: u64): i32 {
-  return i32((entry & SCORE_SIGN_BITMASK) != 0
-    ? -(entry & SCORE_BITMASK)
-    : (entry & SCORE_BITMASK));
-}
+export class TranspositionTable {
+  private entries: Uint64Array = new Uint64Array(1 << TRANSPOSITION_INDEX_BITS);
+  private moves: Int32Array = new Int32Array(1 << TRANSPOSITION_INDEX_BITS);
 
-/**
- * @param hash Zobrist hash
- * @param depth Must be >=1 and <= TRANSPOSITION_MAX_DEPTH
- * @param score Must be >= MIN_SCORE and <= MAX_SCORE
- */
-export function encodeTranspositionEntry(hash: u64, depth: i32, score: i32): u64 {
-  let entry = hash & HASH_BITMASK
-  entry |= ((depth - 1) << DEPTH_BITSHIFT);
 
-  if (score < 0) {
-    entry |= SCORE_SIGN_BITMASK;
-    entry |= -score;
-  } else {
-    entry |= score;
+  writeEntry(hash: u64, depth: i32, move: i32, score: i32, type: ScoreType): void {
+    const index = this.calculateIndex(hash);
+
+    const existingEntry = unchecked(this.entries[index]);
+    const existingType = i32((existingEntry >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
+    const existingDepth = i32((existingEntry >> DEPTH_BITSHIFT) & DEPTH_MASK);
+    if (existingEntry != 0 && (existingEntry & HASHCHECK_MASK) == (hash & HASHCHECK_MASK) && type < existingType && depth <= existingDepth) {
+      return; // keep existing entry
+    }
+
+    let newEntry: u64 = hash & HASHCHECK_MASK;
+    newEntry |= (depth << DEPTH_BITSHIFT);
+    newEntry |= (type << SCORE_TYPE_BITSHIFT);
+    if (score < 0) {
+      newEntry |= SCORE_SIGN_BITMASK;
+      newEntry |= -score;
+    } else {
+      newEntry |= score;
+    }
+
+    unchecked(this.entries[index] = newEntry);
+    unchecked(this.moves[index] = move);
   }
 
-  return entry;
-}
 
-export function resetTranspositionTable(): void {
-  TRANSPOSITION_TABLE.fill(0, 0, TRANSPOSITION_TABLE.length);
+  // Returns 0 if no move was found
+  getScoredMove(hash: u64): i32 {
+    const index = this.calculateIndex(hash);
+
+    const entry = unchecked(this.entries[index]);
+    if (entry == 0 || ((entry & HASHCHECK_MASK) != (hash & HASHCHECK_MASK))) {
+      return 0;
+    }
+
+    const score = i32((entry & SCORE_SIGN_BITMASK) != 0
+      ? -(entry & SCORE_BITMASK)
+      : (entry & SCORE_BITMASK));
+
+    return encodeScoredMove(unchecked(this.moves[index]), score);
+  }
+
+
+  @inline
+  getDepth(hash: u64): i32 {
+    const index = this.calculateIndex(hash);
+    return i32((unchecked(this.entries[index]) >> DEPTH_BITSHIFT) & DEPTH_MASK);
+  }
+
+  @inline
+  getScoreType(hash: u64): ScoreType {
+    const index = this.calculateIndex(hash);
+    return i32((unchecked(this.entries[index]) >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
+  }
+
+  @inline
+  private calculateIndex(hash: u64): i32 {
+    return i32(hash & TRANSPOSITION_INDEX_MASK);
+  }
+
+  clear(): void {
+    this.entries.fill(0, 0, this.entries.length);
+    this.moves.fill(0, 0, this.moves.length);
+  }
+
 }

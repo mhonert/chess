@@ -160,7 +160,7 @@ export class Board {
 
     this.score += this.calculateScore(pos, pieceColor, pieceId);
     const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << bitIndex));
   }
@@ -177,7 +177,7 @@ export class Board {
 
     this.score -= this.calculateScore(pos, sign(piece), abs(piece));
     const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-    unchecked(this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
+    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
     return this.remove(piece, pos, bitIndex);
   }

@@ -23,7 +23,7 @@ import { isCheckMate } from '../move-generation';
 
 describe('Engine performance', () => {
   it('plays against itself #engine', () => {
-    measureEnginePerformance("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 3, 5, 20);
+    measureEnginePerformance("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 3, 7, 1);
   });
 });
 
@@ -41,7 +41,7 @@ function measureEnginePerformance(fen: string, startingDepth: i32, depth: i32, m
 
 
 function playAgainstSelf(board: Board, startingDepth: i32, depth: i32, moveLimit: i32): void {
-  while (board.getFullMoveCount() < moveLimit) {
+  while (board.getFullMoveCount() <= moveLimit) {
     const move = findBestMoveIncrementally(board, board.getActivePlayer(), startingDepth, depth, 0);
     board.performEncodedMove(move);
     if (isCheckMate(board, board.getActivePlayer())) {

@@ -16,54 +16,45 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import {
-  decodeTranspositionDepth,
-  decodeTranspositionScore,
-  encodeTranspositionEntry,
-  HASH_BITSIZE,
-  matchesTranspositionHash,
-  TRANSPOSITION_MAX_DEPTH
-} from '../transposition-table';
+import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from '../transposition-table';
+import { decodeScore, encodeMove, encodeScoredMove } from '../move-generation';
 import { MAX_SCORE, MIN_SCORE } from '../engine';
 
 describe("Transposition table", () => {
 
-  it("encodes entries correctly", () => {
+  it("writes entry correctly", () => {
     const hash: u64 = u64.MAX_VALUE;
     const depth = TRANSPOSITION_MAX_DEPTH;
-    const score: u32 = 10;
+    const move = encodeMove(5, 32, 33);
+    const score: i32 = -10;
+    const type = ScoreType.CUTOFF;
 
-    const entry = encodeTranspositionEntry(hash, depth, score);
+    const tt = new TranspositionTable();
+    tt.writeEntry(hash, depth, move, score, type);
 
-    expect(matchesTranspositionHash(entry, hash)).toBeTruthy("Hash does not match");
-    expect(decodeTranspositionDepth(entry)).toBe(depth, "Depth does not match");
-    expect(decodeTranspositionScore(entry)).toBe(score, "Score does not match");
-  });
-
-  it("encodes hash code correctly", () => {
-    const hashA: u64 = 0xFFFFFFFFFFFFFFFF;
-
-    for (let bitIndex = 64 - HASH_BITSIZE; bitIndex < 64; bitIndex++) {
-      const hashB = hashA ^ (1 << bitIndex); // set Bit at index to 0
-      const entry = encodeTranspositionEntry(hashA, 1, 0);
-      expect(matchesTranspositionHash(entry, hashB)).toBeFalsy("Different hash must not match: " + bitIndex.toString());
-    }
+    expect(tt.getScoredMove(hash)).toBe(encodeScoredMove(move, score), "move does not match");
+    expect(tt.getDepth(hash)).toBe(depth, "Depth does not match");
+    expect(tt.getScoreType(hash)).toBe(type, "Type does not match");
   });
 
   it("encodes negative score correctly", () => {
-    const score: u32 = MIN_SCORE;
+    const hash: u64 = u64.MAX_VALUE;
+    const score: i32 = MIN_SCORE;
 
-    const entry = encodeTranspositionEntry(0, 1, score);
+    const tt = new TranspositionTable();
+    tt.writeEntry(hash, 1, 0, score, ScoreType.NO_CUTOFF);
 
-    expect(decodeTranspositionScore(entry)).toBe(score, "Score does not match");
+    expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
 
   it("encodes positive score correctly", () => {
-    const score: u32 = MAX_SCORE;
+    const hash: u64 = u64.MAX_VALUE;
+    const score: i32 = MAX_SCORE;
 
-    const entry = encodeTranspositionEntry(0, 1, score);
+    const tt = new TranspositionTable();
+    tt.writeEntry(hash, 1, 0, score, ScoreType.NO_CUTOFF);
 
-    expect(decodeTranspositionScore(entry)).toBe(score, "Score does not match");
+    expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
 
 });
