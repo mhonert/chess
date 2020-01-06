@@ -49,6 +49,7 @@ export class Board {
   private blackKingIndex: i32;
   private score: i32 = 0;
   private bitBoardPieces: Uint64Array = new Uint64Array(13);
+  private bitBoardAllPieces: Uint64Array = new Uint64Array(2);
   private hashCode: u64 = 0; // Hash code for the current position
 
   private historyCounter: i32 = 0;
@@ -97,6 +98,11 @@ export class Board {
   @inline
   getBitBoard(index: i32): u64 {
     return unchecked(this.bitBoardPieces[index]);
+  }
+
+  @inline
+  getAllPieceBitBoard(color: i32): u64 {
+    return unchecked(this.bitBoardAllPieces[indexFromColor(color)]);
   }
 
   /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
@@ -166,6 +172,7 @@ export class Board {
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << bitIndex));
+    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << bitIndex));
   }
 
   addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
@@ -178,22 +185,24 @@ export class Board {
   removePiece(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
 
-    this.score -= this.calculateScore(pos, sign(piece), abs(piece));
+    const color = sign(piece);
+    this.score -= this.calculateScore(pos, color, abs(piece));
     const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
     this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
 
-    return this.remove(piece, pos, bitIndex);
+    return this.remove(piece, color, pos, bitIndex);
   }
 
   // Version of removePiece for optimization purposes without incremental update
   @inline
   private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
-    return this.remove(piece, pos, unchecked(BOARD_POS_TO_BIT_INDEX[pos]));
+    return this.remove(piece, sign(piece), pos, unchecked(BOARD_POS_TO_BIT_INDEX[pos]));
   }
 
-  private remove(piece: i32, pos: i32, bitIndex: i32): i32 {
+  private remove(piece: i32, pieceColor: i32, pos: i32, bitIndex: i32): i32 {
     unchecked(this.bitBoardPieces[piece + 6] &= ~(1 << bitIndex));
+    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] &= ~(1 << bitIndex));
     unchecked(this.items[pos] = EMPTY);
 
     if (piece == ROOK) {
