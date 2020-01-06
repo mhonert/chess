@@ -26,6 +26,8 @@ import {
   isCheckMate
 } from './move-generation';
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
+import { fromFEN } from './fen';
+import { PositionHistory } from './history';
 
 
 export const MIN_SCORE = -16383;
@@ -37,6 +39,7 @@ export const BLACK_MATE_SCORE: i32 = 8000;
 export class Engine {
 
   private transpositionTable: TranspositionTable = new TranspositionTable();
+  private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
   private moveCount: i32 = 0;
@@ -44,12 +47,29 @@ export class Engine {
   private timeLimitMillis: i32;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
+  private contemptFactor: i32 = 10;
+
+  private previousHalfMoveClock: i32 = 0;
+
+  constructor() {
+    this.reset();
+  }
 
   setBoard(board: Board): void {
     this.board = board;
+
+    if (this.board.getHalfMoveClock() == 0 || this.previousHalfMoveClock > this.board.getHalfMoveClock()) {
+      this.history.clear();
+    }
+
+    this.previousHalfMoveClock = this.board.getHalfMoveClock();
+    this.board.setHistory(this.history);
   }
 
   reset(): void {
+    this.history.clear();
+    this.board = fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    this.board.setHistory(this.history);
     this.transpositionTable.clear();
   }
 
@@ -175,11 +195,15 @@ export class Engine {
   // find the best possible move in response to the current board position.
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32): i32 {
 
+    if (this.board.isThreefoldRepetion()) {
+      return encodeScoredMove(0, this.contemptFactor * playerColor);
+    }
+
+    const ttHash = this.board.getHash();
     if (remainingLevels <= 0) {
       return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
     }
 
-    const ttHash = this.board.getHash();
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
 
     let moves: Int32Array | null = null;

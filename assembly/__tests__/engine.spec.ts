@@ -396,6 +396,46 @@ describe('Finds moves', () => {
 
     expect(isCheckMate(board, WHITE)).toBe(true);
   });
+
+  it('Avoids threefold repetition', () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0, -K,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  R,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  K,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+    ]);
+
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
+    const boardState1 = board.getHash();
+
+    board.performEncodedMove(findBestMove(board, BLACK, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
+    const boardState2 = board.getHash();
+
+    board.performEncodedMove(findBestMove(board, BLACK, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
+    const boardState3 = board.getHash();
+
+    board.performEncodedMove(findBestMove(board, BLACK, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
+    const boardState4 = board.getHash();
+
+    board.performEncodedMove(findBestMove(board, BLACK, 1));
+    board.performEncodedMove(findBestMove(board, WHITE, 1));
+    const boardState5 = board.getHash();
+
+    expect(boardState5 != boardState1).toBeTruthy("Threefold repetion!");
+
+  });
 });
 
 describe("Move list sorting", () => {

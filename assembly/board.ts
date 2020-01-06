@@ -25,6 +25,7 @@ import {
   PIECE_RNG_NUMBERS,
   PLAYER_RNG_NUMBER
 } from './zobrist';
+import { PositionHistory } from './history';
 
 export const WHITE_KING_START = 95;
 export const BLACK_KING_START = 25;
@@ -55,6 +56,8 @@ export class Board {
   private hashCodeHistory: Uint64Array = new Uint64Array(MAX_GAME_HALFMOVES);
   private scoreHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
   private halfMoveClockHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
+
+  private positionHistory: PositionHistory = new PositionHistory();
 
   /* items Array:
      Index 0 - 119: Board representation (10 columns * 12 rows)
@@ -292,6 +295,8 @@ export class Board {
       }
     }
 
+    this.positionHistory.push(this.getHash());
+
     if (isEnPassant) {
       return EN_PASSANT_BIT;
     } else {
@@ -300,6 +305,8 @@ export class Board {
   };
 
   undoMove(piece: i32, start: i32, end: i32, removedPieceId: i32): void {
+    this.positionHistory.pop();
+
     const pieceColor = sign(piece);
     this.removePieceWithoutIncrementalUpdate(end);
     this.addPieceWithoutIncrementalUpdate(pieceColor, abs(piece), start);
@@ -763,12 +770,20 @@ export class Board {
 
     return false;
   }
+
   logBitBoards(color: i32): void {
     for (let i = 0; i < this.bitBoardPieces.length; i++) {
       trace("Piece " + (i - 6).toString() + ": " + toBitBoardString(this.bitBoardPieces[i]));
     }
   }
 
+  setHistory(history: PositionHistory): void {
+    this.positionHistory = history;
+  }
+
+  isThreefoldRepetion(): bool {
+    return this.positionHistory.isThreefoldRepetion(this.getHash());
+  }
 }
 
 export const WHITE_LEFT_ROOK_START = 91;
