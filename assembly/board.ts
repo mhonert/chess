@@ -169,16 +169,19 @@ export class Board {
 
     this.score += this.calculateScore(pos, pieceColor, pieceId);
     const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << bitIndex));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << bitIndex));
   }
 
+  @inline
   addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
     const piece = pieceId * pieceColor;
     unchecked(this.items[pos] = piece);
-    unchecked(this.bitBoardPieces[piece + 6] |= BOARD_POS_TO_BIT_PATTERN[pos]);
+    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
+    unchecked(this.bitBoardPieces[piece + 6] |= (1 << bitIndex));
+    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << bitIndex));
   }
 
   @inline
@@ -188,14 +191,14 @@ export class Board {
     const color = sign(piece);
     this.score -= this.calculateScore(pos, color, abs(piece));
     const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-    this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][bitIndex];
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][bitIndex]);
 
     return this.remove(piece, color, pos, bitIndex);
   }
 
   // Version of removePiece for optimization purposes without incremental update
   @inline
-  private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
+   removePieceWithoutIncrementalUpdate(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
     return this.remove(piece, sign(piece), pos, unchecked(BOARD_POS_TO_BIT_INDEX[pos]));
   }

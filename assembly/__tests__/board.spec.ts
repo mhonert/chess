@@ -447,3 +447,80 @@ describe("Zobrist hashing", () => {
   });
 
 });
+
+describe('All piece bitboards', () => {
+  it('is updated correctly using addPiece/removePiece', () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    board.removePiece(board.findKingPosition(WHITE));
+    board.removePiece(board.findKingPosition(BLACK));
+
+    for (let i = 21; i <= 98; i++) {
+      if (!board.isBorder(i)) {
+        board.addPiece(WHITE, BISHOP, i);
+      }
+    }
+
+    expect(board.getAllPieceBitBoard(WHITE)).toBe(0xFFFFFFFFFFFFFFFF, "Pieces added correctly");
+
+    for (let i = 21; i <= 98; i++) {
+      if (!board.isBorder(i)) {
+        board.removePiece(i);
+      }
+    }
+
+    expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
+
+  });
+
+  it('is updated correctly using addPieceWithoutIncrementalUpdate/removePieceWithoutIncrementalUpdate', () => {
+    const board: Board = new Board([
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
+      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
+      __, __, __, __, __, __, __, __, __, __,
+      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+    ]);
+
+    board.removePiece(board.findKingPosition(WHITE));
+    board.removePiece(board.findKingPosition(BLACK));
+
+    for (let i = 21; i <= 98; i++) {
+      if (!board.isBorder(i)) {
+        board.addPieceWithoutIncrementalUpdate(WHITE, BISHOP, i);
+      }
+    }
+
+    expect(board.getAllPieceBitBoard(WHITE)).toBe(0xFFFFFFFFFFFFFFFF, "Pieces added correctly");
+
+    for (let i = 21; i <= 98; i++) {
+      if (!board.isBorder(i)) {
+        board.removePieceWithoutIncrementalUpdate(i);
+      }
+    }
+
+    expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
+
+  });
+});
+

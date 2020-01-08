@@ -186,7 +186,7 @@ describe("Black pawn moves", () => {
 
 describe("White knight moves", () => {
 
-  it("Generates moves for base position", () => {
+  it("Generates knight moves for base position", () => {
     const board: Board = boardWithOnePiece(KNIGHT, 92);
 
     const moves = generateMovesForStartIndex(board, WHITE, 92);

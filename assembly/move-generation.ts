@@ -23,14 +23,14 @@ import {
   BLACK_PAWNS_BASELINE_START,
   Board,
   BOARD_BORDER,
-  EMPTY, MAX_FIELD_DISTANCE,
+  EMPTY, KNIGHT_PATTERNS, MAX_FIELD_DISTANCE,
   WHITE,
   WHITE_KING_START,
   WHITE_PAWNS_BASELINE_END,
   WHITE_PAWNS_BASELINE_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { differentColor, sameColor, toInt32Array } from './util';
+import { differentColor, sameColor, sign, toBitBoardString, toInt32Array } from './util';
 
 
 const MAX_MOVES = 218;
@@ -43,10 +43,14 @@ class MoveGenerator {
   private moves: Int32Array = new Int32Array(MAX_MOVES);
   private count: i32;
   private board: Board;
+  private occupiedBitBoard: u64;
+  private opponentOrEmpty: u64;
 
   generateMoves(board: Board, activeColor: i32): void {
     this.board = board;
     this.count = 0;
+    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
+    this.opponentOrEmpty = ~this.board.getAllPieceBitBoard(activeColor);
 
     let piece = PAWN * activeColor;
     let bitboard = this.board.getBitBoard(piece + 6);
@@ -60,10 +64,10 @@ class MoveGenerator {
     piece = KNIGHT * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
+      const bitPos: u32 = u32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-      this.generateKnightMoves(activeColor, piece, pos);
+      const pos = 21 + (bitPos & 7) + ((bitPos >> 3) * 10) // calculate letter board position from bit index
+      this.generateKnightMoves(activeColor, piece, bitPos, pos);
     }
 
     piece = BISHOP * activeColor;
@@ -87,9 +91,9 @@ class MoveGenerator {
     piece = QUEEN * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
+      const bitPos: u32 = u32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      const pos = 21 + (bitPos & 7) + ((bitPos >> 3) * 10); // calculate letter board position from bit index
       this.generateQueenMoves(activeColor, piece, pos);
     }
 
@@ -199,21 +203,15 @@ class MoveGenerator {
     }
   }
 
-  generateKnightMoves(activeColor: i32, piece: i32, start: i32): void {
-    for (let i: i32 = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-      const offset = unchecked(KNIGHT_DIRECTIONS[i]);
+  generateKnightMoves(activeColor: i32, piece: i32, bitStartPos: i32, start: i32): void {
+    const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
+    let bitboard = knightTargets & this.opponentOrEmpty;
 
-      const end = start + offset;
-      if (this.board.isBorder(end)) {
-        continue;
-      }
-
-      const targetPiece = this.board.getItem(end);
-      if (targetPiece != EMPTY && sameColor(targetPiece, activeColor)) {
-        continue;
-      }
-
-      unchecked(this.moves[this.count++] = encodeMove(piece, start, start + offset));
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const end = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
     }
   };
 
