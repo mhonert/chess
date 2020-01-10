@@ -806,7 +806,7 @@ export const BLACK_RIGHT_ROOK_START = 28;
 
 // Return index 0 for BLACK (-1) and 1 for WHITE (+1)
 @inline
-function indexFromColor(color: i32): i32 {
+export function indexFromColor(color: i32): i32 {
   return (color + 1) >> 1;
 }
 

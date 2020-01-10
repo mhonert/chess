@@ -19,18 +19,17 @@
 import {
   BLACK,
   BLACK_KING_START,
-  BLACK_PAWNS_BASELINE_END,
-  BLACK_PAWNS_BASELINE_START,
   Board,
   BOARD_BORDER,
-  EMPTY, KNIGHT_PATTERNS, MAX_FIELD_DISTANCE,
+  EMPTY,
+  indexFromColor,
+  KNIGHT_PATTERNS,
+  MAX_FIELD_DISTANCE,
   WHITE,
-  WHITE_KING_START,
-  WHITE_PAWNS_BASELINE_END,
-  WHITE_PAWNS_BASELINE_START
+  WHITE_KING_START
 } from './board';
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { differentColor, sameColor, sign, toBitBoardString, toInt32Array } from './util';
+import { sameColor, toInt32Array } from './util';
 
 
 const MAX_MOVES = 218;
@@ -38,31 +37,41 @@ const MAX_MOVES = 218;
 export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
 const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
 
+const PAWN_DOUBLE_MOVE_LINE: Uint64Array = createDoubleMoveLine();
+
+function createDoubleMoveLine(): Uint64Array {
+  const lines = new Uint64Array(2);
+  lines[indexFromColor(BLACK)] = 0b0000000000000000000000000000000000000000111111110000000000000000;
+  lines[indexFromColor(WHITE)] = 0b0000000000000000111111110000000000000000000000000000000000000000;
+
+  return lines;
+}
+
 
 class MoveGenerator {
   private moves: Int32Array = new Int32Array(MAX_MOVES);
   private count: i32;
   private board: Board;
   private occupiedBitBoard: u64;
-  private opponentOrEmpty: u64;
+  private emptyBitBoard: u64;
+  private opponentBitBoard: u64;
 
   generateMoves(board: Board, activeColor: i32): void {
     this.board = board;
     this.count = 0;
     this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
-    this.opponentOrEmpty = ~this.board.getAllPieceBitBoard(activeColor);
+    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
+    this.emptyBitBoard = ~this.occupiedBitBoard;
 
-    let piece = PAWN * activeColor;
-    let bitboard = this.board.getBitBoard(piece + 6);
-    while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
-      bitboard ^= 1 << bitPos; // unset bit
-      const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-      this.generatePawnMoves(activeColor, piece, pos);
+
+    if (activeColor == WHITE) {
+      this.generateWhitePawnMoves();
+    } else {
+      this.generateBlackPawnMoves();
     }
 
-    piece = KNIGHT * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    let piece = KNIGHT * activeColor;
+    let bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
       const bitPos: u32 = u32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
@@ -100,6 +109,7 @@ class MoveGenerator {
     // King moves
     const pos = board.findKingPosition(activeColor);
     this.generateKingMoves(activeColor, KING * activeColor, pos);
+
   }
 
   getGeneratedMoves(): Int32Array {
@@ -125,95 +135,187 @@ class MoveGenerator {
   }
 
 
-  generatePawnMoves(activeColor: i32, piece: i32, start: i32): void {
-    const moveDirection = -activeColor;
+  @inline
+  generateWhitePawnMoves(): void {
+    const pawns = this.board.getBitBoard(PAWN + 6);
 
-    if ((activeColor == WHITE && start < 39) || (activeColor == BLACK && start > 80)) {
-      this.generateDiagonalPawnMove(activeColor, piece, start, start + 9 * moveDirection, true);
-      this.generateStraightPawnMove(activeColor, piece, start, start + 10 * moveDirection, true);
-      this.generateDiagonalPawnMove(activeColor, piece, start, start + 11 * moveDirection, true);
-      return;
-    }
-
-    this.generateDiagonalPawnMove(activeColor, piece, start, start + 9 * moveDirection, false);
-    this.generateStraightPawnMove(activeColor, piece, start, start + 10 * moveDirection, false);
-    this.generateDiagonalPawnMove(activeColor, piece, start, start + 11 * moveDirection, false);
-
-    if (activeColor == WHITE && start >= WHITE_PAWNS_BASELINE_START && start <= WHITE_PAWNS_BASELINE_END) {
-      this.generateStraightDoublePawnMove(activeColor, piece, start, start + 20 * moveDirection);
-    } else if (activeColor == BLACK && start >= BLACK_PAWNS_BASELINE_START && start <= BLACK_PAWNS_BASELINE_END) {
-      this.generateStraightDoublePawnMove(activeColor, piece, start, start + 20 * moveDirection);
-    }
-  };
-
-
-  generateStraightPawnMove(activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
-    if (!this.board.isEmpty(end)) {
-      return;
-    }
-
-    if (createPromotions) {
-      unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(ROOK, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(QUEEN, start, end));
-
-    } else {
-      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
-
-    }
+    this.generateWhiteStraightPawnMoves(pawns);
+    this.generateWhiteAttackPawnMoves( pawns);
+    this.generateWhiteEnPassantPawnMoves();
   }
 
-  generateStraightDoublePawnMove(activeColor: i32, piece: i32, start: i32, end: i32): void {
-    if (!this.board.isEmpty(end)) {
-      return;
-    }
 
-    const direction = -activeColor;
-    if (!this.board.isEmpty(start + direction * 10)) {
-      return;
-    }
+  generateWhiteStraightPawnMoves(pawns: u64): void {
+    // Single move
+    pawns >>= 8;
 
-    unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+    let bitboard = pawns & this.emptyBitBoard;
+    this.generatePawnMovesFromBitboard(bitboard, 10);
+
+    // Double move
+    bitboard &= unchecked(PAWN_DOUBLE_MOVE_LINE[indexFromColor(WHITE)]);
+    bitboard >>= 8;
+
+    bitboard &= this.emptyBitBoard;
+    this.generatePawnMovesWithoutPromotion(bitboard, 20);
   }
 
-  generateDiagonalPawnMove(activeColor: i32, piece: i32, start: i32, end: i32, createPromotions: bool): void {
-    const targetPiece = this.board.getItem(end);
-    if (targetPiece == BOARD_BORDER) {
-      return;
-    }
+  generateWhiteAttackPawnMoves(pawns: u64): void {
+    let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
+    attackToLeft >>= 9;
 
-    if (targetPiece == EMPTY) {
-      if (!this.board.isEnPassentPossible(activeColor, end)) {
-        return;
+    attackToLeft &= this.opponentBitBoard;
+    this.generatePawnMovesFromBitboard(attackToLeft, 11);
+
+    let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
+    attackToRight >>= 7;
+
+    attackToRight &= this.opponentBitBoard;
+    this.generatePawnMovesFromBitboard(attackToRight, 9);
+  }
+
+
+  generateWhiteEnPassantPawnMoves(): void {
+    let enPassant = this.board.getEnPassantStateBits() & 0xff;
+
+    if (enPassant != 0) {
+      const end = 41 + ctz(enPassant);
+      if (this.board.isEmpty(end)) {
+        if (enPassant != 0b10000000) {
+          const start = end + 11;
+          if (this.board.getItem(start) == PAWN) {
+            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
+          }
+        }
+
+        if (enPassant != 0b00000001) {
+          const start = end + 9
+          if (this.board.getItem(start) == PAWN) {
+            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
+          }
+        }
       }
-    } else if (!differentColor(targetPiece, activeColor)) {
-      return;
     }
+  }
 
-    if (createPromotions) {
-      unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(ROOK, start, end));
-      unchecked(this.moves[this.count++] = encodeMove(QUEEN, start, end));
 
-    } else {
-      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
+  @inline
+  generateBlackPawnMoves(): void {
+    const pawns = this.board.getBitBoard(-PAWN + 6);
 
+    this.generateBlackStraightPawnMoves(pawns);
+    this.generateBlackAttackPawnMoves( pawns);
+    this.generateBlackEnPassantPawnMoves();
+  }
+
+  generateBlackStraightPawnMoves(pawns: u64): void {
+    // Single move
+    pawns <<= 8;
+
+    let bitboard = pawns & this.emptyBitBoard;
+    this.generatePawnMovesFromBitboard(bitboard, -10);
+
+    // Double move
+    bitboard &= unchecked(PAWN_DOUBLE_MOVE_LINE[indexFromColor(BLACK)]);
+    bitboard <<= 8;
+
+    bitboard &= this.emptyBitBoard;
+    this.generatePawnMovesWithoutPromotion(bitboard, -20);
+  }
+
+  generateBlackAttackPawnMoves(pawns: u64): void {
+    let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
+    attackToLeft <<= 7;
+
+    attackToLeft &= this.opponentBitBoard;
+    this.generatePawnMovesFromBitboard(attackToLeft, -9);
+
+    let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
+    attackToRight <<= 9;
+
+    attackToRight &= this.opponentBitBoard;
+    this.generatePawnMovesFromBitboard(attackToRight, -11);
+  }
+
+
+  generateBlackEnPassantPawnMoves(): void {
+    let enPassant = this.board.getEnPassantStateBits() >> 8;
+
+    if (enPassant != 0) {
+      const end = 71 + ctz(enPassant);
+      if (this.board.isEmpty(end)) {
+        if (enPassant != 0b00000001) {
+          const start = end - 11;
+          if (this.board.getItem(start) == -PAWN) {
+            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
+          }
+        }
+
+        if (enPassant != 0b10000000) {
+          const start = end - 9;
+          if (this.board.getItem(start) == -PAWN) {
+            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
+          }
+        }
+      }
+    }
+  }
+
+
+  @inline
+  private generatePawnMovesFromBitboard(bitboard: u64, direction: i32): void {
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const end = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      const start = end + direction;
+
+      if (end <= 28 || end >= 91) {
+        // Promotion
+        unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
+        unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
+        unchecked(this.moves[this.count++] = encodeMove(ROOK, start, end));
+        unchecked(this.moves[this.count++] = encodeMove(QUEEN, start, end));
+      } else {
+        // Normal move
+        unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
+      }
+    }
+  }
+
+  @inline
+  private generatePawnMovesWithoutPromotion(bitboard: u64, direction: i32): void {
+    while (bitboard != 0) {
+      const bitPos: u64 = ctz(bitboard);
+      bitboard ^= 1 << bitPos; // unset bit
+      const end = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
+      const start = end + direction;
+
+      // Normal move
+      unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
     }
   }
 
   generateKnightMoves(activeColor: i32, piece: i32, bitStartPos: i32, start: i32): void {
     const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
-    let bitboard = knightTargets & this.opponentOrEmpty;
 
+    // Captures
+    this.generateMovesFromBitboard(piece, start, knightTargets & this.opponentBitBoard);
+
+    // Normal moves
+    this.generateMovesFromBitboard(piece, start, knightTargets & this.emptyBitBoard);
+
+  };
+
+  @inline
+  generateMovesFromBitboard(piece: i32, start: i32, bitboard: u64): void {
     while (bitboard != 0) {
       const bitPos: u64 = ctz(bitboard);
       bitboard ^= 1 << bitPos; // unset bit
       const end = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
       unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
     }
-  };
+  }
 
 
   @inline
@@ -387,6 +489,7 @@ export function isCheckMate(board: Board, activeColor: i32): bool {
 
 // Helper functions
 
+@inline
 export function encodeMove(piece: i32, start: i32, end: i32): i32 {
   return abs(piece) | (start << 3) | (end << 10);
 }

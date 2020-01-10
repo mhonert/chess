@@ -18,14 +18,15 @@
 
 import {
   decodeStartIndex,
-  encodeMove,
+  encodeMove, encodeScoredMove,
   generateFilteredMoves,
   isCheckMate,
-  KNIGHT_DIRECTIONS,
+  KNIGHT_DIRECTIONS
 } from '../move-generation';
 import { __, BLACK, BLACK_KING_MOVED, Board, EMPTY, WHITE } from '../board';
 import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 import { sign } from '../util';
+import { logScoredMove } from '../engine';
 
 
 function emptyBoardWithKings(): Array<i32> {
@@ -100,11 +101,35 @@ describe("White pawn moves", () => {
     const moves = generateMovesForStartIndex(board, WHITE, 55);
 
     expect(moves).toHaveLength(2);
-    expect(moves).toContain(encodeMove(PAWN, 55, 45)); // standard move
-    expect(moves).toContain(encodeMove(PAWN, 55, 44)); // en passant
+    expect(moves).toContain(encodeMove(PAWN, 55, 45), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 55, 44), "en passant");
   });
 
-  it("xyz Exclude moves that would put own king in check", () => {
+  it("Generates en passant move on left side", () => {
+    const board: Board = boardWithOnePiece(PAWN, 52);
+    addPiece(board, -PAWN, 51);
+    board.setEnPassantPossible(31);
+
+    const moves = generateMovesForStartIndex(board, WHITE, 52);
+
+    expect(moves).toHaveLength(2);
+    expect(moves).toContain(encodeMove(PAWN, 52, 42), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 52, 41), "en passant");
+  });
+
+  it("Generates en passant move on right side", () => {
+    const board: Board = boardWithOnePiece(PAWN, 57);
+    addPiece(board, -PAWN, 58);
+    board.setEnPassantPossible(38);
+
+    const moves = generateMovesForStartIndex(board, WHITE, 57);
+
+    expect(moves).toHaveLength(2);
+    expect(moves).toContain(encodeMove(PAWN, 57, 47), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 57, 48), "en passant");
+  });
+
+  it("Exclude moves that would put own king in check", () => {
     const board: Board = boardWithOnePiece(PAWN, 85);
     moveKing(board, KING, 86);
     addPiece(board, -ROOK, 84);
@@ -169,8 +194,32 @@ describe("Black pawn moves", () => {
     const moves = generateMovesForStartIndex(board, BLACK, 65);
 
     expect(moves).toHaveLength(2);
-    expect(moves).toContain(encodeMove(PAWN, 65, 75)); // standard move
-    expect(moves).toContain(encodeMove(PAWN, 65, 74)); // en passant
+    expect(moves).toContain(encodeMove(PAWN, 65, 75), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 65, 74), "en passant");
+  });
+
+  it("Generates en passant move on left side", () => {
+    const board: Board = boardWithOnePiece(-PAWN, 62);
+    addPiece(board, PAWN, 61);
+    board.setEnPassantPossible(81);
+
+    const moves = generateMovesForStartIndex(board, BLACK, 62);
+
+    expect(moves).toHaveLength(2);
+    expect(moves).toContain(encodeMove(PAWN, 62, 72), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 62, 71), "en passant");
+  });
+
+  it("Generates en passant move on right side", () => {
+    const board: Board = boardWithOnePiece(-PAWN, 67);
+    addPiece(board, PAWN, 68);
+    board.setEnPassantPossible(88);
+
+    const moves = generateMovesForStartIndex(board, BLACK, 67);
+
+    expect(moves).toHaveLength(2);
+    expect(moves).toContain(encodeMove(PAWN, 67, 77), "standard move");
+    expect(moves).toContain(encodeMove(PAWN, 67, 78), "en passant");
   });
 
   it("Exclude moves that would put own king in check", () => {
