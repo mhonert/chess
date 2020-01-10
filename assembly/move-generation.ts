@@ -180,19 +180,17 @@ class MoveGenerator {
 
     if (enPassant != 0) {
       const end = 41 + ctz(enPassant);
-      if (this.board.isEmpty(end)) {
-        if (enPassant != 0b10000000) {
-          const start = end + 11;
-          if (this.board.getItem(start) == PAWN) {
-            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
-          }
+      if (enPassant != 0b10000000) {
+        const start = end + 11;
+        if (this.board.getItem(start) == PAWN) {
+          unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
+      }
 
-        if (enPassant != 0b00000001) {
-          const start = end + 9
-          if (this.board.getItem(start) == PAWN) {
-            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
-          }
+      if (enPassant != 0b00000001) {
+        const start = end + 9
+        if (this.board.getItem(start) == PAWN) {
+          unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
     }
@@ -243,19 +241,17 @@ class MoveGenerator {
 
     if (enPassant != 0) {
       const end = 71 + ctz(enPassant);
-      if (this.board.isEmpty(end)) {
-        if (enPassant != 0b00000001) {
-          const start = end - 11;
-          if (this.board.getItem(start) == -PAWN) {
-            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
-          }
+      if (enPassant != 0b00000001) {
+        const start = end - 11;
+        if (this.board.getItem(start) == -PAWN) {
+          unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
+      }
 
-        if (enPassant != 0b10000000) {
-          const start = end - 9;
-          if (this.board.getItem(start) == -PAWN) {
-            unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
-          }
+      if (enPassant != 0b10000000) {
+        const start = end - 9;
+        if (this.board.getItem(start) == -PAWN) {
+          unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
     }
