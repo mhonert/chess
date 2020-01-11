@@ -17,8 +17,8 @@
  */
 
 
-import { toInt32Array } from './util';
-import { BLACK, indexFromColor, WHITE } from './board';
+import { toBitBoardString, toInt32Array } from './util';
+import { BLACK, indexFromColor, MAX_FIELD_DISTANCE, WHITE } from './board';
 import { KNIGHT_DIRECTIONS } from './pieces';
 
 
@@ -179,3 +179,81 @@ function createDoubleMoveLine(): Uint64Array {
 }
 
 
+enum Direction {
+  NORTH_WEST, NORTH, NORTH_EAST,
+  EAST,
+  SOUTH_EAST, SOUTH, SOUTH_WEST,
+  WEST
+}
+
+const DIRECTION_COL_OFFSET: Array<i32> = [-1,  0, +1, +1, +1,  0, -1, -1];
+const DIRECTION_ROW_OFFSET: Array<i32> = [-1, -1, -1,  0, +1, +1, +1,  0];
+
+function computeRayAttackBitboards(): Uint64Array {
+  const rayAttacks = new Uint64Array(65 * 8); // (64 squares + 1 for empty attack bitboard) * 8 directions
+  let index = 0;
+  for (let dir = Direction.NORTH_WEST; dir <= Direction.WEST; dir++) {
+    for (let pos = 0; pos < 64; pos++) {
+      let col = pos % 8;
+      let row = pos / 8;
+
+      let attackBitboard: u64 = 0;
+
+      for (let distance = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
+        col += DIRECTION_COL_OFFSET[dir];
+        row += DIRECTION_ROW_OFFSET[dir];
+        if (col < 0 || col > 7 || row < 0 || row > 7) {
+          break; // border
+        }
+
+        const patternIndex = row * 8 + col;
+        attackBitboard |= (1 << patternIndex);
+      }
+
+      rayAttacks[index++] = attackBitboard;
+    }
+    rayAttacks[index++] = 0; // empty attack bitboard
+  }
+  return rayAttacks;
+}
+
+const RAY_ATTACKS: Uint64Array = computeRayAttackBitboards();
+
+@inline
+function getPositiveRayAttacks(occupied: u64, dir: Direction, pos: i32): u64 {
+  const dirOffset = dir * 65;
+  let attacks = unchecked(RAY_ATTACKS[dirOffset  + pos]);
+  const blocker = attacks & occupied;
+  if (blocker == 0) {
+    return attacks;
+  }
+  const firstBlockerPos = 63 - i32(clz(blocker));
+  attacks ^= unchecked(RAY_ATTACKS[dirOffset + firstBlockerPos]);
+  return attacks;
+}
+
+@inline
+function getNegativeRayAttacks(occupied: u64, dir: Direction, pos: i32): u64 {
+  const dirOffset = dir * 65;
+  let attacks = unchecked(RAY_ATTACKS[dirOffset + pos]);
+  const blocker = attacks & occupied;
+  const firstBlockerPos = i32(ctz(blocker));
+  attacks ^= unchecked(RAY_ATTACKS[dirOffset + firstBlockerPos]);
+  return attacks;
+}
+
+export function diagonalAttacks(occupied: u64, pos: i32): u64 {
+  return getPositiveRayAttacks(occupied, Direction.NORTH_EAST, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH_WEST, pos);
+}
+
+export function antiDiagonalAttacks(occupied: u64, pos: i32): u64 {
+  return getPositiveRayAttacks(occupied, Direction.NORTH_WEST, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH_EAST, pos);
+}
+
+export function horizontalAttacks(occupied: u64, pos: i32): u64 {
+  return getPositiveRayAttacks(occupied, Direction.WEST, pos) | getNegativeRayAttacks(occupied, Direction.EAST, pos);
+}
+
+export function verticalAttacks(occupied: u64, pos: i32): u64 {
+  return getPositiveRayAttacks(occupied, Direction.NORTH, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH, pos);
+}

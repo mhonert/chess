@@ -28,8 +28,14 @@ import {
   WHITE_KING_START
 } from './board';
 import { BISHOP, KING, KING_DIRECTIONS, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { sameColor } from './util';
-import { KNIGHT_PATTERNS, PAWN_DOUBLE_MOVE_LINE } from './bitboard';
+import { sameColor, toBitBoardString } from './util';
+import {
+  antiDiagonalAttacks,
+  diagonalAttacks,
+  horizontalAttacks,
+  KNIGHT_PATTERNS,
+  PAWN_DOUBLE_MOVE_LINE, verticalAttacks
+} from './bitboard';
 
 
 const MAX_MOVES = 218;
@@ -71,7 +77,7 @@ class MoveGenerator {
       const bitPos: u64 = ctz(bitboard);
       bitboard ^= 1 << bitPos; // unset bit
       const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-      this.generateBishopMoves(activeColor, piece, pos);
+      this.generateBishopMoves(activeColor, piece, pos, i32(bitPos));
     }
 
     piece = ROOK * activeColor;
@@ -80,7 +86,7 @@ class MoveGenerator {
       const bitPos: u64 = ctz(bitboard);
       bitboard ^= 1 << bitPos; // unset bit
       const pos = u32(21 + (bitPos & 7) + ((bitPos >> 3) * 10)); // calculate letter board position from bit index
-      this.generateRookMoves(activeColor, piece, pos);
+      this.generateRookMoves(activeColor, piece, pos, i32(bitPos));
     }
 
     piece = QUEEN * activeColor;
@@ -89,7 +95,7 @@ class MoveGenerator {
       const bitPos: u32 = u32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
       const pos = 21 + (bitPos & 7) + ((bitPos >> 3) * 10); // calculate letter board position from bit index
-      this.generateQueenMoves(activeColor, piece, pos);
+      this.generateQueenMoves(activeColor, piece, pos, i32(bitPos));
     }
 
     // King moves
@@ -301,50 +307,32 @@ class MoveGenerator {
 
 
   @inline
-  generateBishopMoves(activeColor: i32, piece: i32, start: i32): void {
-    this.generateSlidingPieceMoves(activeColor, piece, start, 9);
-    this.generateSlidingPieceMoves(activeColor, piece, start, 11);
-    this.generateSlidingPieceMoves(activeColor, piece, start, -9);
-    this.generateSlidingPieceMoves(activeColor, piece, start, -11);
+  generateBishopMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
+    let attacks = diagonalAttacks(this.occupiedBitBoard, pos) | antiDiagonalAttacks(this.occupiedBitBoard, pos);
+
+    // Captures
+    this.generateMovesFromBitboard(piece, start, attacks & this.opponentBitBoard);
+
+    // Normal moves
+    this.generateMovesFromBitboard(piece, start, attacks & this.emptyBitBoard);
   };
 
   @inline
-  generateRookMoves(activeColor: i32, piece: i32, start: i32): void {
-    this.generateSlidingPieceMoves(activeColor, piece, start, 1);
-    this.generateSlidingPieceMoves(activeColor, piece, start, 10);
-    this.generateSlidingPieceMoves(activeColor, piece, start, -1);
-    this.generateSlidingPieceMoves(activeColor, piece, start, -10);
+  generateRookMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
+    let attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
+
+    // Captures
+    this.generateMovesFromBitboard(piece, start, attacks & this.opponentBitBoard);
+
+    // Normal moves
+    this.generateMovesFromBitboard(piece, start, attacks & this.emptyBitBoard);
   };
 
 
-  generateSlidingPieceMoves(activeColor: i32, piece: i32, start: i32, direction: i32): void {
-    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-      const end = start + direction * distance;
-
-      const targetPiece = this.board.getItem(end);
-      if (targetPiece == EMPTY) {
-        unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
-        continue;
-      }
-
-      if (sameColor(targetPiece, activeColor)) {
-        return;
-      }
-
-      if (targetPiece == BOARD_BORDER) {
-        return;
-      }
-
-      unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
-      return;
-    }
-
-  }
-
-  generateQueenMoves(activeColor: i32, piece: i32, start: i32): void {
+  generateQueenMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
     // reuse move generators
-    this.generateBishopMoves(activeColor, piece, start);
-    this.generateRookMoves(activeColor, piece, start);
+    this.generateBishopMoves(activeColor, piece, start, pos);
+    this.generateRookMoves(activeColor, piece, start, pos);
   };
 
 
@@ -446,6 +434,7 @@ class MoveGenerator {
 const DEFAULT_INSTANCE = new MoveGenerator();
 const MATE_CHECK_INSTANCE = new MoveGenerator();
 
+@inline
 export function generateMoves(board: Board, activeColor: i32): Int32Array {
   DEFAULT_INSTANCE.generateMoves(board, activeColor);
   return DEFAULT_INSTANCE.getGeneratedMoves();
