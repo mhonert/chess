@@ -47,6 +47,8 @@ class MoveGenerator {
   private occupiedBitBoard: u64;
   private emptyBitBoard: u64;
   private opponentBitBoard: u64;
+  private opponentOrEmptyBitboard: u64; // only available when counting moves
+
 
   generateMoves(board: Board, activeColor: i32): void {
     this.board = board;
@@ -54,7 +56,6 @@ class MoveGenerator {
     this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
     this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
     this.emptyBitBoard = ~this.occupiedBitBoard;
-
 
     if (activeColor == WHITE) {
       this.generateWhitePawnMoves();
@@ -100,6 +101,53 @@ class MoveGenerator {
       this.generateQueenMoves(activeColor, piece, pos, bitPos);
     }
 
+  }
+
+  mainPieceMoveCount(board: Board, activeColor: i32): i32 {
+    this.board = board;
+    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
+    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
+    this.emptyBitBoard = ~this.occupiedBitBoard;
+    this.opponentOrEmptyBitboard = this.opponentBitBoard | this.emptyBitBoard;
+
+    let count: i32 = 0;
+    let piece = KNIGHT * activeColor;
+    let bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
+      count += this.countKnightMoves(activeColor, bitPos);
+    }
+
+    piece = BISHOP * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
+      count += this.countBishopMoves(activeColor, bitPos);
+    }
+
+    piece = ROOK * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
+      count += this.countRookMoves(activeColor, bitPos);
+    }
+
+    piece = QUEEN * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const bitPos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << bitPos; // unset bit
+      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
+      count += this.countQueenMoves(activeColor, bitPos);
+    }
+
+    return count;
   }
 
   getGeneratedMoves(): Int32Array {
@@ -301,6 +349,13 @@ class MoveGenerator {
   };
 
   @inline
+  countKnightMoves(activeColor: i32, bitStartPos: i32): i32 {
+    const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
+
+    return i32(popcnt(knightTargets & this.opponentOrEmptyBitboard));
+  };
+
+  @inline
   generateMovesFromBitboard(piece: i32, start: i32, bitboard: u64): void {
     while (bitboard != 0) {
       const bitPos: u64 = ctz(bitboard);
@@ -323,6 +378,12 @@ class MoveGenerator {
   };
 
   @inline
+  countBishopMoves(activeColor: i32, pos: i32): i32 {
+    const attacks = diagonalAttacks(this.occupiedBitBoard, pos) | antiDiagonalAttacks(this.occupiedBitBoard, pos);
+    return i32(popcnt(attacks & this.opponentOrEmptyBitboard));
+  };
+
+  @inline
   generateRookMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
     const attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
 
@@ -333,6 +394,11 @@ class MoveGenerator {
     this.generateMovesFromBitboard(piece, start, attacks & this.emptyBitBoard);
   };
 
+  @inline
+  countRookMoves(activeColor: i32, pos: i32): i32 {
+    const attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
+    return i32(popcnt(attacks & this.opponentOrEmptyBitboard));
+  };
 
   @inline
   generateQueenMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
@@ -341,6 +407,10 @@ class MoveGenerator {
     this.generateRookMoves(activeColor, piece, start, pos);
   };
 
+  @inline
+  countQueenMoves(activeColor: i32, pos: i32): i32 {
+    return this.countBishopMoves(activeColor, pos) + this.countRookMoves(activeColor, pos);
+  };
 
   @inline
   isValidWhiteSmallCastlingMove(): bool {
@@ -477,6 +547,10 @@ export function generateFilteredMoves(board: Board, activeColor: i32): Int32Arra
   return DEFAULT_INSTANCE.getFilteredGeneratedMoves(activeColor);
 }
 
+@inline
+export function mainPieceMoveCount(board: Board, activeColor: i32): i32 {
+  return DEFAULT_INSTANCE.mainPieceMoveCount(board, activeColor);
+}
 
 @inline
 export function isCheckMate(board: Board, activeColor: i32): bool {
