@@ -72,6 +72,9 @@ describe('Attack detection via bitboards', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
+    board.removePiece(board.findKingPosition(WHITE));
+    board.removePiece(board.findKingPosition(BLACK));
+
     // Put a rook on each field
     for (let i = 21; i <= 98; i++) {
       if (!board.isBorder(i)) {
@@ -83,9 +86,9 @@ describe('Attack detection via bitboards', () => {
           }
 
           if (i % 10 == j % 10) {
-            expect(board.isVerticallyAttacked(WHITE, j)).toBeTruthy("Vertical Attack not detected " + i.toString() + " vs. " + j.toString());
+            expect(board.isAttacked(WHITE, j)).toBeTruthy("Vertical Attack not detected " + i.toString() + " vs. " + j.toString());
           } else if (i / 10 == j / 10) {
-            expect(board.isHorizontallyAttacked(WHITE, j)).toBeTruthy("Horizontal Attack not detected " + i.toString() + " vs. " + j.toString());
+            expect(board.isAttacked(WHITE, j)).toBeTruthy("Horizontal Attack not detected " + i.toString() + " vs. " + j.toString());
           }
         }
         board.removePiece(i);
@@ -151,9 +154,9 @@ describe('Attack detection via bitboards', () => {
           }
 
           if (i == j + 11 || i == j - 11) {
-            expect(board.isDiagonallyDownAttacked(WHITE, j)).toBeTruthy("Diagonal-down Attack not detected " + i.toString() + " vs. " + j.toString());
+            expect(board.isAttacked(WHITE, j)).toBeTruthy("Diagonal-down Attack not detected " + i.toString() + " vs. " + j.toString());
           } else if (i == j + 9 || i == j - 9) {
-            expect(board.isDiagonallyUpAttacked(WHITE, j)).toBeTruthy("Diagonal-up Attack not detected " + i.toString() + " vs. " + j.toString());
+            expect(board.isAttacked(WHITE, j)).toBeTruthy("Diagonal-up Attack not detected " + i.toString() + " vs. " + j.toString());
           }
         }
         board.removePiece(i);
@@ -178,9 +181,9 @@ describe('Attack detection via bitboards', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    expect(board.isHorizontallyAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook on the left side");
-    expect(board.isHorizontallyAttacked(WHITE, 35)).toBeFalsy("Pawn is not attacked");
-    expect(board.isHorizontallyAttacked(WHITE, 45)).toBeTruthy("Knight is attacked by white rook on the right side");
+    expect(board.isAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook on the left side");
+    expect(board.isAttacked(WHITE, 35)).toBeFalsy("Pawn is not attacked");
+    expect(board.isAttacked(WHITE, 45)).toBeTruthy("Knight is attacked by white rook on the right side");
   });
 
   it('detects vertical attacks', () => {
@@ -199,9 +202,9 @@ describe('Attack detection via bitboards', () => {
       __, __, __, __, __, __, __, __, __, __, 0, 0, 0
     ]);
 
-    expect(board.isVerticallyAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook below");
-    expect(board.isVerticallyAttacked(WHITE, 26)).toBeFalsy("Pawn is not attacked");
-    expect(board.isVerticallyAttacked(WHITE, 64)).toBeTruthy("Knight is attacked by white rook above");
+    expect(board.isAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook below");
+    expect(board.isAttacked(WHITE, 26)).toBeFalsy("Pawn is not attacked");
+    expect(board.isAttacked(WHITE, 64)).toBeTruthy("Knight is attacked by white rook above");
   });
 
   it('sets knight boards correctly', () => {

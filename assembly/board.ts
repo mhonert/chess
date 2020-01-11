@@ -19,19 +19,15 @@
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { sign, toBitBoardString, toInt32Array } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
-import {
-  CASTLING_RNG_NUMBERS,
-  EN_PASSANT_RNG_NUMBERS,
-  PIECE_RNG_NUMBERS,
-  PLAYER_RNG_NUMBER
-} from './zobrist';
+import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
+  antiDiagonalAttacks,
   BOARD_POS_TO_BIT_INDEX,
-  BOARD_POS_TO_BIT_PATTERN, DIAGONAL_DOWN_PATTERNS, DIAGONAL_UP_PATTERNS,
-  HORIZONTAL_PATTERNS,
+  diagonalAttacks,
+  horizontalAttacks,
   KNIGHT_PATTERNS,
-  VERTICAL_PATTERNS
+  verticalAttacks
 } from './bitboard';
 
 export const WHITE_KING_START = 95;
@@ -154,6 +150,7 @@ export class Board {
     this.updateHashForEnPassent(0);
   }
 
+  @inline
   getItem(pos: i32): i32 {
     return unchecked(this.items[pos]);
   }
@@ -401,71 +398,6 @@ export class Board {
     return (unchecked(this.bitBoardPieces[KNIGHT * opponentColor + 6]) & unchecked(KNIGHT_PATTERNS[bitIndex])) != 0;
   }
 
-  @inline
-  isHorizontallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-
-    const pieces = unchecked(this.bitBoardPieces[opponentColor * ROOK + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
-    const result = pieces & unchecked(HORIZONTAL_PATTERNS[bitIndex]);
-    if (result == 0) {
-      return 0;
-    }
-    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
-      return -1;
-    }
-
-    return 1;
-  }
-
-  @inline
-  isVerticallyAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-
-    const pieces = unchecked(this.bitBoardPieces[opponentColor * ROOK + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
-    const result = pieces & unchecked(VERTICAL_PATTERNS[bitIndex]);
-
-    if (result == 0) {
-      return 0;
-    }
-    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
-      return -10;
-    }
-
-    return 10;
-  }
-
-  @inline
-  isDiagonallyDownAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-
-    const pieces = unchecked(this.bitBoardPieces[opponentColor * BISHOP + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
-    const result = pieces & unchecked(DIAGONAL_DOWN_PATTERNS[bitIndex]);
-    if (result == 0) {
-      return 0;
-    }
-    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
-      return -11;
-    }
-
-    return 11;
-  }
-
-  @inline
-  isDiagonallyUpAttacked(opponentColor: i32, pos: i32): i32 {
-    const bitIndex = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
-
-    const pieces = unchecked(this.bitBoardPieces[opponentColor * BISHOP + 6]) | unchecked(this.bitBoardPieces[opponentColor * QUEEN + 6]);
-    const result = pieces & unchecked(DIAGONAL_UP_PATTERNS[bitIndex]);
-    if (result == 0) {
-      return 0;
-    }
-    if (result < unchecked(BOARD_POS_TO_BIT_PATTERN[pos])) {
-      return -9;
-    }
-
-    return 9;
-  }
-
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
       return unchecked(PIECE_VALUES[pieceId - 1]) * 10 + unchecked(WHITE_POSITION_SCORES[pieceId - 1][pos - 20]);
@@ -655,6 +587,7 @@ export class Board {
     unchecked(this.items[this.items.length - 1] &= ~bitMask);
   }
 
+  @inline
   findKingPosition(playerColor: i32): i32 {
     if (playerColor == WHITE) {
       return this.whiteKingIndex;
@@ -675,12 +608,33 @@ export class Board {
     }
   }
 
+  @inline
   isInCheck(activeColor: i32): bool {
     return this.isAttacked(-activeColor, this.findKingPosition(activeColor));
   };
 
   isAttacked(opponentColor: i32, pos: i32): bool {
-    if (this.isAttackedByPawns(opponentColor, pos)) {
+
+    const kingDistance = abs(this.findKingPosition(opponentColor) - pos);
+    if (kingDistance == 9 || kingDistance == 11 || kingDistance == 1 || kingDistance == 10) {
+      return true;
+    }
+
+    const occupied = this.getAllPieceBitBoard(WHITE) | this.getAllPieceBitBoard(BLACK);
+    const bitPos = unchecked(BOARD_POS_TO_BIT_INDEX[pos]);
+
+    const diaAttacks = diagonalAttacks(occupied, bitPos);
+    const antiDiaAttacks = antiDiagonalAttacks(occupied, bitPos);
+    const bishops = this.getBitBoard(BISHOP * opponentColor + 6);
+    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
+    if ((diaAttacks & bishops) != 0 || (diaAttacks & queens) != 0 || (antiDiaAttacks & bishops) != 0 || ((antiDiaAttacks & queens) != 0)) {
+      return true;
+    }
+
+    const hAttacks = horizontalAttacks(occupied, bitPos);
+    const vAttacks = verticalAttacks(occupied, bitPos);
+    const rooks = this.getBitBoard(ROOK * opponentColor + 6);
+    if ((hAttacks & rooks) != 0 || (hAttacks & queens) != 0 || (vAttacks & rooks) != 0 || ((vAttacks & queens) != 0)) {
       return true;
     }
 
@@ -688,17 +642,14 @@ export class Board {
       return true;
     }
 
-    if (this.isAttackedDiagonally(opponentColor, pos)) {
-      return true;
-    }
-
-    if (this.isAttackedOrthogonally(opponentColor, pos)) {
+    if (this.isAttackedByPawns(opponentColor, pos)) {
       return true;
     }
 
     return false;
   };
 
+  @inline
   isAttackedByPawns(opponentColor: i32, pos: i32): bool {
     if (this.getItem(pos + 9 * opponentColor) == PAWN * opponentColor) {
       return true;
@@ -711,83 +662,34 @@ export class Board {
     return false;
   }
 
-  isAttackedDiagonally(opponentColor: i32, pos: i32): bool {
+  @inline
+  isAttackedDiagonally(opponentColor: i32, pos: i32, bitPos: i32, occupied: u64): bool {
     const kingDistance = abs(this.findKingPosition(opponentColor) - pos);
     if (kingDistance == 9 || kingDistance == 11) {
       return true;
     }
+    const diaAttacks = diagonalAttacks(occupied, bitPos);
+    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
+    const bishops = this.getBitBoard(BISHOP * opponentColor + 6);
+    const antiDiaAttacks = antiDiagonalAttacks(occupied, bitPos);
 
-    const diaUpAttack = this.isDiagonallyUpAttacked(opponentColor, pos);
-
-    if (diaUpAttack < 0) {
-      if (this.isAttackedInDirection(BISHOP, opponentColor, pos, diaUpAttack)) {
-        return true;
-      }
-    } else if (diaUpAttack > 0) {
-      if (this.isAttackedInDirection(BISHOP, opponentColor, pos, diaUpAttack) || this.isAttackedInDirection(BISHOP, opponentColor, pos, -diaUpAttack)) {
-        return true;
-      }
-    }
-
-    const diaDownAttack = this.isDiagonallyDownAttacked(opponentColor, pos);
-
-    if (diaDownAttack < 0) {
-      return this.isAttackedInDirection(BISHOP, opponentColor, pos, diaDownAttack);
-    } else if (diaDownAttack > 0) {
-      return this.isAttackedInDirection(BISHOP, opponentColor, pos, diaDownAttack) || this.isAttackedInDirection(BISHOP, opponentColor, pos, -diaDownAttack);
-    }
-
-    return false;
+    return (diaAttacks & bishops) != 0 || (diaAttacks & queens) != 0 || (antiDiaAttacks & bishops) != 0 || ((antiDiaAttacks & queens) != 0);
   }
 
 
-  isAttackedInDirection(slidingPiece: i32, opponentColor: i32, pos: i32, direction: i32): bool {
-    const opponentPiece = slidingPiece * opponentColor;
-    const opponentQueen = QUEEN * opponentColor;
-
-    for (let distance: i32 = 1; distance <= MAX_FIELD_DISTANCE; distance++) {
-      pos += direction
-      const piece = this.getItem(pos);
-      if (piece == EMPTY) {
-        continue;
-      }
-
-      if (piece == opponentPiece || piece == opponentQueen) {
-        return true;
-      }
-
-      return false;
-
-    }
-
-    return false;
-  }
-
-  isAttackedOrthogonally(opponentColor: i32, pos: i32): bool {
+  @inline
+  isAttackedOrthogonally(opponentColor: i32, pos: i32, bitPos: i32, occupied: u64): bool {
     const kingDistance = abs(this.findKingPosition(opponentColor) - pos);
     if (kingDistance == 1 || kingDistance == 10) {
       return true;
     }
 
-    const horAttack = this.isHorizontallyAttacked(opponentColor, pos);
-    if (horAttack < 0) {
-      if (this.isAttackedInDirection(ROOK, opponentColor, pos, horAttack)) {
-        return true;
-      }
-    } else if (horAttack > 0) {
-      if (this.isAttackedInDirection(ROOK, opponentColor, pos, horAttack) || this.isAttackedInDirection(ROOK, opponentColor, pos, -horAttack)) {
-        return true;
-      }
-    }
+    const hAttacks = horizontalAttacks(occupied, bitPos);
+    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
+    const rooks = this.getBitBoard(ROOK * opponentColor + 6);
+    const vAttacks = verticalAttacks(occupied, bitPos);
 
-    const verAttack = this.isVerticallyAttacked(opponentColor, pos);
-    if (verAttack < 0) {
-      return this.isAttackedInDirection(ROOK, opponentColor, pos, verAttack);
-    } else if (verAttack > 0) {
-      return this.isAttackedInDirection(ROOK, opponentColor, pos, verAttack) || this.isAttackedInDirection(ROOK, opponentColor, pos, -verAttack);
-    }
-
-    return false;
+    return (hAttacks & rooks) != 0 || (hAttacks & queens) != 0 || (vAttacks & rooks) != 0 || ((vAttacks & queens) != 0);
   }
 
   logBitBoards(color: i32): void {

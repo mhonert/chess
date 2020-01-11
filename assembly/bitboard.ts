@@ -17,7 +17,7 @@
  */
 
 
-import { toBitBoardString, toInt32Array } from './util';
+import { toInt32Array } from './util';
 import { BLACK, indexFromColor, MAX_FIELD_DISTANCE, WHITE } from './board';
 import { KNIGHT_DIRECTIONS } from './pieces';
 
@@ -42,8 +42,18 @@ function calculateBoardPosToBitIndex(): Array<i32> {
   return bitIndices;
 }
 
-
 export const BOARD_POS_TO_BIT_INDEX = toInt32Array(calculateBoardPosToBitIndex());
+
+function calculateBitIndexToBoardPos(): Array<i32> {
+  const boardPositions: Array<i32> = new Array<i32>();
+  for (let bitPos = 0; bitPos < 64; bitPos++) {
+    const pos = 21 + (bitPos & 7) + ((bitPos >> 3) * 10) // calculate letter board position from bit index
+    boardPositions[bitPos] = pos;
+  }
+  return boardPositions;
+}
+
+export const BIT_INDEX_TO_BOARD_POS = toInt32Array(calculateBitIndexToBoardPos());
 
 function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
   const bitPatterns = new Uint64Array(bitIndices.length);
@@ -59,79 +69,6 @@ function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
 
 
 export const BOARD_POS_TO_BIT_PATTERN: Uint64Array = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
-
-function calculateHorizontalPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const pattern: u64 = 0xFF << ((bit >> 3) << 3)
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const HORIZONTAL_PATTERNS: Uint64Array = calculateHorizontalPatterns();
-
-function calculateVerticalPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  const startPattern: u64 = 0x0101010101010101;
-  for (let bit = 0; bit < 64; bit++) {
-    const pattern: u64 = startPattern << (bit & 0x7);
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const VERTICAL_PATTERNS: Uint64Array = calculateVerticalPatterns();
-
-function calculateDiagonalUpPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const startCol = bit % 8;
-    const startRow = bit / 8;
-
-    let pattern: u64 = 0;
-
-    for (let distance = -7; distance <= 7; distance++) {
-      let col = startCol - distance;
-      let row = startRow + distance;
-      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
-        const patternIndex = row * 8 + col;
-        pattern |= (1 << patternIndex);
-      }
-    }
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const DIAGONAL_UP_PATTERNS: Uint64Array = calculateDiagonalUpPatterns();
-
-function calculateDiagonalDownPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const startCol = bit % 8;
-    const startRow = bit / 8;
-
-    let pattern: u64 = 0;
-
-    for (let distance = -7; distance <= 7; distance++) {
-      let col = startCol + distance;
-      let row = startRow + distance;
-      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
-        const patternIndex = row * 8 + col;
-        pattern |= (1 << patternIndex);
-      }
-    }
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const DIAGONAL_DOWN_PATTERNS: Uint64Array = calculateDiagonalDownPatterns();
 
 
 export function isBorder(boardPos: i32): bool {
@@ -242,18 +179,22 @@ function getNegativeRayAttacks(occupied: u64, dir: Direction, pos: i32): u64 {
   return attacks;
 }
 
+@inline
 export function diagonalAttacks(occupied: u64, pos: i32): u64 {
   return getPositiveRayAttacks(occupied, Direction.NORTH_EAST, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH_WEST, pos);
 }
 
+@inline
 export function antiDiagonalAttacks(occupied: u64, pos: i32): u64 {
   return getPositiveRayAttacks(occupied, Direction.NORTH_WEST, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH_EAST, pos);
 }
 
+@inline
 export function horizontalAttacks(occupied: u64, pos: i32): u64 {
   return getPositiveRayAttacks(occupied, Direction.WEST, pos) | getNegativeRayAttacks(occupied, Direction.EAST, pos);
 }
 
+@inline
 export function verticalAttacks(occupied: u64, pos: i32): u64 {
   return getPositiveRayAttacks(occupied, Direction.NORTH, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH, pos);
 }
