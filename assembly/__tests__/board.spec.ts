@@ -17,8 +17,7 @@
  */
 
 import { __, BLACK, BLACK_KING_MOVED, Board, mirrored, PAWN_POSITION_SCORES, WHITE, WHITE_KING_MOVED } from '../board';
-import { BISHOP, K, KNIGHT, N, P, R, ROOK } from '../pieces';
-import { KNIGHT_DIRECTIONS } from '../move-generation';
+import { BISHOP, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, R, ROOK } from '../pieces';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {

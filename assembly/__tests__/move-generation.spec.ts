@@ -18,15 +18,13 @@
 
 import {
   decodeStartIndex,
-  encodeMove, encodeScoredMove,
+  encodeMove,
   generateFilteredMoves,
   isCheckMate,
-  KNIGHT_DIRECTIONS
 } from '../move-generation';
 import { __, BLACK, BLACK_KING_MOVED, Board, EMPTY, WHITE } from '../board';
-import { B, BISHOP, K, KING, KNIGHT, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
+import { B, BISHOP, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 import { sign } from '../util';
-import { logScoredMove } from '../engine';
 
 
 function emptyBoardWithKings(): Array<i32> {

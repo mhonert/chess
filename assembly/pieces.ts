@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { toInt32Array } from './util';
+
 export const PAWN: i32 = 1;
 export const KNIGHT: i32 = 2;
 export const BISHOP: i32 = 3;
@@ -34,4 +36,7 @@ export const B = BISHOP;
 export const R = ROOK;
 export const Q = QUEEN;
 export const K = KING;
+
+export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
+export const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
 

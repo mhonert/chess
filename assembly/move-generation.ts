@@ -23,30 +23,16 @@ import {
   BOARD_BORDER,
   EMPTY,
   indexFromColor,
-  KNIGHT_PATTERNS,
   MAX_FIELD_DISTANCE,
   WHITE,
   WHITE_KING_START
 } from './board';
-import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { sameColor, toInt32Array } from './util';
+import { BISHOP, KING, KING_DIRECTIONS, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
+import { sameColor } from './util';
+import { KNIGHT_PATTERNS, PAWN_DOUBLE_MOVE_LINE } from './bitboard';
 
 
 const MAX_MOVES = 218;
-
-export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
-const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
-
-const PAWN_DOUBLE_MOVE_LINE: Uint64Array = createDoubleMoveLine();
-
-function createDoubleMoveLine(): Uint64Array {
-  const lines = new Uint64Array(2);
-  lines[indexFromColor(BLACK)] = 0b0000000000000000000000000000000000000000111111110000000000000000;
-  lines[indexFromColor(WHITE)] = 0b0000000000000000111111110000000000000000000000000000000000000000;
-
-  return lines;
-}
-
 
 class MoveGenerator {
   private moves: Int32Array = new Int32Array(MAX_MOVES);
@@ -490,19 +476,23 @@ export function encodeMove(piece: i32, start: i32, end: i32): i32 {
   return abs(piece) | (start << 3) | (end << 10);
 }
 
+@inline
 export function decodePiece(encodedMove: i32): i32 {
   return encodedMove & 0x7;
 }
 
+@inline
 export function decodeStartIndex(encodedMove: i32): i32 {
   return (encodedMove >> 3) & 0x7F;
 }
 
+@inline
 export function decodeEndIndex(encodedMove: i32): i32 {
   return (encodedMove >> 10) & 0x7F;
 }
 
 
+@inline
 export function encodeScoredMove(move: i32, score: i32): i32 {
   if (score < 0) {
     return move | 0x80000000 | (-score << 17);
@@ -512,12 +502,14 @@ export function encodeScoredMove(move: i32, score: i32): i32 {
   }
 }
 
+@inline
 export function decodeScore(scoredMove: i32): i32 {
   return (scoredMove & 0x80000000) != 0
     ? -((scoredMove & 0x7FFE0000) >>> 17)
     : scoredMove >>> 17;
 }
 
+@inline
 export function decodeMove(scoredMove: i32): i32 {
   return scoredMove & 0x1FFFF;
 }

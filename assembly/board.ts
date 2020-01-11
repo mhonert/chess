@@ -18,7 +18,7 @@
 
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import { sign, toBitBoardString, toInt32Array } from './util';
-import { decodeEndIndex, decodePiece, decodeStartIndex, KNIGHT_DIRECTIONS } from './move-generation';
+import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import {
   CASTLING_RNG_NUMBERS,
   EN_PASSANT_RNG_NUMBERS,
@@ -26,6 +26,13 @@ import {
   PLAYER_RNG_NUMBER
 } from './zobrist';
 import { PositionHistory } from './history';
+import {
+  BOARD_POS_TO_BIT_INDEX,
+  BOARD_POS_TO_BIT_PATTERN, DIAGONAL_DOWN_PATTERNS, DIAGONAL_UP_PATTERNS,
+  HORIZONTAL_PATTERNS,
+  KNIGHT_PATTERNS,
+  VERTICAL_PATTERNS
+} from './bitboard';
 
 export const WHITE_KING_START = 95;
 export const BLACK_KING_START = 25;
@@ -817,151 +824,6 @@ function isWhiteKing(piece: i32, index: i32, board: Array<i32>): bool {
 function isBlackKing(piece: i32, index: i32, board: Array<i32>): bool {
   return piece == -KING;
 }
-
-/* Convert from array board position to bitboard index.
- * Bitboard representation maps the upper left corner of the board to bit index 0 and the lower right corner to 63.
- * Array representation maps the upper left corner of the board to array index 21 and the lower right corner to 98.
- *
- */
-function calculateBoardPosToBitIndex(): Array<i32> {
-  const bitIndices: Array<i32> = new Array<i32>();
-  for (let i: i32 = 0; i < 99; i++) {
-    const col = (i - 21) % 10;
-    const row = (i - 21) / 10;
-    if (col >= 0 && row >= 0 && col < 8) {
-      bitIndices.push(row * 8 + col);
-    } else {
-      bitIndices.push(-1);
-    }
-  }
-
-  return bitIndices;
-}
-
-
-export const BOARD_POS_TO_BIT_INDEX = toInt32Array(calculateBoardPosToBitIndex());
-
-function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
-  const bitPatterns = new Uint64Array(bitIndices.length);
-  for (let i = 0; i < bitIndices.length; i++) {
-    if (bitIndices[i] != -1) {
-      bitPatterns[i] = 1 << u64(bitIndices[i]);
-    } else {
-      bitPatterns[i] = 0;
-    }
-  }
-  return bitPatterns;
-}
-
-
-export const BOARD_POS_TO_BIT_PATTERN: Uint64Array = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
-
-function calculateHorizontalPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const pattern: u64 = 0xFF << ((bit >> 3) << 3)
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const HORIZONTAL_PATTERNS: Uint64Array = calculateHorizontalPatterns();
-
-function calculateVerticalPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  const startPattern: u64 = 0x0101010101010101;
-  for (let bit = 0; bit < 64; bit++) {
-    const pattern: u64 = startPattern << (bit & 0x7);
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const VERTICAL_PATTERNS: Uint64Array = calculateVerticalPatterns();
-
-function calculateDiagonalUpPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const startCol = bit % 8;
-    const startRow = bit / 8;
-
-    let pattern: u64 = 0;
-
-    for (let distance = -7; distance <= 7; distance++) {
-      let col = startCol - distance;
-      let row = startRow + distance;
-      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
-        const patternIndex = row * 8 + col;
-        pattern |= (1 << patternIndex);
-      }
-    }
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const DIAGONAL_UP_PATTERNS: Uint64Array = calculateDiagonalUpPatterns();
-
-function calculateDiagonalDownPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  for (let bit = 0; bit < 64; bit++) {
-    const startCol = bit % 8;
-    const startRow = bit / 8;
-
-    let pattern: u64 = 0;
-
-    for (let distance = -7; distance <= 7; distance++) {
-      let col = startCol + distance;
-      let row = startRow + distance;
-      if (col >= 0 && row >= 0 && col <= 7 && row <= 7) {
-        const patternIndex = row * 8 + col;
-        pattern |= (1 << patternIndex);
-      }
-    }
-    patterns[bit] = pattern;
-  }
-
-  return patterns
-}
-
-export const DIAGONAL_DOWN_PATTERNS: Uint64Array = calculateDiagonalDownPatterns();
-
-
-export function isBorder(boardPos: i32): bool {
-  if (boardPos < 21 || boardPos > 98) {
-    return true;
-  }
-
-  return boardPos % 10 == 0 || boardPos % 10 == 9;
-}
-
-function calculateKnightPatterns(): Uint64Array {
-  const patterns = new Uint64Array(64);
-  let index = 0;
-  for (let boardPos = 21; boardPos <= 98; boardPos++) {
-    if (isBorder(boardPos)) {
-      continue;
-    }
-
-    let pattern: u64 = 0;
-    for (let i = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-      const dir = KNIGHT_DIRECTIONS[i];
-      const targetPos = boardPos + dir;
-      if (!isBorder(targetPos)) {
-        pattern |= BOARD_POS_TO_BIT_PATTERN[targetPos];
-      }
-    }
-
-    patterns[index++] = pattern;
-  }
-
-  return patterns;
-}
-
-export const KNIGHT_PATTERNS: Uint64Array = calculateKnightPatterns();
 
 export const BLACK: i32 = -1;
 export const WHITE: i32 = 1;
