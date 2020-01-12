@@ -54,7 +54,7 @@ const Game = () => {
   const [board, setBoard] = useState(initialBoard);
   const [gameEnded, setGameEnded] = useState(false);
   const [lastMove, setLastMove] = useState({ start: -1, end: -1 });
-  const [availableMoves, setAvailableMoves] = useState([] /*engine.generateMoves(board, activePlayer) */);
+  const [availableMoves, setAvailableMoves] = useState(engine.generateMoves(board, activePlayer));
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
   const [difficultyLevel, setDifficultyLevel] = useState(3);
