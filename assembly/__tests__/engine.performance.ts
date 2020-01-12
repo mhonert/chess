@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { __, Board } from '../board';
+import { Board } from '../board';
 import { fromFEN } from '../fen';
 import { findBestMoveIncrementally } from '../engine';
 import { isCheckMate } from '../move-generation';

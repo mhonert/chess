@@ -17,58 +17,8 @@
  */
 
 
-import { toInt32Array } from './util';
 import { BLACK, indexFromColor, MAX_FIELD_DISTANCE, WHITE } from './board';
-import { KING_DIRECTIONS, KNIGHT_DIRECTIONS } from './pieces';
-
-
-/* Convert from array board position to bitboard index.
- * Bitboard representation maps the upper left corner of the board to bit index 0 and the lower right corner to 63.
- * Array representation maps the upper left corner of the board to array index 21 and the lower right corner to 98.
- *
- */
-function calculateBoardPosToBitIndex(): Array<i32> {
-  const bitIndices: Array<i32> = new Array<i32>();
-  for (let i: i32 = 0; i < 99; i++) {
-    const col = (i - 21) % 10;
-    const row = (i - 21) / 10;
-    if (col >= 0 && row >= 0 && col < 8) {
-      bitIndices.push(row * 8 + col);
-    } else {
-      bitIndices.push(-1);
-    }
-  }
-
-  return bitIndices;
-}
-
-export const BOARD_POS_TO_BIT_INDEX = toInt32Array(calculateBoardPosToBitIndex());
-
-function calculateBitIndexToBoardPos(): Array<i32> {
-  const boardPositions: Array<i32> = new Array<i32>();
-  for (let bitPos = 0; bitPos < 64; bitPos++) {
-    const pos = 21 + (bitPos & 7) + ((bitPos >> 3) * 10) // calculate letter board position from bit index
-    boardPositions[bitPos] = pos;
-  }
-  return boardPositions;
-}
-
-export const BIT_INDEX_TO_BOARD_POS = toInt32Array(calculateBitIndexToBoardPos());
-
-function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
-  const bitPatterns = new Uint64Array(bitIndices.length);
-  for (let i = 0; i < bitIndices.length; i++) {
-    if (bitIndices[i] != -1) {
-      bitPatterns[i] = 1 << u64(bitIndices[i]);
-    } else {
-      bitPatterns[i] = 0;
-    }
-  }
-  return bitPatterns;
-}
-
-
-export const BOARD_POS_TO_BIT_PATTERN: Uint64Array = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
+import { toInt32Array } from './util';
 
 
 // Patterns to check, whether the fields between king and rook are empty
@@ -79,7 +29,7 @@ export const BLACK_SMALL_CASTLING_BIT_PATTERN: u64 = 0b00000000_00000000_0000000
 export const BLACK_BIG_CASTLING_BIT_PATTERN: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
 
 
-export function isBorder(boardPos: i32): bool {
+function isBorder(boardPos: i32): bool {
   if (boardPos < 21 || boardPos > 98) {
     return true;
   }
@@ -101,7 +51,10 @@ function calculateSingleMovePatterns(directions: Int32Array): Uint64Array {
       const dir = directions[i];
       const targetPos = boardPos + dir;
       if (!isBorder(targetPos)) {
-        pattern |= BOARD_POS_TO_BIT_PATTERN[targetPos];
+        let row = (targetPos - 21) / 10;
+        let col = (targetPos - 21) % 10;
+        const bitIndex = col + (row * 8);
+        pattern |= 1 << bitIndex;
       }
     }
 
@@ -111,9 +64,12 @@ function calculateSingleMovePatterns(directions: Int32Array): Uint64Array {
   return patterns;
 }
 
-export const KNIGHT_PATTERNS: Uint64Array = calculateSingleMovePatterns(KNIGHT_DIRECTIONS);
+// Use letterbox board (10 columns * 12 rows) for simpler border detection during pattern calculation:
+const LETTERBOX_KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
+export const KNIGHT_PATTERNS: Uint64Array = calculateSingleMovePatterns(LETTERBOX_KNIGHT_DIRECTIONS);
 
-export const KING_PATTERNS: Uint64Array = calculateSingleMovePatterns(KING_DIRECTIONS);
+const LETTERBOX_KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
+export const KING_PATTERNS: Uint64Array = calculateSingleMovePatterns(LETTERBOX_KING_DIRECTIONS);
 
 
 export const PAWN_DOUBLE_MOVE_LINE: Uint64Array = createDoubleMoveLine();
@@ -208,4 +164,27 @@ export function horizontalAttacks(occupied: u64, pos: i32): u64 {
 @inline
 export function verticalAttacks(occupied: u64, pos: i32): u64 {
   return getPositiveRayAttacks(occupied, Direction.NORTH, pos) | getNegativeRayAttacks(occupied, Direction.SOUTH, pos);
+}
+
+
+@inline
+export function blackPawnAttacks(pawns: u64): u64 {
+  let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
+  attackToLeft <<= 7;
+
+  let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
+  attackToRight <<= 9;
+
+  return attackToLeft | attackToRight;
+}
+
+@inline
+export function whitePawnAttacks(pawns: u64): u64 {
+  let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
+  attackToLeft >>= 9;
+
+  let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
+  attackToRight >>= 7;
+
+  return attackToLeft | attackToRight;
 }

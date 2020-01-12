@@ -17,15 +17,14 @@
  */
 
 import React from 'react';
-import { __ } from '../engine/constants';
 import Field from './Field';
 import Piece from './Piece';
 import styled from 'styled-components/macro';
 
 const BoardGrid = styled.div`
     display: grid;
-    grid-template-columns: 0 repeat(8, 1fr);
-    grid-template-rows: 0 repeat(8, 1fr);
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
 
     box-shadow: ${props => props.isRotated ? "-3px -3px 3px" : "3px 3px 3px"} #586e75;
     
@@ -45,20 +44,13 @@ const BoardGrid = styled.div`
 const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
   return (
     <BoardGrid isRotated={isRotated}>
-      {board.map((item, idx) => {
-        if (idx % 10 === 9 || idx >= 100 || idx < 10) {
-          return null; // skip
-        }
-
-        if (item === __) {
-          return <div key={idx} className="board_frame" />;
-        }
-
+      {board.slice(0, 64).map((item, idx) => {
         return (
           <Field
             key={idx}
             boardIndex={idx}
             movePiece={handlePlayerMove}
+            isEven={(idx + (idx >> 3)) % 2 === 0}
             isRotated={isRotated}
             isStart={idx === lastMove.start}
             isEnd={idx === lastMove.end}

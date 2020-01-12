@@ -20,7 +20,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components/macro';
 
 import engineWorkerLoader from 'workerize-loader!../engine/engine.worker'; // eslint-disable-line import/no-webpack-loader-syntax
-import { __, B, BLACK, K, N, P, Q, R, WHITE } from '../engine/constants';
+import { B, BLACK, K, N, P, Q, R, WHITE } from '../engine/constants';
 import Board from './Board';
 import GameMenu from './GameMenu';
 import engine, { Move } from '../engine/engine-wasm-interop';
@@ -30,18 +30,15 @@ const engineWebWorker = engineWorkerLoader();
 const initialState = 0;
 
 const initialBoard = [
-  __, __, __, __, __, __, __, __, __, __,
-  __, __, __, __, __, __, __, __, __, __,
-  __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-  __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  __,  P,  P,  P,  P,  P,  P,  P,  P, __,
-  __,  R,  N,  B,  Q,  K,  B,  N,  R, __,
-  __, __, __, __, __, __, __, __, __, __,
-  __, __, __, __, __, __, __, __, __, __, 0, 0, initialState
+ -R, -N, -B, -Q, -K, -B, -N, -R,
+ -P, -P, -P, -P, -P, -P, -P, -P,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  0,  0,  0,  0,  0,  0,  0,  0,
+  P,  P,  P,  P,  P,  P,  P,  P,
+  R,  N,  B,  Q,  K,  B,  N,  R,
+  0, 0, initialState
 ];
 
 const GameArea = styled.div`
@@ -57,7 +54,7 @@ const Game = () => {
   const [board, setBoard] = useState(initialBoard);
   const [gameEnded, setGameEnded] = useState(false);
   const [lastMove, setLastMove] = useState({ start: -1, end: -1 });
-  const [availableMoves, setAvailableMoves] = useState(engine.generateMoves(board, activePlayer));
+  const [availableMoves, setAvailableMoves] = useState([] /*engine.generateMoves(board, activePlayer) */);
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
   const [difficultyLevel, setDifficultyLevel] = useState(3);

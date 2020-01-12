@@ -18,15 +18,20 @@
 
 import {
   BLACK,
-  BLACK_ENPASSANT_LINE_END,
-  BLACK_ENPASSANT_LINE_START, BLACK_LEFT_ROOK_MOVED, BLACK_RIGHT_ROOK_MOVED,
+  BLACK_LEFT_ROOK_MOVED,
+  BLACK_RIGHT_ROOK_MOVED,
   Board,
-  BOARD_BORDER,
   EMPTY,
   WHITE,
-  WHITE_ENPASSANT_LINE_END,
-  WHITE_ENPASSANT_LINE_START, WHITE_LEFT_ROOK_MOVED, WHITE_RIGHT_ROOK_MOVED
+  WHITE_LEFT_ROOK_MOVED,
+  WHITE_RIGHT_ROOK_MOVED
 } from './board';
+import {
+  BLACK_ENPASSANT_LINE_END,
+  BLACK_ENPASSANT_LINE_START, BLACK_PAWNS_BASELINE_START,
+  WHITE_ENPASSANT_LINE_END,
+  WHITE_ENPASSANT_LINE_START, WHITE_PAWNS_BASELINE_START
+} from './pieces';
 
 /* Transforms the given board to a string representation of FEN (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
  */
@@ -45,11 +50,18 @@ function piecePlacement(board: Board): string {
   let result: string = "";
   let emptyFieldCount = 0;
 
-  for (let pos = 21; pos <= 99; pos++) {
+  for (let pos = 0; pos < 64; pos++) {
     const piece = board.getItem(pos);
 
     if (piece == EMPTY) {
       emptyFieldCount++;
+      if (pos % 8 == 7) {
+        result += emptyFieldCount.toString();
+        if (pos != 63) {
+          result += "/";
+        }
+        emptyFieldCount = 0;
+      }
       continue;
     }
 
@@ -58,17 +70,13 @@ function piecePlacement(board: Board): string {
       emptyFieldCount = 0;
     }
 
-    if (piece == BOARD_BORDER) {
-      pos += 1; // skip the two border fields in the board representation
-
-      if (pos < 98) {
-        result += "/";
-      }
-      continue;
-    }
-
     const pieceFenCode = PIECE_FEN_CHARS.charAt(piece + 6);
     result += pieceFenCode;
+
+    if (pos != 63 && pos % 8 == 7 ) {
+      result += "/";
+    }
+
   }
 
   return result;
@@ -106,14 +114,14 @@ function castlingAvailability(board: Board): string {
 function enPassantTargetSquare(board: Board): string {
   for (let i = WHITE_ENPASSANT_LINE_START; i <= WHITE_ENPASSANT_LINE_END; i++) {
     if (board.isEnPassentPossible(WHITE, i)) {
-      const columnNum = i % 10 - 1;
+      const columnNum = i % 8;
       return COLUMN_LETTERS.charAt(columnNum) + "6";
     }
   }
 
   for (let i = BLACK_ENPASSANT_LINE_START; i <= BLACK_ENPASSANT_LINE_END; i++) {
     if (board.isEnPassentPossible(BLACK, i)) {
-      const columnNum = i % 10 - 1;
+      const columnNum = i % 8;
       return COLUMN_LETTERS.charAt(columnNum) + "3";
     }
   }
@@ -133,11 +141,10 @@ function fullMoveNumber(board: Board): string {
 /* Creates a Board instance from a FEN string (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
  */
 export function fromFEN(fen: string): Board {
-  const boardItems: Array<i32> = new Array<i32>(122);
-  boardItems.fill(BOARD_BORDER, 0, 120);
-  boardItems[120] = 0;
-  boardItems[121] = 0;
-  boardItems[122] = 0;
+  const boardItems: Array<i32> = new Array<i32>(67);
+  boardItems[64] = 0;
+  boardItems[65] = 0;
+  boardItems[66] = 0;
 
   const fenParts = fen.split(" ");
   if (fenParts.length != 6) {
@@ -167,7 +174,7 @@ function readPiecePlacement(boardItems: Array<i32>, fenPart: string): void {
     throw new Error("Invalid FEN string: invalid piece placement part");
   }
 
-  let boardPos = 21;
+  let boardPos = 0;
   for (let i = 0; i < piecePlacements.length; i++) {
     const rowChars = piecePlacements[i];
     for (let j = 0; j < rowChars.length; j++) {
@@ -189,7 +196,6 @@ function readPiecePlacement(boardItems: Array<i32>, fenPart: string): void {
       boardItems[boardPos] = piece;
       boardPos++;
     }
-    boardPos += 2; // skip border
   }
 }
 
@@ -252,9 +258,9 @@ function readEnPassantTargetSquare(board: Board, fenPart: string): void {
   const colOffset = (colChar - LETTER_A_CHARCODE); // 0-7
 
   if (rowChar == "3") {
-    board.setEnPassantPossible(81 + colOffset);
+    board.setEnPassantPossible(WHITE_PAWNS_BASELINE_START + colOffset);
   } else if (rowChar == "6") {
-    board.setEnPassantPossible(31 + colOffset);
+    board.setEnPassantPossible(BLACK_PAWNS_BASELINE_START + colOffset);
   } else {
     throw new Error("Invalid FEN string: unexpected en passant part: " + fenPart);
   }

@@ -37,6 +37,25 @@ export const R = ROOK;
 export const Q = QUEEN;
 export const K = KING;
 
-export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
-export const KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
+export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([17, 15, 10, 6, -10, -6, -15, -17]);
+export const KING_DIRECTIONS: Int32Array = toInt32Array([1, 8, -1, -8, 7, 9, -7, -9]);
+
+export const BISHOP_DIRECTIONS: Int32Array = toInt32Array([-7, -9, 7, 9]);
+export const ROOK_DIRECTIONS: Int32Array = toInt32Array([-1, -8, 1, 8]);
+
+export const WHITE_LEFT_ROOK_START = 56;
+export const WHITE_RIGHT_ROOK_START = 63;
+export const BLACK_LEFT_ROOK_START = 0;
+export const BLACK_RIGHT_ROOK_START = 7;
+
+export const WHITE_PAWNS_BASELINE_START = 48;
+export const WHITE_PAWNS_BASELINE_END = 55;
+export const BLACK_PAWNS_BASELINE_START = 8;
+export const BLACK_PAWNS_BASELINE_END = 15;
+
+export const WHITE_ENPASSANT_LINE_START = 16;
+export const WHITE_ENPASSANT_LINE_END = 23
+export const BLACK_ENPASSANT_LINE_START = 40;
+export const BLACK_ENPASSANT_LINE_END = 47
+
 

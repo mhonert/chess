@@ -59,6 +59,7 @@ describe('Perft - move generation validation', () => {
     expect(perft(fromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), 1)).toBe(44, "depth 1");
     expect(perft(fromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), 2)).toBe(1486, "depth 2");
     expect(perft(fromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), 3)).toBe(62379, "depth 3");
+    expect(perft(fromFEN("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"), 4)).toBe(2103487, "depth 4");
   });
 
   it('generates correct number of nodes for "Test Position 6"', () => {

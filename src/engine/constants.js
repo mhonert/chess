@@ -19,8 +19,6 @@
 export const BLACK = -1;
 export const WHITE = 1;
 
-export const __ = 99; // board border
-
 export const P = 1; // pawn
 export const N = 2; // knight
 export const B = 3; // bishop

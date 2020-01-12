@@ -16,8 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { __, BLACK, BLACK_KING_MOVED, Board, mirrored, PAWN_POSITION_SCORES, WHITE, WHITE_KING_MOVED } from '../board';
-import { BISHOP, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, R, ROOK } from '../pieces';
+import { BLACK, BLACK_KING_MOVED, Board, mirrored, PAWN_POSITION_SCORES, WHITE, WHITE_KING_MOVED } from '../board';
+import { BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, R, ROOK } from '../pieces';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {
@@ -28,249 +28,212 @@ describe('Mirrored function', () => {
 describe('Attack detection via bitboards', () => {
   it('horizontal bitboard is setup correctly', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     // Put a rook on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, ROOK, i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, ROOK, i);
     }
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        expect(board.hasOrthogonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
-      }
+    for (let i = 0; i <= 63; i++) {
+      expect(board.hasOrthogonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
   });
 
   it('detects orthogonal attack on each field', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     board.removePiece(board.findKingPosition(WHITE));
     board.removePiece(board.findKingPosition(BLACK));
 
     // Put a rook on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, ROOK, i);
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, ROOK, i);
 
-        for (let j = 21; j <= 98; j++) {
-          if (i == j || board.isBorder(j)) {
-            continue
-          }
-
-          if (i % 10 == j % 10) {
-            expect(board.isAttacked(WHITE, j)).toBeTruthy("Vertical Attack not detected " + i.toString() + " vs. " + j.toString());
-          } else if (i / 10 == j / 10) {
-            expect(board.isAttacked(WHITE, j)).toBeTruthy("Horizontal Attack not detected " + i.toString() + " vs. " + j.toString());
-          }
+      for (let j = 0; j <= 63; j++) {
+        if (i == j) {
+          continue
         }
-        board.removePiece(i);
-      }
 
+        if (i % 8 == j % 8) {
+          expect(board.isAttacked(WHITE, j)).toBeTruthy("Vertical Attack not detected " + i.toString() + " vs. " + j.toString());
+        } else if (i / 8 == j / 8) {
+          expect(board.isAttacked(WHITE, j)).toBeTruthy("Horizontal Attack not detected " + i.toString() + " vs. " + j.toString());
+        }
+      }
+      board.removePiece(i);
     }
   });
 
   it('diagonal bitboard is setup correctly', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     // Put a bishop on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, BISHOP, i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, BISHOP, i);
     }
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        expect(board.hasDiagonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
-      }
+    for (let i = 0; i <= 63; i++) {
+      expect(board.hasDiagonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
   });
 
   it('detects diagonal attack on each field', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     // Put a bishop on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, BISHOP, i);
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, BISHOP, i);
 
-        for (let j = 30; j <= 89; j++) {
-          if (i == j || board.isBorder(j)) {
-            continue
-          }
+      let startCol = i % 8;
+      let startRow = i / 8;
 
-          if (i == j + 11 || i == j - 11) {
-            expect(board.isAttacked(WHITE, j)).toBeTruthy("Diagonal-down Attack not detected " + i.toString() + " vs. " + j.toString());
-          } else if (i == j + 9 || i == j - 9) {
-            expect(board.isAttacked(WHITE, j)).toBeTruthy("Diagonal-up Attack not detected " + i.toString() + " vs. " + j.toString());
-          }
+      for (let d = 0; d < BISHOP_DIRECTIONS.length; d++) {
+        let endPos = i + BISHOP_DIRECTIONS[d];
+        let endCol = endPos % 8;
+        let endRow = endCol / 8;
+
+        if (endPos < 0 || endPos > 63 || abs(startRow - endRow) > 1 || abs(startCol - endCol) > 1) {
+          continue; // Hit border
         }
-        board.removePiece(i);
+        expect(board.isAttacked(WHITE, endPos))
+          .toBeTruthy("Diagonal Attack not detected " + BISHOP_DIRECTIONS[d].toString() + ": " + i.toString() + " vs. " + endPos.toString());
       }
-
     }
   });
 
   it('detects horizontal attacks', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  R,  0,  0,  0, -K,  0,  0,  0, __,
-      __,  0,  0,  0,  0, -P,  0,  0,  0, __,
-      __,  0,  0,  0,  0, -N,  0,  R,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  K,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      R,  0,  0,  0, -K,  0,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  0, -N,  0,  R,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  K,  0,  0,  0,
+      0, 0, 0
     ]);
 
-    expect(board.isAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook on the left side");
-    expect(board.isAttacked(WHITE, 35)).toBeFalsy("Pawn is not attacked");
-    expect(board.isAttacked(WHITE, 45)).toBeTruthy("Knight is attacked by white rook on the right side");
+    expect(board.isAttacked(WHITE, 4)).toBeTruthy("King is attacked by white rook on the left side");
+    expect(board.isAttacked(WHITE, 12)).toBeFalsy("Pawn is not attacked");
+    expect(board.isAttacked(WHITE, 20)).toBeTruthy("Knight is attacked by white rook on the right side");
   });
 
   it('detects vertical attacks', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, -K, -P,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  R,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  R,  0,  0,  0, __,
-      __,  0,  0,  0, -N,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  K,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0,  0, -K, -P,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  R,  0,  0,  0,  0,
+      0,  0,  0,  0,  R,  0,  0,  0,
+      0,  0,  0, -N,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  K,  0,  0,  0,
+      0, 0, 0
     ]);
 
-    expect(board.isAttacked(WHITE, 25)).toBeTruthy("King is attacked by white rook below");
-    expect(board.isAttacked(WHITE, 26)).toBeFalsy("Pawn is not attacked");
-    expect(board.isAttacked(WHITE, 64)).toBeTruthy("Knight is attacked by white rook above");
+    expect(board.isAttacked(WHITE, 4)).toBeTruthy("King is attacked by white rook below");
+    expect(board.isAttacked(WHITE, 5)).toBeFalsy("Pawn is not attacked");
+    expect(board.isAttacked(WHITE, 35)).toBeTruthy("Knight is attacked by white rook above");
   });
 
   it('sets knight boards correctly', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     // Put a knight on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, KNIGHT, i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, KNIGHT, i);
     }
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        expect(board.hasKnight(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
-      }
+    for (let i = 0; i <= 63; i++) {
+      expect(board.hasKnight(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
 
   });
 
   it('detects knight attacks on each field', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     // Put a knight on each field
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, KNIGHT, i);
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, KNIGHT, i);
 
-        for (let j = 0; j < KNIGHT_DIRECTIONS.length; j++) {
-          const direction = KNIGHT_DIRECTIONS[j];
-          const target = i + direction;
-          if (board.isBorder(target)) {
-            continue
-          }
+      let startCol = i % 8;
+      let startRow = i / 8;
 
-          expect(board.isKnightAttacked(WHITE, target)).toBeTruthy("Knight Attack not detected " + i.toString() + " vs. " + target.toString());
+      for (let j = 0; j < KNIGHT_DIRECTIONS.length; j++) {
+        const direction = KNIGHT_DIRECTIONS[j];
+        const target = i + direction;
+
+        let endCol = target % 8;
+        let endRow = target / 8;
+        if (target < 0 || target > 63 || abs(startRow - endRow) > 1 || abs(startCol - endCol) > 1) {
+          continue; // Hit border
         }
-        board.removePiece(i);
-      }
 
+        expect(board.isKnightAttacked(WHITE, target)).toBeTruthy("Knight Attack not detected " + i.toString() + " vs. " + target.toString());
+      }
+      board.removePiece(i);
     }
   });
 
@@ -280,18 +243,15 @@ describe("Board state", () => {
 
   it("returns correct castling bits", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     expect(board.getCastlingStateBits()).toBe(0);
@@ -312,30 +272,27 @@ describe("Zobrist hashing", () => {
 
   it("updates hash for piece movements", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     board.recalculateHash();
 
     const initialHash = board.getHash();
 
-    board.removePiece(94);
-    board.addPiece(WHITE, K, 95);
+    board.removePiece(59);
+    board.addPiece(WHITE, K, 60);
     const hashAfterMove = board.getHash();
 
-    board.removePiece(95);
-    board.addPiece(WHITE, K, 94);
+    board.removePiece(60);
+    board.addPiece(WHITE, K, 59);
     const hashForRevertedMove = board.getHash();
 
     expect(hashAfterMove).not.toBe(initialHash, "Hash after move should be different");
@@ -344,42 +301,36 @@ describe("Zobrist hashing", () => {
 
   it("updates hash for en passant changes", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0, -P,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +P,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0, -P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     board.recalculateHash();
 
     const initialHash = board.getHash();
-    board.setEnPassantPossible(84);
+    board.setEnPassantPossible(51);
 
     expect(board.getHash()).not.toBe(initialHash, "Hash after en passant state change should be different");
   });
 
   it("updates hash for active player change", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0, -P,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +P,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0, -P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     board.recalculateHash();
@@ -394,18 +345,15 @@ describe("Zobrist hashing", () => {
 
   it("updates hash for castling state change", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0, +K, +R,  0,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, +K, +R,  0,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     board.recalculateHash();
@@ -418,24 +366,21 @@ describe("Zobrist hashing", () => {
 
   it("incrementally updates hash correctly", () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     board.recalculateHash();
 
-    board.addPiece(WHITE, P, 81);
-    board.addPiece(BLACK, K, 22);
+    board.addPiece(WHITE, P, 48);
+    board.addPiece(BLACK, K, 1);
     board.setWhiteKingMoved();
     board.setBlackLeftRookMoved();
 
@@ -453,35 +398,28 @@ describe("Zobrist hashing", () => {
 describe('All piece bitboards', () => {
   it('is updated correctly using addPiece/removePiece', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     board.removePiece(board.findKingPosition(WHITE));
     board.removePiece(board.findKingPosition(BLACK));
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPiece(WHITE, BISHOP, i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.addPiece(WHITE, BISHOP, i);
     }
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0xFFFFFFFFFFFFFFFF, "Pieces added correctly");
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.removePiece(i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.removePiece(i);
     }
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
@@ -490,35 +428,28 @@ describe('All piece bitboards', () => {
 
   it('is updated correctly using addPieceWithoutIncrementalUpdate/removePieceWithoutIncrementalUpdate', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, +K,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
     ]);
 
     board.removePiece(board.findKingPosition(WHITE));
     board.removePiece(board.findKingPosition(BLACK));
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.addPieceWithoutIncrementalUpdate(WHITE, BISHOP, i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.addPieceWithoutIncrementalUpdate(WHITE, BISHOP, i);
     }
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0xFFFFFFFFFFFFFFFF, "Pieces added correctly");
 
-    for (let i = 21; i <= 98; i++) {
-      if (!board.isBorder(i)) {
-        board.removePieceWithoutIncrementalUpdate(i);
-      }
+    for (let i = 0; i <= 63; i++) {
+      board.removePieceWithoutIncrementalUpdate(i);
     }
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");

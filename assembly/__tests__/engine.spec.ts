@@ -25,7 +25,6 @@ import {
   WHITE_MATE_SCORE
 } from '../engine';
 import {
-  __,
   BLACK,
   BLACK_KING_MOVED,
   BLACK_LEFT_ROOK_MOVED,
@@ -41,7 +40,7 @@ import { toInt32Array } from '../util';
 describe('Encode and decode scored moves', () => {
   it('Zero score', () => {
     const score = 0;
-    const move = encodeMove(QUEEN, 2, 98);
+    const move = encodeMove(QUEEN, 2, 63);
 
     const scoredMove = encodeScoredMove(move, score);
 
@@ -51,7 +50,7 @@ describe('Encode and decode scored moves', () => {
 
   it('Positive scores', () => {
     const score = 16383;
-    const move = encodeMove(QUEEN, 2, 98);
+    const move = encodeMove(QUEEN, 2, 63);
 
     const scoredMove = encodeScoredMove(move, score);
 
@@ -61,7 +60,7 @@ describe('Encode and decode scored moves', () => {
 
   it('Negative score', () => {
     const score = -16383;
-    const move = encodeMove(QUEEN, 2, 98);
+    const move = encodeMove(QUEEN, 2, 63);
 
     const scoredMove = encodeScoredMove(move, score);
 
@@ -74,18 +73,15 @@ describe('Encode and decode scored moves', () => {
 describe('Evaluate position', () => {
   it('Calculates even score for starting position', () => {
     const board: Array<i32> = [
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
-      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P, +P, +P, +P, +P,
+      +R, +N, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
     ];
 
     const engine = new Engine();
@@ -98,18 +94,15 @@ describe('Evaluate position', () => {
   // TODO: Store pawn bitboard in Board class and take them into account for the scoring function
   // it('Calculates lower score for doubled pawns', () => {
   //   const board: Array<i32> = [
-  //     __, __, __, __, __, __, __, __, __, __,
-  //     __, __, __, __, __, __, __, __, __, __,
-  //     __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-  //     __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-  //     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  //     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  //     __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-  //     __,  0,  0,  0,  0, +P,  0,  0,  0, __,
-  //     __, +P, +P, +P,  0, +P, +P, +P, +P, __,
-  //     __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
-  //     __, __, __, __, __, __, __, __, __, __,
-  //     __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+  //     -R, -N, -B, -Q, -K, -B, -N, -R,
+  //     -P, -P, -P, -P, -P, -P, -P, -P,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0, +P,  0,  0,  0,
+  //     +P, +P, +P,  0, +P, +P, +P, +P,
+  //     +R, +N, +B, +Q, +K, +B, +N, +R,
+  //     0, 0, 0
   //   ];
   //
   //   const score = evaluatePosition(new Board(board));
@@ -118,18 +111,15 @@ describe('Evaluate position', () => {
 
   it('Calculates higher score for pieces outside starting position', () => {
     const board: Array<i32> = [
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0, +P,  0,  0,  0, __,
-      __,  0,  0, +N,  0,  0,  0,  0,  0, __,
-      __, +P, +P, +P, +P,  0, +P, +P, +P, __,
-      __, +R,  0, +B, +Q, +K, +B, +N, +R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+     -R, -N, -B, -Q, -K, -B, -N, -R,
+     -P, -P, -P, -P, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, +P,  0,  0,  0,
+      0,  0, +N,  0,  0,  0,  0,  0,
+     +P, +P, +P, +P,  0, +P, +P, +P,
+     +R,  0, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
     ];
 
     const engine = new Engine();
@@ -141,18 +131,15 @@ describe('Evaluate position', () => {
 
   it('Calculates higher score for material advantage', () => {
     const board: Array<i32> = [
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-      __, -P, -P, -P, -P,  0, -P, -P, -P, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
-      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P,  0, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P, +P, +P, +P, +P,
+      +R, +N, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
     ];
 
     const engine = new Engine();
@@ -164,18 +151,15 @@ describe('Evaluate position', () => {
 
   it('Calculates higher score for castled king position', () => {
     const board: Array<i32> = [
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, -K,  0,  0, -R, __,
-      __,  0,  0,  0,  0, -P, -P, -P, -P, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0, +P, +P, +P, +P, __,
-      __,  0,  0,  0,  0,  0, +R, +K,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
+      0,  0,  0,  0, -K,  0,  0, -R,
+      0,  0,  0,  0, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, +P, +P, +P, +P,
+      0,  0,  0,  0,  0, +R, +K,  0,
+      0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
     ];
 
     const engine = new Engine();
@@ -187,18 +171,15 @@ describe('Evaluate position', () => {
 
   it('Calculate score if white is check mate', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, +K,  0,  0, -R, __,
-      __, -R,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0, -K,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0,  0, +K,  0,  0, -R,
+      -R,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, -K,  0,  0,  0,
+      0, 0, 0
     ]);
 
     const engine = new Engine();
@@ -210,18 +191,15 @@ describe('Evaluate position', () => {
 
   it('Calculate score if black is check mate', () => {
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, -K,  0,  0, +R, __,
-      __, +R,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0, +K,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      0,  0,  0,  0, -K,  0,  0, +R,
+      +R,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, +K,  0,  0,  0,
+      0, 0, 0
     ]);
 
     const engine = new Engine();
@@ -236,18 +214,15 @@ describe('Finds moves', () => {
   it('Finds mate in 1 move', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, +K,  0,  0,  0, __,
-      __, -R,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0, -K,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0, -R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0,  0, +K,  0,  0,  0,
+      -R,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0, -R,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     board.performEncodedMove(findBestMove(board, BLACK, 2));
@@ -258,18 +233,15 @@ describe('Finds moves', () => {
   it('Finds mate in two moves', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0, -K,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, +R,  0,  0,  0, +K,  0,  0, +R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      0,  0,  0,  0, -K,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +R,  0,  0,  0, +K,  0,  0, +R,
+      0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 3));
@@ -282,18 +254,15 @@ describe('Finds moves', () => {
   it('Finds another mate in two moves', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0, -B, -R, -R, -B,  0, __,
-      __,  0,  0, +N,  0,  0,  0,  0, +B, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0, -P,  0,  0,  0,  0, +Q, __,
-      __,  0,  0, -P,  0,  0, -K,  0,  0, __,
-      __,  0,  0,  0,  0,  0, +P,  0,  0, __,
-      __,  0,  0,  0,  0, +P,  0, +K, +R, __,
-      __,  0,  0, +N,  0,  0, +R, +B,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      0,  0,  0, -B, -R, -R, -B,  0,
+      0,  0, +N,  0,  0,  0,  0, +B,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0, -P,  0,  0,  0,  0, +Q,
+      0,  0, -P,  0,  0, -K,  0,  0,
+      0,  0,  0,  0,  0, +P,  0,  0,
+      0,  0,  0,  0, +P,  0, +K, +R,
+      0,  0, +N,  0,  0, +R, +B,  0,
+      0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 3));
@@ -306,18 +275,15 @@ describe('Finds moves', () => {
   it('Finds opening move', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, -R, -N, -B, -Q, -K, -B, -N, -R, __,
-      __, -P, -P, -P, -P, -P, -P, -P, -P, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, +P, +P, +P, +P, +P, +P, +P, +P, __,
-      __, +R, +N, +B, +Q, +K, +B, +N, +R, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P, +P, +P, +P, +P,
+      +R, +N, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
     ]);
 
     const move = findBestMove(board, WHITE, 4);
@@ -327,64 +293,55 @@ describe('Finds moves', () => {
   it('Does not sacrifice queen', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, -R,  0, -B, -Q,  0, -R,  0, -K, __,
-      __,  0, -P, -P,  0, -N, -P,  0,  0, __,
-      __, -P,  0,  0, -P, -P,  0,  0, -P, __,
-      __,  0,  0,  0,  0,  0, -P,  0,  0, __,
-      __, +B,  0, +P,  0, +P,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0, +Q,  0, __,
-      __, +P, +P, +P, +N,  0, +P, +P, +P, __,
-      __, +R,  0,  0,  0,  0, +R, +K,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, 0
+      -R,  0, -B, -Q,  0, -R,  0, -K,
+       0, -P, -P,  0, -N, -P,  0,  0,
+      -P,  0,  0, -P, -P,  0,  0, -P,
+       0,  0,  0,  0,  0, -P,  0,  0,
+      +B,  0, +P,  0, +P,  0,  0,  0,
+       0,  0,  0,  0,  0,  0, +Q,  0,
+      +P, +P, +P, +N,  0, +P, +P, +P,
+      +R,  0,  0,  0,  0, +R, +K,  0,
+      0, 0, 0
     ]);
 
     const move = findBestMove(board, WHITE, 2);
     board.performEncodedMove(move);
-    expect(move).not.toBe(encodeMove(5, 77, 37), "Must not sacrifice queen @37");
-    expect(move).not.toBe(encodeMove(5, 77, 44), "Must not sacrifice queen @44");
+    expect(move).not.toBe(encodeMove(5, 46, 14), "Must not sacrifice queen @14");
+    expect(move).not.toBe(encodeMove(5, 46, 19), "Must not sacrifice queen @19");
   });
 
 
   it('Avoids stalemate when it is ahead of the opponent', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  R, __,
-      __,  0,  0,  0,  0,  0,  B,  0,  0, __,
-      __,  0,  0,  0,  N,  0,  P,  0,  0, __,
-      __,  0,  0,  0,  0,  P,  0, -K,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0, -R, __,
-      __,  0,  0,  0,  0,  0,  0,  P,  K, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  R,
+      0,  0,  0,  0,  0,  B,  0,  0,
+      0,  0,  0,  N,  0,  P,  0,  0,
+      0,  0,  0,  0,  P,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0, -R,
+      0,  0,  0,  0,  0,  0,  P,  K,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     const move = findBestMove(board, WHITE, 2);
-    expect(move).not.toBe(encodeMove(4, 38, 78), "Using the rook to capture the black rook causes a stalemate");
-    expect(move).toBe(encodeMove(1, 87, 78), "Using the pawn for the capture lets the game proceed");
+    expect(move).not.toBe(encodeMove(4, 15, 47), "Using the rook to capture the black rook causes a stalemate");
+    expect(move).toBe(encodeMove(1, 54, 47), "Using the pawn for the capture lets the game proceed");
   });
 
   it('Finds mate in 3 moves (bug reproduction)', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0,  0,  0,  0,  0,  0, -K,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  K, -P,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0, -Q,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0, -R,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K, -P,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, -Q,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0, -R,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
     board.increaseHalfMoveCount();
 
@@ -400,18 +357,15 @@ describe('Finds moves', () => {
   it('Avoids threefold repetition', () => {
     // prettier-ignore
     const board: Board = new Board([
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __,  0, -K,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  R,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  0,  0, __,
-      __,  0,  0,  0,  0,  0,  0,  K,  0, __,
-      __, __, __, __, __, __, __, __, __, __,
-      __, __, __, __, __, __, __, __, __, __, 0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, -K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  R,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  K,  0,
+      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 1));

@@ -19,18 +19,16 @@
 import {
   BLACK,
   BLACK_KING_START,
-  Board, BOARD_BORDER, EMPTY,
+  Board,
   indexFromColor,
   WHITE,
   WHITE_KING_START
 } from './board';
-import { BISHOP, KING, KING_DIRECTIONS, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
+import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import {
   antiDiagonalAttacks,
-  BIT_INDEX_TO_BOARD_POS,
   BLACK_BIG_CASTLING_BIT_PATTERN,
   BLACK_SMALL_CASTLING_BIT_PATTERN,
-  BOARD_POS_TO_BIT_INDEX,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
@@ -40,7 +38,6 @@ import {
   WHITE_BIG_CASTLING_BIT_PATTERN,
   WHITE_SMALL_CASTLING_BIT_PATTERN
 } from './bitboard';
-import { sameColor, toBitBoardString } from './util';
 
 
 const MAX_MOVES = 218;
@@ -64,51 +61,45 @@ class MoveGenerator {
 
     if (activeColor == WHITE) {
       const kingPos = board.findKingPosition(WHITE);
-      const kingBitPos = unchecked(BOARD_POS_TO_BIT_INDEX[kingPos]);
-      this.generateWhiteKingMoves(kingPos, kingBitPos);
+      this.generateWhiteKingMoves(kingPos);
       this.generateWhitePawnMoves();
 
     } else {
       const kingPos = board.findKingPosition(BLACK);
-      const kingBitPos = unchecked(BOARD_POS_TO_BIT_INDEX[kingPos]);
-      this.generateBlackKingMoves(kingPos, kingBitPos);
+      this.generateBlackKingMoves(kingPos);
       this.generateBlackPawnMoves();
     }
 
     let piece = KNIGHT * activeColor;
     let bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
-      this.generateKnightMoves(activeColor, bitPos, pos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateKnightMoves(activeColor, pos);
     }
 
     piece = BISHOP * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
-      this.generateBishopMoves(activeColor, piece, pos, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateBishopMoves(activeColor, piece, pos);
     }
 
     piece = ROOK * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
-      this.generateRookMoves(activeColor, piece, pos, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateRookMoves(activeColor, piece, pos);
     }
 
     piece = QUEEN * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
-      this.generateQueenMoves(activeColor, piece, pos, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateQueenMoves(activeColor, piece, pos);
     }
 
   }
@@ -124,33 +115,33 @@ class MoveGenerator {
     let piece = KNIGHT * activeColor;
     let bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      count += this.countKnightMoves(activeColor, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      count += this.countKnightMoves(activeColor, pos);
     }
 
     piece = BISHOP * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      count += this.countBishopMoves(activeColor, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      count += this.countBishopMoves(activeColor, pos);
     }
 
     piece = ROOK * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      count += this.countRookMoves(activeColor, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      count += this.countRookMoves(activeColor, pos);
     }
 
     piece = QUEEN * activeColor;
     bitboard = this.board.getBitBoard(piece + 6);
     while (bitboard != 0) {
-      const bitPos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << bitPos; // unset bit
-      count += this.countQueenMoves(activeColor, bitPos);
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      count += this.countQueenMoves(activeColor, pos);
     }
 
     return count;
@@ -195,14 +186,14 @@ class MoveGenerator {
     pawns >>= 8;
 
     let bitboard = pawns & this.emptyBitBoard;
-    this.generatePawnMovesFromBitboard(bitboard, 10);
+    this.generatePawnMovesFromBitboard(bitboard, 8);
 
     // Double move
     bitboard &= unchecked(PAWN_DOUBLE_MOVE_LINE[indexFromColor(WHITE)]);
     bitboard >>= 8;
 
     bitboard &= this.emptyBitBoard;
-    this.generatePawnMovesWithoutPromotion(bitboard, 20);
+    this.generatePawnMovesWithoutPromotion(bitboard, 16);
   }
 
   @inline
@@ -211,13 +202,13 @@ class MoveGenerator {
     attackToLeft >>= 9;
 
     attackToLeft &= this.opponentBitBoard;
-    this.generatePawnMovesFromBitboard(attackToLeft, 11);
+    this.generatePawnMovesFromBitboard(attackToLeft, 9);
 
     let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
     attackToRight >>= 7;
 
     attackToRight &= this.opponentBitBoard;
-    this.generatePawnMovesFromBitboard(attackToRight, 9);
+    this.generatePawnMovesFromBitboard(attackToRight, 7);
   }
 
 
@@ -226,16 +217,16 @@ class MoveGenerator {
     let enPassant = this.board.getEnPassantStateBits() & 0xff;
 
     if (enPassant != 0) {
-      const end = 41 + ctz(enPassant);
+      const end = 16 + ctz(enPassant);
       if (enPassant != 0b10000000) {
-        const start = end + 11;
+        const start = end + 9;
         if (this.board.getItem(start) == PAWN) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
 
       if (enPassant != 0b00000001) {
-        const start = end + 9
+        const start = end + 7
         if (this.board.getItem(start) == PAWN) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
@@ -259,14 +250,14 @@ class MoveGenerator {
     pawns <<= 8;
 
     let bitboard = pawns & this.emptyBitBoard;
-    this.generatePawnMovesFromBitboard(bitboard, -10);
+    this.generatePawnMovesFromBitboard(bitboard, -8);
 
     // Double move
     bitboard &= unchecked(PAWN_DOUBLE_MOVE_LINE[indexFromColor(BLACK)]);
     bitboard <<= 8;
 
     bitboard &= this.emptyBitBoard;
-    this.generatePawnMovesWithoutPromotion(bitboard, -20);
+    this.generatePawnMovesWithoutPromotion(bitboard, -16);
   }
 
   @inline
@@ -275,13 +266,13 @@ class MoveGenerator {
     attackToLeft <<= 7;
 
     attackToLeft &= this.opponentBitBoard;
-    this.generatePawnMovesFromBitboard(attackToLeft, -9);
+    this.generatePawnMovesFromBitboard(attackToLeft, -7);
 
     let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
     attackToRight <<= 9;
 
     attackToRight &= this.opponentBitBoard;
-    this.generatePawnMovesFromBitboard(attackToRight, -11);
+    this.generatePawnMovesFromBitboard(attackToRight, -9);
   }
 
 
@@ -290,16 +281,16 @@ class MoveGenerator {
     let enPassant = this.board.getEnPassantStateBits() >> 8;
 
     if (enPassant != 0) {
-      const end = 71 + ctz(enPassant);
+      const end = 40 + ctz(enPassant);
       if (enPassant != 0b00000001) {
-        const start = end - 11;
+        const start = end - 9;
         if (this.board.getItem(start) == -PAWN) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
 
       if (enPassant != 0b10000000) {
-        const start = end - 9;
+        const start = end - 7;
         if (this.board.getItem(start) == -PAWN) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
@@ -311,12 +302,11 @@ class MoveGenerator {
   @inline
   private generatePawnMovesFromBitboard(bitboard: u64, direction: i32): void {
     while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
-      bitboard ^= 1 << bitPos; // unset bit
-      const end = unchecked(BIT_INDEX_TO_BOARD_POS[i32(bitPos)]);
+      const end: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << end; // unset bit
       const start = end + direction;
 
-      if (end <= 28 || end >= 91) {
+      if (end <= 7 || end >= 56) {
         // Promotion
         unchecked(this.moves[this.count++] = encodeMove(KNIGHT, start, end));
         unchecked(this.moves[this.count++] = encodeMove(BISHOP, start, end));
@@ -332,9 +322,8 @@ class MoveGenerator {
   @inline
   private generatePawnMovesWithoutPromotion(bitboard: u64, direction: i32): void {
     while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
-      bitboard ^= 1 << bitPos; // unset bit
-      const end = unchecked(BIT_INDEX_TO_BOARD_POS[i32(bitPos)]);
+      const end: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << end; // unset bit
       const start = end + direction;
 
       // Normal move
@@ -343,8 +332,8 @@ class MoveGenerator {
   }
 
   @inline
-  generateKnightMoves(activeColor: i32, bitStartPos: i32, start: i32): void {
-    const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
+  generateKnightMoves(activeColor: i32, start: i32): void {
+    const knightTargets = unchecked(KNIGHT_PATTERNS[start]);
 
     // Captures
     this.generateMovesFromBitboard(KNIGHT, start, knightTargets & this.opponentBitBoard);
@@ -355,8 +344,8 @@ class MoveGenerator {
   };
 
   @inline
-  countKnightMoves(activeColor: i32, bitStartPos: i32): i32 {
-    const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
+  countKnightMoves(activeColor: i32, start: i32): i32 {
+    const knightTargets = unchecked(KNIGHT_PATTERNS[start]);
 
     return i32(popcnt(knightTargets & this.opponentOrEmptyBitboard));
   };
@@ -364,23 +353,22 @@ class MoveGenerator {
   @inline
   generateMovesFromBitboard(piece: i32, start: i32, bitboard: u64): void {
     while (bitboard != 0) {
-      const bitPos: u64 = ctz(bitboard);
-      bitboard ^= 1 << bitPos; // unset bit
-      const end = unchecked(BIT_INDEX_TO_BOARD_POS[i32(bitPos)]);
+      const end: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << end; // unset bit
       unchecked(this.moves[this.count++] = encodeMove(piece, start, end));
     }
   }
 
 
   @inline
-  generateBishopMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
+  generateBishopMoves(activeColor: i32, piece: i32, pos: i32): void {
     const attacks = diagonalAttacks(this.occupiedBitBoard, pos) | antiDiagonalAttacks(this.occupiedBitBoard, pos);
 
     // Captures
-    this.generateMovesFromBitboard(piece, start, attacks & this.opponentBitBoard);
+    this.generateMovesFromBitboard(piece, pos, attacks & this.opponentBitBoard);
 
     // Normal moves
-    this.generateMovesFromBitboard(piece, start, attacks & this.emptyBitBoard);
+    this.generateMovesFromBitboard(piece, pos, attacks & this.emptyBitBoard);
   };
 
   @inline
@@ -390,14 +378,14 @@ class MoveGenerator {
   };
 
   @inline
-  generateRookMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
+  generateRookMoves(activeColor: i32, piece: i32, pos: i32): void {
     const attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
 
     // Captures
-    this.generateMovesFromBitboard(piece, start, attacks & this.opponentBitBoard);
+    this.generateMovesFromBitboard(piece, pos, attacks & this.opponentBitBoard);
 
     // Normal moves
-    this.generateMovesFromBitboard(piece, start, attacks & this.emptyBitBoard);
+    this.generateMovesFromBitboard(piece, pos, attacks & this.emptyBitBoard);
   };
 
   @inline
@@ -407,10 +395,10 @@ class MoveGenerator {
   };
 
   @inline
-  generateQueenMoves(activeColor: i32, piece: i32, start: i32, pos: i32): void {
+  generateQueenMoves(activeColor: i32, piece: i32, pos: i32): void {
     // reuse move generators
-    this.generateBishopMoves(activeColor, piece, start, pos);
-    this.generateRookMoves(activeColor, piece, start, pos);
+    this.generateBishopMoves(activeColor, piece, pos);
+    this.generateRookMoves(activeColor, piece, pos);
   };
 
   @inline
@@ -452,8 +440,8 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteKingMoves(start: i32, bitStartPos: i32): void {
-    const kingTargets = unchecked(KING_PATTERNS[bitStartPos]);
+  generateWhiteKingMoves(start: i32): void {
+    const kingTargets = unchecked(KING_PATTERNS[start]);
 
     // Captures
     this.generateMovesFromBitboard(KING, start, kingTargets & this.opponentBitBoard);
@@ -477,8 +465,8 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackKingMoves(start: i32, bitStartPos: i32): void {
-    const kingTargets = unchecked(KING_PATTERNS[bitStartPos]);
+  generateBlackKingMoves(start: i32): void {
+    const kingTargets = unchecked(KING_PATTERNS[start]);
 
     // Captures
     this.generateMovesFromBitboard(KING, start, kingTargets & this.opponentBitBoard);

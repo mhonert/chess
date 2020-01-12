@@ -22,14 +22,10 @@ import styled from 'styled-components/macro';
 
 const FieldDiv = styled.div`
   position: relative;
-  background-color: #fdf6e3;
+  background-color: ${props => props.isEven ? "#fdf6e3" : "#eee8d5"};
   
   transform: ${props => props.isRotated ? "rotateZ(180deg)" : "none"};
   
-  &:nth-child(even) {
-    background-color: #eee8d5;
-  }
-
   &.move-mark:before {
     position: absolute;
     top: 4%;
@@ -48,6 +44,7 @@ const Field = ({
   isRotated,
   children,
   movePiece,
+  isEven,
   isStart,
   isEnd,
   isPossibleTarget
@@ -72,6 +69,7 @@ const Field = ({
     <FieldDiv
       ref={dropRef}
       isRotated={isRotated}
+      isEven={isEven}
       style={{ position: 'relative' }}
       isStart={isStart}
       markColor={markColor}
