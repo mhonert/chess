@@ -19,7 +19,7 @@
 
 import { toInt32Array } from './util';
 import { BLACK, indexFromColor, MAX_FIELD_DISTANCE, WHITE } from './board';
-import { KNIGHT_DIRECTIONS } from './pieces';
+import { KING_DIRECTIONS, KNIGHT_DIRECTIONS } from './pieces';
 
 
 /* Convert from array board position to bitboard index.
@@ -71,6 +71,14 @@ function calculateBoardPosToBitPattern(bitIndices: Int32Array): Uint64Array {
 export const BOARD_POS_TO_BIT_PATTERN: Uint64Array = calculateBoardPosToBitPattern(BOARD_POS_TO_BIT_INDEX);
 
 
+// Patterns to check, whether the fields between king and rook are empty
+export const WHITE_SMALL_CASTLING_BIT_PATTERN: u64 = 0b01100000_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+export const WHITE_BIG_CASTLING_BIT_PATTERN: u64 = 0b00001110_00000000_00000000_00000000_00000000_00000000_00000000_00000000;
+
+export const BLACK_SMALL_CASTLING_BIT_PATTERN: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_01100000;
+export const BLACK_BIG_CASTLING_BIT_PATTERN: u64 = 0b00000000_00000000_00000000_00000000_00000000_00000000_00000000_00001110;
+
+
 export function isBorder(boardPos: i32): bool {
   if (boardPos < 21 || boardPos > 98) {
     return true;
@@ -79,7 +87,8 @@ export function isBorder(boardPos: i32): bool {
   return boardPos % 10 == 0 || boardPos % 10 == 9;
 }
 
-function calculateKnightPatterns(): Uint64Array {
+
+function calculateSingleMovePatterns(directions: Int32Array): Uint64Array {
   const patterns = new Uint64Array(64);
   let index = 0;
   for (let boardPos = 21; boardPos <= 98; boardPos++) {
@@ -88,8 +97,8 @@ function calculateKnightPatterns(): Uint64Array {
     }
 
     let pattern: u64 = 0;
-    for (let i = 0; i < KNIGHT_DIRECTIONS.length; i++) {
-      const dir = KNIGHT_DIRECTIONS[i];
+    for (let i = 0; i < directions.length; i++) {
+      const dir = directions[i];
       const targetPos = boardPos + dir;
       if (!isBorder(targetPos)) {
         pattern |= BOARD_POS_TO_BIT_PATTERN[targetPos];
@@ -102,7 +111,9 @@ function calculateKnightPatterns(): Uint64Array {
   return patterns;
 }
 
-export const KNIGHT_PATTERNS: Uint64Array = calculateKnightPatterns();
+export const KNIGHT_PATTERNS: Uint64Array = calculateSingleMovePatterns(KNIGHT_DIRECTIONS);
+
+export const KING_PATTERNS: Uint64Array = calculateSingleMovePatterns(KING_DIRECTIONS);
 
 
 export const PAWN_DOUBLE_MOVE_LINE: Uint64Array = createDoubleMoveLine();

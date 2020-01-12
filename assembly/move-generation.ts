@@ -19,23 +19,28 @@
 import {
   BLACK,
   BLACK_KING_START,
-  Board,
-  BOARD_BORDER,
-  EMPTY,
+  Board, BOARD_BORDER, EMPTY,
   indexFromColor,
-  MAX_FIELD_DISTANCE,
   WHITE,
   WHITE_KING_START
 } from './board';
 import { BISHOP, KING, KING_DIRECTIONS, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
-import { sameColor, toBitBoardString } from './util';
 import {
-  antiDiagonalAttacks, BIT_INDEX_TO_BOARD_POS,
+  antiDiagonalAttacks,
+  BIT_INDEX_TO_BOARD_POS,
+  BLACK_BIG_CASTLING_BIT_PATTERN,
+  BLACK_SMALL_CASTLING_BIT_PATTERN,
+  BOARD_POS_TO_BIT_INDEX,
   diagonalAttacks,
   horizontalAttacks,
+  KING_PATTERNS,
   KNIGHT_PATTERNS,
-  PAWN_DOUBLE_MOVE_LINE, verticalAttacks
+  PAWN_DOUBLE_MOVE_LINE,
+  verticalAttacks,
+  WHITE_BIG_CASTLING_BIT_PATTERN,
+  WHITE_SMALL_CASTLING_BIT_PATTERN
 } from './bitboard';
+import { sameColor, toBitBoardString } from './util';
 
 
 const MAX_MOVES = 218;
@@ -58,11 +63,16 @@ class MoveGenerator {
     this.emptyBitBoard = ~this.occupiedBitBoard;
 
     if (activeColor == WHITE) {
+      const kingPos = board.findKingPosition(WHITE);
+      const kingBitPos = unchecked(BOARD_POS_TO_BIT_INDEX[kingPos]);
+      this.generateWhiteKingMoves(kingPos, kingBitPos);
       this.generateWhitePawnMoves();
-      this.generateWhiteKingMoves(board.findKingPosition(WHITE))
+
     } else {
+      const kingPos = board.findKingPosition(BLACK);
+      const kingBitPos = unchecked(BOARD_POS_TO_BIT_INDEX[kingPos]);
+      this.generateBlackKingMoves(kingPos, kingBitPos);
       this.generateBlackPawnMoves();
-      this.generateBlackKingMoves(board.findKingPosition(BLACK))
     }
 
     let piece = KNIGHT * activeColor;
@@ -71,7 +81,7 @@ class MoveGenerator {
       const bitPos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
       const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
-      this.generateKnightMoves(activeColor, piece, bitPos, pos);
+      this.generateKnightMoves(activeColor, bitPos, pos);
     }
 
     piece = BISHOP * activeColor;
@@ -333,14 +343,14 @@ class MoveGenerator {
   }
 
   @inline
-  generateKnightMoves(activeColor: i32, piece: i32, bitStartPos: i32, start: i32): void {
+  generateKnightMoves(activeColor: i32, bitStartPos: i32, start: i32): void {
     const knightTargets = unchecked(KNIGHT_PATTERNS[bitStartPos]);
 
     // Captures
-    this.generateMovesFromBitboard(piece, start, knightTargets & this.opponentBitBoard);
+    this.generateMovesFromBitboard(KNIGHT, start, knightTargets & this.opponentBitBoard);
 
     // Normal moves
-    this.generateMovesFromBitboard(piece, start, knightTargets & this.emptyBitBoard);
+    this.generateMovesFromBitboard(KNIGHT, start, knightTargets & this.emptyBitBoard);
 
   };
 
@@ -410,7 +420,7 @@ class MoveGenerator {
 
   @inline
   isValidWhiteSmallCastlingMove(): bool {
-    return (this.board.isEmpty(WHITE_KING_START + 1) && this.board.isEmpty(WHITE_KING_START + 2)) &&
+    return ((this.emptyBitBoard & WHITE_SMALL_CASTLING_BIT_PATTERN) == WHITE_SMALL_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START + 1) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START + 2);
@@ -418,8 +428,7 @@ class MoveGenerator {
 
   @inline
   isValidWhiteBigCastlingMove(): bool {
-    return this.board.isEmpty(WHITE_KING_START - 1) && this.board.isEmpty(WHITE_KING_START - 2) &&
-      this.board.isEmpty(WHITE_KING_START - 3) &&
+    return ((this.emptyBitBoard & WHITE_BIG_CASTLING_BIT_PATTERN) == WHITE_BIG_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START - 1) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START - 2);
@@ -427,7 +436,7 @@ class MoveGenerator {
 
   @inline
   isValidBlackSmallCastlingMove(): bool {
-    return this.board.isEmpty(BLACK_KING_START + 1) && this.board.isEmpty(BLACK_KING_START + 2) &&
+    return ((this.emptyBitBoard & BLACK_SMALL_CASTLING_BIT_PATTERN) == BLACK_SMALL_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START + 1) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START + 2);
@@ -435,7 +444,7 @@ class MoveGenerator {
 
   @inline
   isValidBlackBigCastlingMove(): bool {
-    return this.board.isEmpty(BLACK_KING_START - 1) && this.board.isEmpty(BLACK_KING_START - 2) && this.board.isEmpty(BLACK_KING_START - 3) &&
+    return ((this.emptyBitBoard & BLACK_BIG_CASTLING_BIT_PATTERN) == BLACK_BIG_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START - 1) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START - 2);
@@ -443,22 +452,16 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteKingMoves(start: i32): void {
-    for (let i = 0; i < KING_DIRECTIONS.length; i++) {
-      const end = start + unchecked(KING_DIRECTIONS[i]);
+  generateWhiteKingMoves(start: i32, bitStartPos: i32): void {
+    const kingTargets = unchecked(KING_PATTERNS[bitStartPos]);
 
-      const targetPiece = this.board.getItem(end);
-      if (targetPiece != EMPTY && sameColor(targetPiece, WHITE)) {
-        continue;
-      }
+    // Captures
+    this.generateMovesFromBitboard(KING, start, kingTargets & this.opponentBitBoard);
 
-      if (targetPiece == BOARD_BORDER) {
-        continue;
-      }
+    // Normal moves
+    this.generateMovesFromBitboard(KING, start, kingTargets & this.emptyBitBoard);
 
-      unchecked(this.moves[this.count++] = encodeMove(KING, start, end));
-    }
-
+    // Castling moves
     if (start != WHITE_KING_START || this.board.whiteKingMoved()) {
       return;
     }
@@ -474,21 +477,14 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackKingMoves( start: i32): void {
-    for (let i = 0; i < KING_DIRECTIONS.length; i++) {
-      const end = start + unchecked(KING_DIRECTIONS[i]);
+  generateBlackKingMoves(start: i32, bitStartPos: i32): void {
+    const kingTargets = unchecked(KING_PATTERNS[bitStartPos]);
 
-      const targetPiece = this.board.getItem(end);
-      if (targetPiece != EMPTY && sameColor(targetPiece, BLACK)) {
-        continue;
-      }
+    // Captures
+    this.generateMovesFromBitboard(KING, start, kingTargets & this.opponentBitBoard);
 
-      if (targetPiece == BOARD_BORDER) {
-        continue;
-      }
-
-      unchecked(this.moves[this.count++] = encodeMove(KING, start, end));
-    }
+    // Normal moves
+    this.generateMovesFromBitboard(KING, start, kingTargets & this.emptyBitBoard);
 
     if (start != BLACK_KING_START || this.board.blackKingMoved()) {
       return;
