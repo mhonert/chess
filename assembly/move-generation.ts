@@ -116,7 +116,6 @@ class MoveGenerator {
     while (bitboard != 0) {
       const bitPos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
       count += this.countKnightMoves(activeColor, bitPos);
     }
 
@@ -125,7 +124,6 @@ class MoveGenerator {
     while (bitboard != 0) {
       const bitPos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
       count += this.countBishopMoves(activeColor, bitPos);
     }
 
@@ -134,7 +132,6 @@ class MoveGenerator {
     while (bitboard != 0) {
       const bitPos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
       count += this.countRookMoves(activeColor, bitPos);
     }
 
@@ -143,7 +140,6 @@ class MoveGenerator {
     while (bitboard != 0) {
       const bitPos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << bitPos; // unset bit
-      const pos = unchecked(BIT_INDEX_TO_BOARD_POS[bitPos]);
       count += this.countQueenMoves(activeColor, bitPos);
     }
 
