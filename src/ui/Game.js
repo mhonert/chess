@@ -155,7 +155,7 @@ const Game = () => {
     setLastMove({ start, end });
 
     // TODO: Replace browser prompt dialog with own dialog
-    if (pieceId === P && ((activePlayer === WHITE && end < 29) || (activePlayer === BLACK && end > 90))) {
+    if (pieceId === P && ((activePlayer === WHITE && end < 8) || (activePlayer === BLACK && end >= 56))) {
       // Promotion
       const choice = prompt('Choose promotion (Q, R, B, K)', 'Q');
       switch (choice.toUpperCase()) {
