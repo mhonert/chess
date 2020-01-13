@@ -203,7 +203,14 @@ export class Engine {
 
     const ttHash = this.board.getHash();
     if (remainingLevels <= 0) {
-      return this.adjustedPositionScore(depth) * playerColor;
+      const score = this.evaluatePosition();
+      if (score == BLACK_MATE_SCORE) {
+        return (score - depth) * playerColor;
+      } else if (score == WHITE_MATE_SCORE) {
+        return (score + depth) * playerColor;
+      }
+
+      return score * playerColor;
     }
 
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
@@ -302,7 +309,7 @@ export class Engine {
           break;
       }
 
-      scoredMove = moves![moveIndex];
+      scoredMove = unchecked(moves![moveIndex]);
       moveIndex++;
 
     } while (true);
@@ -406,6 +413,7 @@ export class Engine {
    * @param board
    * @returns {number} Position score
    */
+  @inline
   evaluatePosition(): i32 {
     // Check mate is the best possible score for the other player
     if (isCheckMate(this.board, BLACK)) {

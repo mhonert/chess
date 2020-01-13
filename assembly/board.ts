@@ -120,6 +120,7 @@ export class Board {
   /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
    *  However, the board representation itself is not stored.
    */
+  @inline
   storeState(): void {
     unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
     unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
@@ -128,6 +129,7 @@ export class Board {
     this.historyCounter++;
   }
 
+  @inline
   restoreState(): void {
     this.historyCounter--;
     unchecked(this.items[STATE_INDEX] = unchecked(this.stateHistory[this.historyCounter]));
@@ -137,6 +139,7 @@ export class Board {
     this.items[HALFMOVE_COUNT_INDEX]--;
   }
 
+  @inline
   getHash(): u64 {
     return this.hashCode;
   }
@@ -164,10 +167,12 @@ export class Board {
     return unchecked(this.items[pos]);
   }
 
+  @inline
   getScore(): i32 {
     return this.score;
   }
 
+  @inline
   addPiece(pieceColor: i32, pieceId: i32, pos: i32): void {
     const piece = pieceId * pieceColor;
     unchecked(this.items[pos] = piece);
@@ -205,6 +210,7 @@ export class Board {
     return this.remove(piece, sign(piece), pos);
   }
 
+  @inline
   private remove(piece: i32, pieceColor: i32, pos: i32): i32 {
     unchecked(this.bitBoardPieces[piece + 6] &= ~(1 << pos));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] &= ~(1 << pos));
@@ -227,6 +233,7 @@ export class Board {
     return piece;
   }
 
+  @inline
   performEncodedMove(encodedMove: i32): i32 {
     return this.performMove(decodePiece(encodedMove), decodeStartIndex(encodedMove), decodeEndIndex(encodedMove));
   }
@@ -238,8 +245,8 @@ export class Board {
    */
   performMove(pieceId: i32, start: i32, end: i32): i32 {
     this.storeState();
-    const pieceColor = sign(this.getItem(start));
     this.increaseHalfMoveCount();
+    const pieceColor = sign(this.getItem(start));
 
     let removedPiece = this.getItem(end) != EMPTY ? this.removePiece(end) : EMPTY;
 
@@ -714,6 +721,7 @@ export class Board {
     this.positionHistory = history;
   }
 
+  @inline
   isThreefoldRepetion(): bool {
     return this.positionHistory.isThreefoldRepetion(this.getHash());
   }
