@@ -44,11 +44,11 @@ function createBoard(items: Int32Array): Board {
 }
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
-  [3, 3, 0],
-  [3, 3, 200],
-  [3, 5, 250],
-  [3, 5, 500],
-  [5, 7, 750]
+  [2, 3, 0],
+  [2, 3, 200],
+  [2, 5, 250],
+  [2, 5, 500],
+  [2, 7, 750]
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {

@@ -36,6 +36,8 @@ export const MAX_SCORE = 16383;
 export const WHITE_MATE_SCORE: i32 = -8000;
 export const BLACK_MATE_SCORE: i32 = 8000;
 
+const CANCEL_SEARCH = i32.MAX_VALUE - 1;
+
 export class Engine {
 
   private transpositionTable: TranspositionTable = new TranspositionTable();
@@ -131,18 +133,16 @@ export class Engine {
           remainingLevels - 1,
           depth + 1
         );
-        if (result == -1) {
+        if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
           if (depth > 0) {
-            return -1;
+            return CANCEL_SEARCH;
           }
           trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
           break;
         }
 
-        let unadjustedScore: i32 = decodeScore(result);
-
-        const score = -unadjustedScore;
+        const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
@@ -163,8 +163,6 @@ export class Engine {
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
         alpha = max(alpha, bestScore);
       }
-
-
 
       if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
         trace('---------------------------------------------------');
@@ -196,12 +194,16 @@ export class Engine {
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32): i32 {
 
     if (this.board.isThreefoldRepetion()) {
-      return encodeScoredMove(0, this.contemptFactor * playerColor);
+      return this.contemptFactor * playerColor;
+    }
+
+    if (alpha > beta) {
+      return alpha;
     }
 
     const ttHash = this.board.getHash();
     if (remainingLevels <= 0) {
-      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+      return this.adjustedPositionScore(depth) * playerColor;
     }
 
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
@@ -212,7 +214,7 @@ export class Engine {
     if (scoredMove != 0) {
       if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
         this.cacheHits++;
-        return scoredMove;
+        return decodeScore(scoredMove);
       }
 
       this.moveHits++;
@@ -221,7 +223,7 @@ export class Engine {
       moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
-        return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+        return this.adjustedPositionScore(depth) * playerColor;
       }
       scoredMove = moves![0];
       moveIndex++;
@@ -244,9 +246,12 @@ export class Engine {
       this.moveCount++;
 
 
-      let score = i32.MIN_VALUE; // Score for invalid move
+      if (this.board.isInCheck(playerColor)) {
+        // skip invalid move
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
-      if (!this.board.isInCheck(playerColor)) {
+      } else {
+
         const result = this.recFindBestMove(
           -beta,
           -alpha,
@@ -254,37 +259,35 @@ export class Engine {
           remainingLevels - 1,
           depth + 1
         );
-        if (result == -1) {
+        if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-          return -1;
+          return CANCEL_SEARCH;
         }
 
-        let unadjustedScore: i32 = decodeScore(result);
+        const score = -result;
 
-        score = -unadjustedScore;
-      }
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
-      this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        if (score != i32.MIN_VALUE) {
+          // Use mini-max algorithm ...
+          if (score > bestScore) {
+            bestScore = score;
+            bestMove = move;
+          }
 
-      if (score != i32.MIN_VALUE) {
-        // Use mini-max algorithm ...
-        if (score > bestScore) {
-          bestScore = score;
-          bestMove = move;
-        }
+          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+          alpha = max(alpha, bestScore);
+          if (alpha >= beta) {
+            resultType = ScoreType.CUTOFF;
 
-        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-        alpha = max(alpha, bestScore);
-        if (alpha >= beta) {
-          resultType = ScoreType.CUTOFF;
-
-          break;
+            break;
+          }
         }
       }
 
       if (depth == this.minimumDepth && Date.now() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
-        return -1;
+        return CANCEL_SEARCH;
       }
 
       if (moves == null) {
@@ -292,7 +295,7 @@ export class Engine {
 
         if (moves.length == 0) {
           // no more moves possible (i.e. check mate or stale mate)
-          return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+          return this.adjustedPositionScore(depth) * playerColor;
         }
 
       } else if (moveIndex == moves.length) {
@@ -307,17 +310,16 @@ export class Engine {
     if (bestMove == 0) { // no legal move found?
       if (this.board.isInCheck(playerColor)) {
         // Check mate
-        return encodeScoredMove(0, WHITE_MATE_SCORE + depth);
+        return WHITE_MATE_SCORE + depth;
       }
 
       // Stalemate
-      return encodeScoredMove(0, 0);
+      return 0;
     }
 
     this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, resultType);
 
-    const scoredBestMove = encodeScoredMove(bestMove, bestScore);
-    return scoredBestMove;
+    return bestScore;
   };
 
 
@@ -417,7 +419,7 @@ export class Engine {
 
   // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
   // to prevent unnecessary delays.
-  adjustedPositionScore( depth: i32): i32 {
+  adjustedPositionScore(depth: i32): i32 {
     const score = this.evaluatePosition();
 
     if (score == BLACK_MATE_SCORE) {
