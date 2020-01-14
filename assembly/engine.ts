@@ -197,10 +197,6 @@ export class Engine {
       return this.contemptFactor * playerColor;
     }
 
-    if (alpha > beta) {
-      return alpha;
-    }
-
     const ttHash = this.board.getHash();
     if (remainingLevels <= 0) {
       const score = this.evaluatePosition();

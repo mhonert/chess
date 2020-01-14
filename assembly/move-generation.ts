@@ -553,7 +553,8 @@ class MoveGenerator {
   };
 
 
-  moveResultsInCheck(pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
+  @inline
+  private moveResultsInCheck(pieceId: i32, start: i32, end: i32, activeColor: i32): bool {
     const previousPiece = this.board.getItem(start); // might be different from piece in case of pawn promotions
 
     const removedFigure = this.board.performMove(pieceId, start, end);
@@ -564,14 +565,94 @@ class MoveGenerator {
     return check;
   };
 
-  hasNoValidMoves(activeColor: i32): bool {
+  hasValidMoves(board: Board, activeColor: i32): bool {
+    this.board = board;
+    this.count = 0;
+    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
+    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
+    this.emptyBitBoard = ~this.occupiedBitBoard;
+
+    if (activeColor == WHITE) {
+      const kingPos = board.findKingPosition(WHITE);
+      this.generateWhiteKingMoves(kingPos);
+      if (this.anyMovesAllowCheckEvasion(activeColor)) {
+        return true;
+      }
+
+    } else {
+      const kingPos = board.findKingPosition(BLACK);
+      this.generateBlackKingMoves(kingPos);
+      if (this.anyMovesAllowCheckEvasion(activeColor)) {
+        return true;
+      }
+    }
+
+    let piece = BISHOP * activeColor;
+    let bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateBishopMoves(activeColor, piece, pos);
+    }
+    if (this.anyMovesAllowCheckEvasion(activeColor)) {
+      return true;
+    }
+
+    piece = ROOK * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateRookMoves(activeColor, piece, pos);
+    }
+    if (this.anyMovesAllowCheckEvasion(activeColor)) {
+      return true;
+    }
+
+    piece = QUEEN * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateQueenMoves(activeColor, piece, pos);
+    }
+    if (this.anyMovesAllowCheckEvasion(activeColor)) {
+      return true;
+    }
+
+    piece = KNIGHT * activeColor;
+    bitboard = this.board.getBitBoard(piece + 6);
+    while (bitboard != 0) {
+      const pos: i32 = i32(ctz(bitboard));
+      bitboard ^= 1 << pos; // unset bit
+      this.generateKnightMoves(activeColor, pos);
+    }
+    if (this.anyMovesAllowCheckEvasion(activeColor)) {
+      return true;
+    }
+
+    if (activeColor == WHITE) {
+      this.generateWhitePawnMoves();
+      return this.anyMovesAllowCheckEvasion(activeColor);
+
+    } else {
+      this.generateBlackPawnMoves();
+      return this.anyMovesAllowCheckEvasion(activeColor);
+
+    }
+  }
+
+  @inline
+  private anyMovesAllowCheckEvasion(activeColor: i32): bool {
     for (let i = 0; i < this.count; i++) {
       const move = unchecked(this.moves[i]);
       if (!this.moveResultsInCheck(decodePiece(move), decodeStartIndex(move), decodeEndIndex(move), activeColor)) {
-        return false;
+        return true;
       }
     }
-    return true;
+
+    this.count = 0;
+    return false;
   }
 
 }
@@ -609,8 +690,7 @@ export function isCheckMate(board: Board, activeColor: i32): bool {
     return false;
   }
 
-  MATE_CHECK_INSTANCE.generateMoves(board, activeColor);
-  return MATE_CHECK_INSTANCE.hasNoValidMoves(activeColor);
+  return !MATE_CHECK_INSTANCE.hasValidMoves(board, activeColor);
 }
 
 
