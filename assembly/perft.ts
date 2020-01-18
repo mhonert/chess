@@ -32,32 +32,44 @@ import {
 
    Another use for this function is to test the performance of the move generator (see __tests__/perft.performance.ts).
  */
-export function perft(board: Board, depth: i32): u64 {
-  if (depth == 0) {
-    return 1
+class Perft {
+  private board: Board;
+
+  constructor(board: Board) {
+    this.board = board;
   }
 
-  let nodes: u64 = 0;
-
-  const activePlayer = board.getActivePlayer();
-  const moves = generateMoves(board, activePlayer);
-
-  for (let i = 0; i < moves.length; i++) {
-    const move = unchecked(moves[i]);
-
-    const targetPieceId = decodePiece(move);
-    const moveStart = decodeStartIndex(move);
-    const moveEnd = decodeEndIndex(move);
-    const previousPiece = board.getItem(moveStart);
-
-    const removedPiece = board.performMove(targetPieceId, moveStart, moveEnd);
-
-    if (!board.isInCheck(activePlayer)) {
-      nodes += perft(board, depth - 1);
+  run(depth: i32): u64 {
+    if (depth == 0) {
+      return 1
     }
-    board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-  }
 
-  return nodes;
+    let nodes: u64 = 0;
+
+    const activePlayer = this.board.getActivePlayer();
+    const moves = generateMoves(this.board, activePlayer);
+
+    for (let i = 0; i < moves.length; i++) {
+      const move = unchecked(moves[i]);
+
+      const targetPieceId = decodePiece(move);
+      const moveStart = decodeStartIndex(move);
+      const moveEnd = decodeEndIndex(move);
+      const previousPiece = this.board.getItem(moveStart);
+
+      const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+
+      if (!this.board.isInCheck(activePlayer)) {
+        nodes += this.run(depth - 1);
+      }
+      this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+    }
+
+    return nodes;
+  }
 }
 
+export function perft(board: Board, depth: i32): u64 {
+  const perft = new Perft(board);
+  return perft.run(depth);
+}
