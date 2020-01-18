@@ -241,8 +241,8 @@ class MoveGenerator {
     const pawns = this.board.getBitBoard(PAWN + 6);
 
     this.generateWhiteStraightPawnMoves(pawns);
-    this.generateWhiteAttackPawnMoves( pawns);
-    this.generateWhiteEnPassantPawnMoves();
+    this.generateWhiteAttackPawnMoves(pawns);
+    this.generateWhiteEnPassantPawnMoves(pawns);
   }
 
 
@@ -279,21 +279,21 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteEnPassantPawnMoves(): void {
+  generateWhiteEnPassantPawnMoves(pawns: u64): void {
     let enPassant = this.board.getEnPassantStateBits() & 0xff;
 
     if (enPassant != 0) {
       const end = 16 + ctz(enPassant);
       if (enPassant != 0b10000000) {
         const start = end + 9;
-        if (this.board.getItem(start) == PAWN) {
+        if ((pawns & (1 << start)) != 0) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
 
       if (enPassant != 0b00000001) {
         const start = end + 7
-        if (this.board.getItem(start) == PAWN) {
+        if ((pawns & (1 << start)) != 0) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
@@ -306,8 +306,8 @@ class MoveGenerator {
     const pawns = this.board.getBitBoard(-PAWN + 6);
 
     this.generateBlackStraightPawnMoves(pawns);
-    this.generateBlackAttackPawnMoves( pawns);
-    this.generateBlackEnPassantPawnMoves();
+    this.generateBlackAttackPawnMoves(pawns);
+    this.generateBlackEnPassantPawnMoves(pawns);
   }
 
   @inline
@@ -343,21 +343,21 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackEnPassantPawnMoves(): void {
+  generateBlackEnPassantPawnMoves(pawns: u64): void {
     let enPassant = this.board.getEnPassantStateBits() >> 8;
 
     if (enPassant != 0) {
       const end = 40 + ctz(enPassant);
       if (enPassant != 0b00000001) {
         const start = end - 9;
-        if (this.board.getItem(start) == -PAWN) {
+        if ((pawns & (1 << start)) != 0) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
 
       if (enPassant != 0b10000000) {
         const start = end - 7;
-        if (this.board.getItem(start) == -PAWN) {
+        if ((pawns & (1 << start)) != 0) {
           unchecked(this.moves[this.count++] = encodeMove(PAWN, start, end));
         }
       }
