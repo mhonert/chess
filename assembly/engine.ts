@@ -1,6 +1,6 @@
 /*
  * A free and open source chess game using AssemblyScript and React
- * Copyright (C) 2019 mhonert (https://github.com/mhonert)
+ * Copyright (C) 2020 mhonert (https://github.com/mhonert)
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
