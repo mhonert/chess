@@ -185,8 +185,7 @@ export class Board {
   }
 
   @inline
-  addPieceWithoutIncrementalUpdate(pieceColor: i32, pieceId: i32, pos: i32): void {
-    const piece = pieceId * pieceColor;
+  addPieceWithoutIncrementalUpdate(pieceColor: i32, piece: i32, pos: i32): void {
     unchecked(this.items[pos] = piece);
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
@@ -246,83 +245,92 @@ export class Board {
   performMove(pieceId: i32, start: i32, end: i32): i32 {
     this.storeState();
     this.increaseHalfMoveCount();
-    const pieceColor = sign(this.getItem(start));
-
-    let removedPiece = this.getItem(end) != EMPTY ? this.removePiece(end) : EMPTY;
-
-    this.removePiece(start);
-
+    const ownPiece = this.removePiece(start);
+    const pieceColor = sign(ownPiece);
     this.clearEnPassentPossible();
 
-    let isEnPassant: bool = false;
+    if (this.getItem(end) != EMPTY) {
+      // Capture move (except en passant)
+      const removedPiece = this.removePiece(end);
+      this.addPiece(pieceColor, pieceId, end);
 
-    if (pieceId == PAWN) {
       this.resetHalfMoveClock();
 
-      if (removedPiece == EMPTY) {
-
-        // Special en passant handling
-        if (abs(start - end) == 16) {
-          this.setEnPassantPossible(start);
-
-        } else if (abs(start - end) == 7) {
-          removedPiece = this.removePiece(start + pieceColor);
-          isEnPassant = true;
-
-        } else if (abs(start - end) == 9) {
-          removedPiece = this.removePiece(start - pieceColor);
-          isEnPassant = true;
-
-        }
+      if (pieceId == KING) {
+        this.updateKingPosition(pieceColor, end);
       }
 
-    } else if (removedPiece != EMPTY) {
-      this.resetHalfMoveClock();
-
+      this.positionHistory.push(this.getHash());
+      return abs(removedPiece);
     }
 
     this.addPiece(pieceColor, pieceId, end);
+    if (ownPiece == PAWN) {
+      this.resetHalfMoveClock();
 
-    if (pieceId == KING && pieceColor == WHITE) {
-      this.updateKingPosition(WHITE, end);
-      this.setWhiteKingMoved();
+      // Special en passant handling
+      if (start - end == 16) {
+        this.setEnPassantPossible(start);
+
+      } else if (start - end == 7) {
+        this.removePiece(start + WHITE);
+        this.positionHistory.push(this.getHash());
+        return EN_PASSANT_BIT;
+
+      } else if (start - end == 9) {
+        this.removePiece(start - WHITE);
+        this.positionHistory.push(this.getHash());
+        return EN_PASSANT_BIT;
+
+      }
+    } else if (ownPiece == -PAWN) {
+      this.resetHalfMoveClock();
+
+      // Special en passant handling
+      if (start - end == -16) {
+        this.setEnPassantPossible(start);
+
+      } else if (start - end == -7) {
+        this.removePiece(start + BLACK);
+        this.positionHistory.push(this.getHash());
+        return EN_PASSANT_BIT;
+
+      } else if (start - end == -9) {
+        this.removePiece(start - BLACK);
+        this.positionHistory.push(this.getHash());
+        return EN_PASSANT_BIT;
+
+      }
+    } else if (ownPiece == KING) {
+      this.updateWhiteKingPosition(end);
 
       // Special castling handling
-      if (abs(start - end) == 2) {
-        if (end == WHITE_KING_START + 2) {
-          this.removePiece(WHITE_RIGHT_ROOK_START);
-          this.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
+      if (start - end == -2) {
+        this.removePiece(WHITE_RIGHT_ROOK_START);
+        this.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
 
-        } else if (end == WHITE_KING_START - 2) {
-          this.removePiece(WHITE_LEFT_ROOK_START);
-          this.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
+      } else if (start - end == 2) {
+        this.removePiece(WHITE_LEFT_ROOK_START);
+        this.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
 
-        }
       }
 
-    } else if (pieceId == KING && pieceColor == BLACK) {
-      this.updateKingPosition(BLACK, end);
-      this.setBlackKingMoved();
+    } else if (ownPiece == -KING) {
+      this.updateBlackKingPosition(end);
 
       // Special castling handling
-      if (abs(start - end) == 2) {
-        if (end == BLACK_KING_START + 2) {
-          this.removePiece(BLACK_RIGHT_ROOK_START);
-          this.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
-        } else if (end == BLACK_KING_START - 2) {
-          this.removePiece(BLACK_LEFT_ROOK_START);
-          this.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
-        }
+      if (start - end == -2) {
+        this.removePiece(BLACK_RIGHT_ROOK_START);
+        this.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
+
+      } else if (start - end == 2) {
+        this.removePiece(BLACK_LEFT_ROOK_START);
+        this.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
       }
     }
 
     this.positionHistory.push(this.getHash());
-
-    if (isEnPassant) {
-      return EN_PASSANT_BIT;
-    } else {
-      return abs(removedPiece);
-    }
+    return EMPTY;
   };
 
   undoMove(piece: i32, start: i32, end: i32, removedPieceId: i32): void {
@@ -330,53 +338,48 @@ export class Board {
 
     const pieceColor = sign(piece);
     this.removePieceWithoutIncrementalUpdate(end);
-    this.addPieceWithoutIncrementalUpdate(pieceColor, abs(piece), start);
+    this.addPieceWithoutIncrementalUpdate(pieceColor, piece, start);
 
     if (removedPieceId == EN_PASSANT_BIT) {
 
       if (abs(start - end) == 7) {
-        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN, start + pieceColor);
+        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN * -pieceColor, start + pieceColor);
       } else if (abs(start - end) == 9) {
-        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN, start - pieceColor);
+        this.addPieceWithoutIncrementalUpdate(-pieceColor, PAWN * -pieceColor, start - pieceColor);
       }
 
     } else if (removedPieceId != EMPTY) {
-      this.addPieceWithoutIncrementalUpdate(-pieceColor, removedPieceId, end);
+      this.addPieceWithoutIncrementalUpdate(-pieceColor, removedPieceId * -pieceColor, end);
 
     }
 
     if (piece == KING) {
-      this.updateKingPosition(WHITE, start);
+      this.updateWhiteKingPosition(start);
 
-      if (abs(start - end) == 2) {
-        // Undo Castle
-        if (end == WHITE_KING_START + 2) {
-          this.removePieceWithoutIncrementalUpdate(WHITE_KING_START + 1);
-          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, WHITE_RIGHT_ROOK_START);
+      // Undo Castle
+      if (start - end == -2) {
+        this.removePieceWithoutIncrementalUpdate(WHITE_KING_START + 1);
+        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_RIGHT_ROOK_START);
 
-        } else if (end == WHITE_KING_START - 2) {
-          this.removePieceWithoutIncrementalUpdate(WHITE_KING_START - 1);
-          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, WHITE_LEFT_ROOK_START);
+      } else if (start - end == 2) {
+        this.removePieceWithoutIncrementalUpdate(WHITE_KING_START - 1);
+        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_LEFT_ROOK_START);
 
-        }
       }
 
     } else if (piece == -KING) {
-      this.updateKingPosition(BLACK, start);
+      this.updateBlackKingPosition(start);
 
-      if (abs(start - end) == 2) {
-        // Undo Castle
-        if (end == BLACK_KING_START + 2) {
-          this.removePieceWithoutIncrementalUpdate(BLACK_KING_START + 1);
-          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, BLACK_RIGHT_ROOK_START);
+      // Undo Castle
+      if (start - end == -2) {
+        this.removePieceWithoutIncrementalUpdate(BLACK_KING_START + 1);
+        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_RIGHT_ROOK_START);
 
-        } else if (end == BLACK_KING_START - 2) {
-          this.removePieceWithoutIncrementalUpdate(BLACK_KING_START - 1);
-          this.addPieceWithoutIncrementalUpdate(pieceColor, ROOK, BLACK_LEFT_ROOK_START);
+      } else if (start - end == 2) {
+        this.removePieceWithoutIncrementalUpdate(BLACK_KING_START - 1);
+        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_LEFT_ROOK_START);
 
-        }
       }
-
     }
 
     this.restoreState();
@@ -638,10 +641,22 @@ export class Board {
   @inline
   updateKingPosition(playerColor: i32, boardIndex: i32): void {
     if (playerColor == WHITE) {
-      this.whiteKingIndex = boardIndex;
+      this.updateWhiteKingPosition(boardIndex);
     } else {
-      this.blackKingIndex = boardIndex;
+      this.updateBlackKingPosition(boardIndex);
     }
+  }
+
+  @inline
+  updateWhiteKingPosition(boardIndex: i32): void {
+    this.whiteKingIndex = boardIndex;
+    this.setWhiteKingMoved();
+  }
+
+  @inline
+  updateBlackKingPosition(boardIndex: i32): void {
+    this.blackKingIndex = boardIndex;
+    this.setBlackKingMoved();
   }
 
   @inline

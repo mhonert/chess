@@ -1115,7 +1115,7 @@ describe("Half move clock", () => {
       0, 0, 0
     ]);
 
-    board.performEncodedMove(encodeMove(N, 49, 34));
+    board.performEncodedMove(encodeMove(N, 57, 42));
 
     expect(board.getHalfMoveClock()).toBe(1);
   });
@@ -1186,7 +1186,9 @@ function moveKing(board: Board, piece: i32, location: i32): void {
   board.removePiece(kingPos);
 
   board.addPiece(color, abs(piece), location);
+  const state = board.getState();
   board.updateKingPosition(color, location);
+  board.setState(state);
 }
 
 // Generates moves and filters for valid moves for the given start index
