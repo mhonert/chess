@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BLACK, Board, WHITE } from './board';
+import { BLACK, Board, EMPTY, WHITE } from './board';
 import {
   decodeEndIndex, decodeMove,
   decodePiece, decodeScore,
@@ -28,6 +28,7 @@ import {
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
 import { fromFEN } from './fen';
 import { PositionHistory } from './history';
+import { PIECE_VALUES } from './pieces';
 
 
 export const MIN_SCORE = -16383;
@@ -324,22 +325,19 @@ export class Engine {
   };
 
 
-  // Evaluate board position with the given move performed
+  // Move evaluation heuristic for initial move ordering
   // (low values are better for black and high values are better for white)
-  evaluateMoveScore(encodedMove: i32): i32 {
-
-    const targetPieceId = decodePiece(encodedMove);
+  evaluateMoveScore(activePlayer: i32, encodedMove: i32): i32 {
+    const ownTargetPieceId = decodePiece(encodedMove);
     const moveStart = decodeStartIndex(encodedMove);
     const moveEnd = decodeEndIndex(encodedMove);
-    const previousPiece = this.board.getItem(moveStart);
+    const ownOriginalPieceId = activePlayer * this.board.getItem(moveStart); // might be different in case of pawn promotions
 
-    const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+    const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
+    const capturedPieceId = this.board.getItem(moveEnd);
 
-    const score = this.evaluatePosition();
-
-    this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-
-    return score;
+    const captureScore = capturedPieceId == EMPTY ? 0 : activePlayer * (100 - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]) + unchecked(PIECE_VALUES[capturedPieceId - 1]));
+    return captureScore * 8 + posScore;
   };
 
 
@@ -351,7 +349,7 @@ export class Engine {
   sortMovesByScore(moves: Int32Array, playerColor: i32): Int32Array {
 
     for (let i: i32 = 0; i < moves.length; i++) {
-      const score: i32 = this.evaluateMoveScore(unchecked(moves[i]));
+      const score: i32 = this.evaluateMoveScore(playerColor, unchecked(moves[i]));
       unchecked(moves[i] = encodeScoredMove(moves[i], score));
     }
 

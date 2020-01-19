@@ -21,7 +21,7 @@ import {
   BLACK_LEFT_ROOK_START, BLACK_PAWNS_BASELINE_START, BLACK_RIGHT_ROOK_START,
   KING,
   KNIGHT,
-  PAWN,
+  PAWN, PIECE_VALUES,
   QUEEN,
   ROOK, WHITE_ENPASSANT_LINE_END, WHITE_ENPASSANT_LINE_START,
   WHITE_LEFT_ROOK_START, WHITE_PAWNS_BASELINE_START,
@@ -42,8 +42,6 @@ import {
 export const WHITE_KING_START = 60;
 export const BLACK_KING_START = 4;
 
-
-const PIECE_VALUES: Int32Array = toInt32Array([1, 3, 3, 5, 9, 10]); // Pawn, Knight, Bishop, Rook, Queen, King
 
 const HALFMOVE_CLOCK_INDEX = 64;
 const HALFMOVE_COUNT_INDEX = 65;
@@ -407,10 +405,10 @@ export class Board {
   @inline
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * 10 + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
+      return unchecked(PIECE_VALUES[pieceId - 1]) * 8 + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     } else {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * -10 - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
+      return unchecked(PIECE_VALUES[pieceId - 1]) * -8 - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     }
   }
