@@ -43,7 +43,7 @@ export const WHITE_KING_START = 60;
 export const BLACK_KING_START = 4;
 
 
-const PIECE_VALUES: Array<i32> = [1, 3, 3, 5, 9, 10]; // Pawn, Knight, Bishop, Rook, Queen, King
+const PIECE_VALUES: Int32Array = toInt32Array([1, 3, 3, 5, 9, 10]); // Pawn, Knight, Bishop, Rook, Queen, King
 
 const HALFMOVE_CLOCK_INDEX = 64;
 const HALFMOVE_COUNT_INDEX = 65;
@@ -150,7 +150,7 @@ export class Board {
     for (let pos: i32 = 0; pos < 64; pos++) {
       const piece = this.items[pos];
       if (piece != EMPTY) {
-        this.hashCode ^= PIECE_RNG_NUMBERS[piece + 6][pos];
+        this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
       }
     }
 
@@ -178,7 +178,7 @@ export class Board {
     unchecked(this.items[pos] = piece);
 
     this.score += this.calculateScore(pos, pieceColor, pieceId);
-    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][pos]);
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
@@ -197,7 +197,7 @@ export class Board {
 
     const color = sign(piece);
     this.score -= this.calculateScore(pos, color, abs(piece));
-    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[piece + 6][pos]);
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
 
     return this.remove(piece, color, pos);
   }
@@ -407,10 +407,10 @@ export class Board {
   @inline
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * 10 + unchecked(WHITE_POSITION_SCORES[pieceId - 1][pos]);
+      return unchecked(PIECE_VALUES[pieceId - 1]) * 10 + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     } else {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * -10 - unchecked(BLACK_POSITION_SCORES[pieceId - 1][pos]);
+      return unchecked(PIECE_VALUES[pieceId - 1]) * -10 - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     }
   }
@@ -850,11 +850,28 @@ const KING_POSITION_SCORES: Int32Array = toInt32Array([
   4,  6,  2,   0,   0,  2,  6,  4
 ]);
 
-const WHITE_POSITION_SCORES: Array<Int32Array> = [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
-  ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES];
 
-const BLACK_POSITION_SCORES: Array<Int32Array> = [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
-  mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)];
+function concat(arrays: Int32Array[]): Int32Array {
+  let size = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    size += arrays[i].length;
+  }
+
+  const result = new Int32Array(size);
+  let index = 0;
+  for (let i = 0; i < arrays.length; i++) {
+    for (let j = 0; j < arrays[i].length; j++) {
+      result[index++] = arrays[i][j];
+    }
+  }
+  return result;
+}
+
+const WHITE_POSITION_SCORES: Int32Array = concat([PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
+  ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES]);
+
+const BLACK_POSITION_SCORES: Int32Array = concat([mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
+  mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)]);
 
 export function mirrored(input: Int32Array): Int32Array {
   let output = input.slice(0);

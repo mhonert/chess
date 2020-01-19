@@ -228,7 +228,7 @@ export class Engine {
         // no more moves possible (i.e. check mate or stale mate)
         return this.adjustedPositionScore(depth) * playerColor;
       }
-      scoredMove = moves![0];
+      scoredMove = moves[0];
       moveIndex++;
     }
 
@@ -271,20 +271,18 @@ export class Engine {
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
-        if (score != i32.MIN_VALUE) {
-          // Use mini-max algorithm ...
-          if (score > bestScore) {
-            bestScore = score;
-            bestMove = move;
-          }
+        // Use mini-max algorithm ...
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = move;
+        }
 
-          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-          alpha = max(alpha, bestScore);
-          if (alpha >= beta) {
-            resultType = ScoreType.CUTOFF;
+        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+        alpha = max(alpha, bestScore);
+        if (alpha >= beta) {
+          resultType = ScoreType.CUTOFF;
 
-            break;
-          }
+          break;
         }
       }
 
@@ -298,14 +296,14 @@ export class Engine {
 
         if (moves.length == 0) {
           // no more moves possible (i.e. check mate or stale mate)
-          return this.adjustedPositionScore(depth) * playerColor;
+          break;
         }
 
       } else if (moveIndex == moves.length) {
           break;
       }
 
-      scoredMove = unchecked(moves![moveIndex]);
+      scoredMove = unchecked(moves[moveIndex]);
       moveIndex++;
 
     } while (true);

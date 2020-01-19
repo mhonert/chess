@@ -24,7 +24,7 @@ import { rand64 } from './util';
 
 // Note: the incremental calculation of the Zobrist hashes takes place in the Board class (see board.ts), so
 // the unit tests for the hash calculation can be found in the board.spec.ts file
-export const PIECE_RNG_NUMBERS: Array<Uint64Array> = randArrayArray(13, 64);
+export const PIECE_RNG_NUMBERS: Uint64Array = randArray(13 * 64);
 export const PLAYER_RNG_NUMBER = rand64();
 export const EN_PASSANT_RNG_NUMBERS: Uint64Array = randArray(16);
 
@@ -39,16 +39,6 @@ function randArray(count: i32): Uint64Array {
   }
 
   return numbers;
-}
-
-function randArrayArray(count1: i32, count2: i32): Array<Uint64Array> {
-  const arrays = new Array<Uint64Array>(count1);
-
-  for (let i = 0; i < count1; i++) {
-    arrays[i] = randArray(count2);
-  }
-
-  return arrays;
 }
 
 function firstElementZero(elements: Uint64Array): Uint64Array {
