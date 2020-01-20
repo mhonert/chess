@@ -20,7 +20,7 @@ import { BLACK, Board, EMPTY, WHITE } from './board';
 import {
   decodeEndIndex, decodeMove,
   decodePiece, decodeScore,
-  decodeStartIndex, encodeScoredMove,
+  decodeStartIndex, encodeScoredMove, generateCaptureMoves,
   generateFilteredMoves,
   generateMoves,
   isCheckMate
@@ -46,6 +46,7 @@ export class Engine {
   private board: Board;
   private startTime: i64 = 0;
   private moveCount: i32 = 0;
+  private quietMoveCount: i32 = 0;
   private cacheHits: i32 = 0;
   private timeLimitMillis: i32;
   private minimumDepth: i32;
@@ -83,6 +84,7 @@ export class Engine {
     this.minimumDepth = minimumDepth;
     this.startTime = Date.now();
     this.moveCount = 0;
+    this.quietMoveCount = 0;
     this.cacheHits = 0;
     this.moveHits = 0;
 
@@ -168,6 +170,7 @@ export class Engine {
       if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
         trace('---------------------------------------------------');
         trace('Evaluated ' + this.moveCount.toString() + ' moves');
+        trace('Evaluated ' + this.quietMoveCount.toString() + ' quiet moves');
         trace('Cache hits ' + this.cacheHits.toString());
         trace('Best move hits ' + this.moveHits.toString());
 
@@ -198,18 +201,17 @@ export class Engine {
       return this.contemptFactor * playerColor;
     }
 
-    const ttHash = this.board.getHash();
     if (remainingLevels <= 0) {
-      const score = this.evaluatePosition();
+      const score = this.quiescenceSearch(playerColor, alpha, beta, depth);
       if (score == BLACK_MATE_SCORE) {
-        return (score - depth) * playerColor;
+        return (score - depth);
       } else if (score == WHITE_MATE_SCORE) {
-        return (score + depth) * playerColor;
+        return (score + depth);
       }
-
-      return score * playerColor;
+      return score;
     }
 
+    const ttHash = this.board.getHash();
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
 
     let moves: Int32Array | null = null;
@@ -323,6 +325,60 @@ export class Engine {
 
     return bestScore;
   };
+
+
+  quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
+    if (this.board.isThreefoldRepetion()) {
+      return this.contemptFactor * activePlayer;
+    }
+
+    const standPat = this.evaluatePosition() * activePlayer;
+
+    if (depth >= TRANSPOSITION_MAX_DEPTH) {
+      return standPat;
+    }
+
+    if (standPat >= beta) {
+      return beta;
+    }
+
+    if (alpha < standPat) {
+      alpha = standPat;
+    }
+
+    const moves = this.board.isInCheck(activePlayer)
+      ? this.sortMovesByScore(generateMoves(this.board, activePlayer), activePlayer)
+      : this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer);
+
+    for (let i = 0; i < moves.length; i++) {
+      const move = unchecked(moves[i]);
+      const targetPieceId = decodePiece(move);
+      const moveStart = decodeStartIndex(move);
+      const moveEnd = decodeEndIndex(move);
+      const previousPiece = this.board.getItem(moveStart);
+
+      const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+      this.quietMoveCount++;
+
+      if (this.board.isInCheck(activePlayer)) {
+        // Invalid move
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        continue;
+      }
+
+      const score = -this.quiescenceSearch(-activePlayer, -beta, -alpha, depth++);
+      this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+
+      if (score >= beta) {
+        return beta;
+      }
+
+      if (score > alpha) {
+        alpha = score;
+      }
+    }
+    return alpha;
+  }
 
 
   // Move evaluation heuristic for initial move ordering

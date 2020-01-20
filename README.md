@@ -33,7 +33,6 @@ and do not block the main thread for the UI.
 - Optimize move generation
 - Improve position evaluation
 - Use opening database and endgame tables
-- Mitigate the horizon effect
 
 ## Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine
