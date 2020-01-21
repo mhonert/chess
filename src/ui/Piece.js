@@ -54,8 +54,6 @@ const blackImages = [
 const pieceNames = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King' ]
 
 const PieceContainer = styled.div`
-  // Workaround for wrong Drag'n'Drop preview image rendering in Chrome (see https://github.com/react-dnd/react-dnd/issues/832)
-  -webkit-transform: rotateZ(0deg);
 `;
 
 const PieceImage = styled.img`
@@ -67,7 +65,12 @@ const PieceImage = styled.img`
   &.dragging {
     visibility: hidden;
   }
+  
+  // Workaround for wrong Drag'n'Drop preview image rendering in Chrome (see https://github.com/react-dnd/react-dnd/issues/832)
+  -webkit-transform: rotateZ(0deg);
 `;
+
+const isFirefox = typeof InstallTrigger !== 'undefined';
 
 const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
   const pieceId = Math.abs(piece);
@@ -87,15 +90,18 @@ const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
     })
   });
 
-  return (
-    <PieceContainer ref={drag}>
-      <PieceImage
-        src={img}
-        alt={pieceNames[pieceId - 1]}
-        className={isDragging ? 'dragging' : ''}
-      />
-    </PieceContainer>
-  );
+  const pieceImage =
+    <PieceImage
+      ref={drag}
+      src={img}
+      alt={pieceNames[pieceId - 1]}
+      className={isDragging ? 'dragging' : ''}
+    />;
+
+  // Workaround for wrong Drag'n'Drop preview image rendering in Firefox
+  return isFirefox
+    ?  <PieceContainer ref={drag}>{pieceImage}</PieceContainer>
+    : pieceImage;
 };
 
 export default Piece;
