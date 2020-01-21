@@ -24,8 +24,6 @@ const FieldDiv = styled.div`
   position: relative;
   background-color: ${props => props.isEven ? "#fdf6e3" : "#eee8d5"};
   
-  transform: ${props => props.isRotated ? "rotateZ(180deg)" : "none"};
-  
   &.move-mark:before {
     position: absolute;
     top: 4%;
@@ -41,7 +39,6 @@ const FieldDiv = styled.div`
 
 const Field = ({
   boardIndex,
-  isRotated,
   children,
   movePiece,
   isEven,
@@ -68,7 +65,6 @@ const Field = ({
   return (
     <FieldDiv
       ref={dropRef}
-      isRotated={isRotated}
       isEven={isEven}
       style={{ position: 'relative' }}
       isStart={isStart}

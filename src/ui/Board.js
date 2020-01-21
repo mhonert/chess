@@ -26,9 +26,7 @@ const BoardGrid = styled.div`
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
 
-    box-shadow: ${props => props.isRotated ? "-3px -3px 3px" : "3px 3px 3px"} #586e75;
-    
-    transform: rotateZ(${props => props.isRotated ? "180deg" : "0deg"});
+    box-shadow: 3px 3px 3px #586e75;
     
     // always keep board size rectangular and maximized to the smaller axis
     @media (min-aspect-ratio: 99/100) {
@@ -44,21 +42,23 @@ const BoardGrid = styled.div`
 const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
   return (
     <BoardGrid isRotated={isRotated}>
-      {board.slice(0, 64).map((item, idx) => {
+      {board.slice(0, 64).map((_, idx) => {
+        const rotatedIndex = isRotated ? 63 - idx : idx;
+        const item = board[rotatedIndex];
+
         return (
           <Field
-            key={idx}
-            boardIndex={idx}
+            key={rotatedIndex}
+            boardIndex={rotatedIndex}
             movePiece={handlePlayerMove}
-            isEven={(idx + (idx >> 3)) % 2 === 0}
-            isRotated={isRotated}
-            isStart={idx === lastMove.start}
-            isEnd={idx === lastMove.end}
-            isPossibleTarget={currentPieceMoves.has(idx)}
+            isEven={(rotatedIndex + (rotatedIndex >> 3)) % 2 === 0}
+            isStart={rotatedIndex === lastMove.start}
+            isEnd={rotatedIndex === lastMove.end}
+            isPossibleTarget={currentPieceMoves.has(rotatedIndex)}
           >
             {item !== 0 && (
               <Piece
-                boardIndex={idx}
+                boardIndex={rotatedIndex}
                 color={item < 0 ? 'black' : 'white'}
                 piece={item}
                 onPickup={updatePossibleMoves}
