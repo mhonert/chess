@@ -53,9 +53,6 @@ const blackImages = [
 
 const pieceNames = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King' ]
 
-const PieceContainer = styled.div`
-`;
-
 const PieceImage = styled.img`
   display: block;
   margin: 13%;
@@ -100,7 +97,7 @@ const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
 
   // Workaround for wrong Drag'n'Drop preview image rendering in Firefox
   return isFirefox
-    ?  <PieceContainer ref={drag}>{pieceImage}</PieceContainer>
+    ?  <div ref={drag}>{pieceImage}</div>
     : pieceImage;
 };
 

@@ -24,6 +24,16 @@ const FieldDiv = styled.div`
   position: relative;
   background-color: ${props => props.isEven ? "#fdf6e3" : "#eee8d5"};
   
+  // always keep board size rectangular and maximized to the smaller axis
+  @media (min-aspect-ratio: 99/100) {
+    width: 12.5vh;
+    height: 12.5vh;
+  }
+  @media (max-aspect-ratio: 100/99) {
+    width: 12.5vw;
+    height: 12.5vw;
+  }
+  
   &.move-mark:before {
     position: absolute;
     top: 4%;
