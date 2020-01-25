@@ -18,9 +18,13 @@
 
 import { BLACK, Board, EMPTY, WHITE } from './board';
 import {
-  decodeEndIndex, decodeMove,
-  decodePiece, decodeScore,
-  decodeStartIndex, encodeScoredMove, generateCaptureMoves,
+  decodeEndIndex,
+  decodeMove,
+  decodePiece,
+  decodeScore,
+  decodeStartIndex,
+  encodeScoredMove,
+  generateCaptureMoves,
   generateFilteredMoves,
   generateMoves,
   isCheckMate
@@ -34,8 +38,8 @@ import { PIECE_VALUES } from './pieces';
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
 
-export const WHITE_MATE_SCORE: i32 = -8000;
-export const BLACK_MATE_SCORE: i32 = 8000;
+export const WHITE_MATE_SCORE: i32 = -16000;
+export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
@@ -98,7 +102,7 @@ export class Engine {
 
     if (moves.length == 0) {
       // no more moves possible (i.e. check mate or stale mate)
-      return encodeScoredMove(0, this.adjustedPositionScore(depth) * playerColor);
+      return encodeScoredMove(0, this.terminalScore(depth) * playerColor);
     }
 
 
@@ -211,6 +215,8 @@ export class Engine {
       return score;
     }
 
+
+
     const ttHash = this.board.getHash();
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
 
@@ -229,7 +235,7 @@ export class Engine {
       moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
-        return this.adjustedPositionScore(depth) * playerColor;
+        return this.terminalScore(depth) * playerColor;
       }
       scoredMove = moves![0];
       moveIndex++;
@@ -332,7 +338,7 @@ export class Engine {
       return this.contemptFactor * activePlayer;
     }
 
-    const standPat = this.evaluatePosition() * activePlayer;
+    const standPat = this.evaluatePosition(activePlayer, depth) * activePlayer;
 
     if (depth >= TRANSPOSITION_MAX_DEPTH) {
       return standPat;
@@ -383,6 +389,7 @@ export class Engine {
 
   // Move evaluation heuristic for initial move ordering
   // (low values are better for black and high values are better for white)
+  @inline
   evaluateMoveScore(activePlayer: i32, encodedMove: i32): i32 {
     const ownTargetPieceId = decodePiece(encodedMove);
     const moveStart = decodeStartIndex(encodedMove);
@@ -392,8 +399,8 @@ export class Engine {
     const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
     const capturedPieceId = this.board.getItem(moveEnd);
 
-    const captureScore = capturedPieceId == EMPTY ? 0 : activePlayer * (100 - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]) + unchecked(PIECE_VALUES[capturedPieceId - 1]));
-    return captureScore * 8 + posScore;
+    const captureScore = capturedPieceId == EMPTY ? 2048 * -activePlayer : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId - 1]) - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]));
+    return captureScore + posScore;
   };
 
 
@@ -402,6 +409,7 @@ export class Engine {
   //
   // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
   // the moves array can be modified and sorted in-place.
+  @inline
   sortMovesByScore(moves: Int32Array, playerColor: i32): Int32Array {
 
     for (let i: i32 = 0; i < moves.length; i++) {
@@ -418,6 +426,7 @@ export class Engine {
     return moves;
   };
 
+  @inline
   sortByScoreDescending(moves: Int32Array): void {
     // Basic insertion sort
     for (let i = 1; i < moves.length; i++) {
@@ -436,6 +445,7 @@ export class Engine {
     }
   }
 
+  @inline
   sortByScoreAscending(moves: Int32Array): void {
     // Basic insertion sort
     for (let i = 1; i < moves.length; i++) {
@@ -457,17 +467,14 @@ export class Engine {
 
   /** Evaluates the current position and generates a score.
    *  Scores below 0 are better for the black and above 0 better for the white player.
-   *
-   * @param board
-   * @returns {number} Position score
    */
   @inline
-  evaluatePosition(): i32 {
+  evaluatePosition(activePlayer: i32, depth: i32): i32 {
     // Check mate is the best possible score for the other player
-    if (isCheckMate(this.board, BLACK)) {
-      return BLACK_MATE_SCORE;
-    } else if (isCheckMate(this.board, WHITE)) {
-      return WHITE_MATE_SCORE;
+    if (activePlayer == BLACK && isCheckMate(this.board, BLACK)) {
+      return BLACK_MATE_SCORE - depth;
+    } else if (activePlayer == WHITE && isCheckMate(this.board, WHITE)) {
+      return WHITE_MATE_SCORE + depth;
     }
 
     return this.board.getScore();
@@ -475,16 +482,14 @@ export class Engine {
 
   // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
   // to prevent unnecessary delays.
-  adjustedPositionScore(depth: i32): i32 {
-    const score = this.evaluatePosition();
-
-    if (score == BLACK_MATE_SCORE) {
-      return score - depth;
-    } else if (score == WHITE_MATE_SCORE) {
-      return score + depth;
+  terminalScore(depth: i32): i32 {
+    if (isCheckMate(this.board, BLACK)) {
+      return BLACK_MATE_SCORE - depth;
+    } else if (isCheckMate(this.board, WHITE)) {
+      return WHITE_MATE_SCORE + depth;
+    } else {
+      return 0; // Stalemate
     }
-
-    return score;
   };
 }
 

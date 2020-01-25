@@ -331,6 +331,12 @@ export class Board {
     return EMPTY;
   };
 
+  performNullMove(): void {
+    this.storeState();
+    this.increaseHalfMoveCount();
+    this.clearEnPassentPossible();
+  }
+
   undoMove(piece: i32, start: i32, end: i32, removedPieceId: i32): void {
     this.positionHistory.pop();
 
@@ -383,6 +389,10 @@ export class Board {
     this.restoreState();
   };
 
+  undoNullMove(): void {
+    this.restoreState();
+  }
+
   hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
     const pieces = unchecked(this.bitBoardPieces[color * ROOK + 6]) | unchecked(this.bitBoardPieces[color * QUEEN + 6]);
     return (pieces & (1 << pos)) != 0;
@@ -405,10 +415,10 @@ export class Board {
   @inline
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * 8 + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
+      return unchecked(PIECE_VALUES[pieceId - 1]) + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     } else {
-      return unchecked(PIECE_VALUES[pieceId - 1]) * -8 - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
+      return unchecked(-PIECE_VALUES[pieceId - 1]) - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
 
     }
   }

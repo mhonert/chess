@@ -86,7 +86,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(WHITE, 0);
 
     expect(score).toBe(0);
   });
@@ -105,7 +105,7 @@ describe('Evaluate position', () => {
   //     0, 0, 0
   //   ];
   //
-  //   const score = evaluatePosition(new Board(board));
+  //   const score = evaluatePosition(WHITE, 0);
   //   expect(score).toBeLessThan(0);
   // });
 
@@ -124,7 +124,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(WHITE, 0);
 
     expect(score).toBeGreaterThan(0);
   });
@@ -144,7 +144,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(WHITE, 0);
 
     expect(score).toBeGreaterThan(0);
   });
@@ -164,7 +164,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(WHITE, 0);
 
     expect(score).toBeGreaterThan(0);
   });
@@ -184,7 +184,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(board);
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(WHITE, 0);
 
     expect(score).toBe(WHITE_MATE_SCORE);
   });
@@ -204,7 +204,7 @@ describe('Evaluate position', () => {
 
     const engine = new Engine();
     engine.setBoard(board);
-    const score = engine.evaluatePosition();
+    const score = engine.evaluatePosition(BLACK, 0);
 
     expect(score).toBe(BLACK_MATE_SCORE);
   });
