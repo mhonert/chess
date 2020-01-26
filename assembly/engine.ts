@@ -225,8 +225,14 @@ export class Engine {
     let moveIndex: i32 = 0;
     if (scoredMove != 0) {
       if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
-        this.cacheHits++;
-        return decodeScore(scoredMove);
+        const score = decodeScore(scoredMove);
+        if (this.transpositionTable.getScoreType(ttHash) == ScoreType.EXACT) {
+          this.cacheHits++;
+          return score;
+        } else if (score >= beta) {
+          this.cacheHits++;
+          return beta;
+        }
       }
 
       this.moveHits++;
@@ -244,7 +250,7 @@ export class Engine {
     let bestMove: i32 = 0;
     let bestScore: i32 = MIN_SCORE;
 
-    let resultType = ScoreType.NO_CUTOFF;
+    let resultType = ScoreType.EXACT;
 
     do {
       const move = decodeMove(scoredMove);

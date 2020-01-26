@@ -33,7 +33,7 @@ const DEPTH_MASK: u64 = 0b111111;
 
 // Bits 16 - 15: Score Type
 export enum ScoreType {
-  NO_CUTOFF = 0,
+  EXACT = 0,
   CUTOFF
 }
 

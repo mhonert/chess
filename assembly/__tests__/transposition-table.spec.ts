@@ -42,7 +42,7 @@ describe("Transposition table", () => {
     const score: i32 = MIN_SCORE;
 
     const tt = new TranspositionTable();
-    tt.writeEntry(hash, 1, 0, score, ScoreType.NO_CUTOFF);
+    tt.writeEntry(hash, 1, 0, score, ScoreType.EXACT);
 
     expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
@@ -52,7 +52,7 @@ describe("Transposition table", () => {
     const score: i32 = MAX_SCORE;
 
     const tt = new TranspositionTable();
-    tt.writeEntry(hash, 1, 0, score, ScoreType.NO_CUTOFF);
+    tt.writeEntry(hash, 1, 0, score, ScoreType.EXACT);
 
     expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
