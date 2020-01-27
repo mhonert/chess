@@ -88,6 +88,19 @@ class Engine {
 
     return result;
   }
+
+  fromFEN(fen) {
+    const fenStr = this.engine.__allocString(fen);
+    const fenPtr = this.engine.__retain(fenStr);
+    const newBoardPtr = this.engine.newBoardFromFEN(fenPtr);
+
+    const newBoard = this.engine.__getArray(newBoardPtr);
+
+    this.engine.__release(fenPtr);
+    this.engine.__release(newBoardPtr);
+
+    return newBoard;
+  }
 }
 
 export class Move {

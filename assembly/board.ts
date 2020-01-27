@@ -70,6 +70,8 @@ export class Board {
 
   private positionHistory: PositionHistory = new PositionHistory();
 
+  private endgame: i32;
+
   /* items Array:
      Index 0 - 63: Board representation (8 columns * 8 rows)
      Index 64: Half-move clock (number of halfmoves since last capture or pawn move)
@@ -103,6 +105,13 @@ export class Board {
     this.items[STATE_INDEX] = items[STATE_INDEX];
     this.items[HALFMOVE_CLOCK_INDEX] = items[HALFMOVE_CLOCK_INDEX];
     this.items[HALFMOVE_COUNT_INDEX] = items[HALFMOVE_COUNT_INDEX];
+
+    this.endgame = this.determineEndGame() ? 1 : 0;
+  }
+
+  @inline
+  length(): i32 {
+    return this.items.length;
   }
 
   @inline
@@ -415,11 +424,10 @@ export class Board {
   @inline
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return unchecked(PIECE_VALUES[pieceId - 1]) + unchecked(WHITE_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
+      return unchecked(WHITE_POSITION_SCORES[(this.endgame << 9) + (pieceId - 1) * 64 + pos])
 
     } else {
-      return unchecked(-PIECE_VALUES[pieceId - 1]) - unchecked(BLACK_POSITION_SCORES[(pieceId - 1) * 64 + pos]);
-
+      return unchecked(BLACK_POSITION_SCORES[(this.endgame << 9) + (pieceId - 1) * 64 + pos])
     }
   }
 
@@ -748,6 +756,24 @@ export class Board {
   isThreefoldRepetion(): bool {
     return this.positionHistory.isThreefoldRepetion(this.getHash());
   }
+
+  @inline
+  isEndGame(): bool {
+    return this.endgame != 0;
+  }
+
+  determineEndGame(): bool {
+    const pawnCount = popcnt(this.getBitBoard(PAWN * WHITE + 6)) + popcnt(this.getBitBoard(PAWN * BLACK + 6));
+    if (pawnCount <= 3) {
+      return true;
+    }
+    const otherPieceCount = popcnt(this.getBitBoard(KNIGHT * WHITE + 6)) + popcnt(this.getBitBoard(KNIGHT * BLACK + 6)) +
+      popcnt(this.getBitBoard(BISHOP * WHITE + 6)) + popcnt(this.getBitBoard(BISHOP * BLACK + 6)) +
+      popcnt(this.getBitBoard(ROOK * WHITE + 6)) + popcnt(this.getBitBoard(ROOK * BLACK + 6)) +
+      popcnt(this.getBitBoard(QUEEN * WHITE + 6)) + popcnt(this.getBitBoard(QUEEN * BLACK + 6));
+
+    return otherPieceCount <= 3;
+  }
 }
 
 // Return index 0 for BLACK (-1) and 1 for WHITE (+1)
@@ -826,14 +852,14 @@ const BISHOP_POSITION_SCORES: Int32Array = toInt32Array([
 ]);
 
 const ROOK_POSITION_SCORES: Int32Array = toInt32Array([
-  0,  0,  0,  0,  0,  0,  0,  0,
-  1,  2,  2,  2,  2,  2,  2,  1,
+   0,  0,  0,  0,  0,  0,  0,  0,
+   1,  2,  2,  2,  2,  2,  2,  1,
   -1,  0,  0,  0,  0,  0,  0, -1,
   -1,  0,  0,  0,  0,  0,  0, -1,
   -1,  0,  0,  0,  0,  0,  0, -1,
   -1,  0,  0,  0,  0,  0,  0, -1,
   -1,  0,  0,  0,  0,  0,  0, -1,
-  0,  0,  0,  1,  1,  0,  0,  0
+   0,  0,  0,  1,  1,  0,  0,  0
 ]);
 
 const QUEEN_POSITION_SCORES: Int32Array = toInt32Array([
@@ -841,7 +867,7 @@ const QUEEN_POSITION_SCORES: Int32Array = toInt32Array([
   -2,  0,  0,  0,  0,  0,  0, -2,
   -2,  0,  1,  1,  1,  1,  0, -2,
   -1,  0,  1,  1,  1,  1,  0, -1,
-  0,  0,  1,  1,  1,  1,  0, -1,
+   0,  0,  1,  1,  1,  1,  0, -1,
   -2,  1,  1,  1,  1,  1,  0, -2,
   -2,  0,  1,  0,  0,  0,  0, -2,
   -4, -2, -2, -1, -1, -2, -2, -4
@@ -854,32 +880,52 @@ const KING_POSITION_SCORES: Int32Array = toInt32Array([
   -6, -8, -8, -10, -10, -8, -8, -6,
   -4, -6, -6,  -8,  -8, -6, -6, -4,
   -2, -4, -4,  -4,  -4, -4, -4, -2,
-  4,  4,  0,   0,   0,  0,  4,  4,
-  4,  6,  2,   0,   0,  2,  6,  4
+   4,  4,  0,   0,   0,  0,  4,  4,
+   4,  6,  2,   0,   0,  2,  6,  4
 ]);
 
+const KING_ENDGAME_POSITION_SCORES: Int32Array = toInt32Array([
+  -5, -4, -3, -2, -2, -3, -4, -5,
+  -3, -2, -1,  0,  0, -1, -2, -3,
+  -3, -1,  2,  3,  3,  2, -1, -3,
+  -3, -1,  3,  4,  4,  3, -1, -3,
+  -3, -1,  3,  4,  4,  3, -1, -3,
+  -3, -1,  2,  3,  3,  2, -1, -3,
+  -3, -3,  0,  0,  0,  0, -3, -3,
+  -5, -3, -3, -3, -3, -3, -3, -5
+]);
 
-function concat(arrays: Int32Array[]): Int32Array {
+function combineScores(color: i32, arrays: Int32Array[]): Int32Array {
   let size = 0;
   for (let i = 0; i < arrays.length; i++) {
     size += arrays[i].length;
   }
 
-  const result = new Int32Array(size);
+  const result = new Int32Array(64 * 14);
   let index = 0;
   for (let i = 0; i < arrays.length; i++) {
+    if (i == 6) {
+      // fill 2x 64 elements to align with 512
+      for (let j = 0; j < 128; j++) {
+        result[index++] = 0;
+      }
+    }
+    const pieceValue = PIECE_VALUES[i % 6] * color;
     for (let j = 0; j < arrays[i].length; j++) {
-      result[index++] = arrays[i][j];
+      result[index++] = arrays[i][j] * color + pieceValue;
     }
   }
   return result;
 }
 
-const WHITE_POSITION_SCORES: Int32Array = concat([PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES,
-  ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES]);
+const WHITE_POSITION_SCORES: Int32Array = combineScores(WHITE, [
+  PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES,
+  PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES
+]);
 
-const BLACK_POSITION_SCORES: Int32Array = concat([mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES),
-  mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)]);
+const BLACK_POSITION_SCORES: Int32Array = combineScores(BLACK, [
+  mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES),
+  mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
 
 export function mirrored(input: Int32Array): Int32Array {
   let output = input.slice(0);

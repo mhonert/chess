@@ -22,7 +22,7 @@
 import { generateFilteredMoves, isCheckMate as isCheckMateFn } from './move-generation';
 import { findBestMoveIncrementally, reset } from './engine';
 import { Board } from './board';
-import { toFEN } from './fen';
+import { fromFEN, toFEN } from './fen';
 
 export const INT32ARRAY_ID = idof<Int32Array>();
 
@@ -45,17 +45,18 @@ function createBoard(items: Int32Array): Board {
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [2, 3, 0],
-  [2, 3, 200],
-  [2, 5, 250],
-  [2, 5, 500],
-  [2, 7, 750]
+  [2, 3, 200, 400],
+  [2, 5, 250, 500],
+  [2, 5, 500, 1000],
+  [2, 7, 750, 1500]
 ]
 
 export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
   const board = createBoard(boardArray);
 
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
-  const move = findBestMoveIncrementally(board, color, levelSettings[0], levelSettings[1], levelSettings[2]);
+  const maxTime = board.isEndGame() ? levelSettings[3] : levelSettings[2];
+  const move = findBestMoveIncrementally(board, color, levelSettings[0], levelSettings[1], maxTime);
 
   return move;
 }
@@ -89,4 +90,13 @@ export function generatePlayerMoves(boardArray: Int32Array, color: i32): Int32Ar
 export function isCheckMate(boardArray: Int32Array, color: i32): bool {
   const board = createBoard(boardArray);
   return isCheckMateFn(board, color);
+}
+
+export function newBoardFromFEN(fen: string): Int32Array {
+  const board = fromFEN(fen);
+  const newBoard = new Int32Array(board.length());
+  for (let i = 0; i < board.length(); i++) {
+    newBoard[i] = board.getItem(i);
+  }
+  return newBoard;
 }

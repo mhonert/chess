@@ -55,7 +55,7 @@ export class Engine {
   private timeLimitMillis: i32;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
-  private contemptFactor: i32 = 10;
+  private isEndGame: bool = false;
 
   private previousHalfMoveClock: i32 = 0;
 
@@ -72,6 +72,8 @@ export class Engine {
 
     this.previousHalfMoveClock = this.board.getHalfMoveClock();
     this.board.setHistory(this.history);
+
+    this.isEndGame = board.isEndGame();
   }
 
   reset(): void {
@@ -118,6 +120,7 @@ export class Engine {
       alpha = initialAlpha;
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
+      let principalVariation = true;
 
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
@@ -138,7 +141,9 @@ export class Engine {
           -alpha,
           -playerColor,
           remainingLevels - 1,
-          depth + 1
+          depth + 1,
+          principalVariation,
+          false
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
@@ -152,6 +157,7 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        principalVariation = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -177,6 +183,7 @@ export class Engine {
         trace('Evaluated ' + this.quietMoveCount.toString() + ' quiet moves');
         trace('Cache hits ' + this.cacheHits.toString());
         trace('Best move hits ' + this.moveHits.toString());
+        trace('End game: ' + this.isEndGame.toString());
 
         const evaluatedMoveSubSet: Int32Array = moves.subarray(0, max(1, scoredMoves));
         this.sortByScoreDescending(evaluatedMoveSubSet);
@@ -199,10 +206,30 @@ export class Engine {
 
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
-  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32): i32 {
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, principalVariation: bool, nullMovePerformed: bool): i32 {
 
     if (this.board.isThreefoldRepetion()) {
-      return this.contemptFactor * playerColor;
+      return 0;
+    }
+
+    if (!this.isEndGame && !principalVariation && !nullMovePerformed && remainingLevels > 3 && !this.board.isInCheck(playerColor)) {
+      this.board.performNullMove();
+      const result = this.recFindBestMove(
+        -beta,
+        -beta + 1,
+        -playerColor,
+        remainingLevels - 3,
+        depth,
+        false,
+        true
+      );
+      this.board.undoNullMove();
+      if (result == CANCEL_SEARCH) {
+        return CANCEL_SEARCH;
+      }
+      if (-result >= beta) {
+        return beta;
+      }
     }
 
     if (remainingLevels <= 0) {
@@ -214,8 +241,6 @@ export class Engine {
       }
       return score;
     }
-
-
 
     const ttHash = this.board.getHash();
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
@@ -238,6 +263,7 @@ export class Engine {
       this.moveHits++;
 
     } else {
+
       moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
@@ -249,8 +275,6 @@ export class Engine {
 
     let bestMove: i32 = 0;
     let bestScore: i32 = MIN_SCORE;
-
-    let resultType = ScoreType.EXACT;
 
     do {
       const move = decodeMove(scoredMove);
@@ -275,7 +299,9 @@ export class Engine {
           -alpha,
           -playerColor,
           remainingLevels - 1,
-          depth + 1
+          depth + 1,
+          principalVariation,
+          false,
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
@@ -285,6 +311,7 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        principalVariation = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -295,9 +322,8 @@ export class Engine {
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
         alpha = max(alpha, bestScore);
         if (alpha >= beta) {
-          resultType = ScoreType.CUTOFF;
-
-          break;
+          this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, ScoreType.CUTOFF);
+          return alpha;
         }
       }
 
@@ -333,7 +359,7 @@ export class Engine {
       return 0;
     }
 
-    this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, resultType);
+    this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, ScoreType.EXACT);
 
     return bestScore;
   };
@@ -341,7 +367,7 @@ export class Engine {
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
     if (this.board.isThreefoldRepetion()) {
-      return this.contemptFactor * activePlayer;
+      return 0;
     }
 
     const standPat = this.evaluatePosition(activePlayer, depth) * activePlayer;

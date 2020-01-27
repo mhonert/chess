@@ -24,7 +24,6 @@ describe("Position History", () => {
   it("Detects threefold repetition", () => {
     const history = new PositionHistory();
     history.push(1);
-    history.push(1);
     expect(history.isThreefoldRepetion(1)).toBeFalsy("Position only occured twice");
 
     history.push(1);

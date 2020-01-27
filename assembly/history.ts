@@ -29,7 +29,7 @@ export class PositionHistory {
   }
 
   isThreefoldRepetion(hash: u64): bool {
-    if (this.index < 3) {
+    if (this.index < 2) {
       return false;
     }
 
@@ -37,7 +37,7 @@ export class PositionHistory {
     for (let i = 0; i < this.index; i++) {
       if (unchecked(this.positions[i]) == hash) {
         count++;
-        if (count == 3) {
+        if (count == 2) {
           return true;
         }
       }

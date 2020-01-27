@@ -20,26 +20,12 @@ import React, { useState } from 'react';
 import styled from 'styled-components/macro';
 
 import engineWorkerLoader from 'workerize-loader!../engine/engine.worker'; // eslint-disable-line import/no-webpack-loader-syntax
-import { B, BLACK, K, N, P, Q, R, WHITE } from '../engine/constants';
+import { B, BLACK, K, P, Q, R, WHITE } from '../engine/constants';
 import Board from './Board';
 import GameMenu from './GameMenu';
 import engine, { Move } from '../engine/engine-wasm-interop';
 
 const engineWebWorker = engineWorkerLoader();
-
-const initialState = 0;
-
-const initialBoard = [
- -R, -N, -B, -Q, -K, -B, -N, -R,
- -P, -P, -P, -P, -P, -P, -P, -P,
-  0,  0,  0,  0,  0,  0,  0,  0,
-  0,  0,  0,  0,  0,  0,  0,  0,
-  0,  0,  0,  0,  0,  0,  0,  0,
-  0,  0,  0,  0,  0,  0,  0,  0,
-  P,  P,  P,  P,  P,  P,  P,  P,
-  R,  N,  B,  Q,  K,  B,  N,  R,
-  0, 0, initialState
-];
 
 const GameArea = styled.div`
   display: flex;
@@ -47,6 +33,7 @@ const GameArea = styled.div`
 `;
 
 const Game = () => {
+  const initialBoard = engine.fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   const [rotateBoard, setRotateBoard] = useState(false);
   const [activePlayer, setActivePlayer] = useState(WHITE);
   const [humanPlayerColor, setHumanPlayerColor] = useState(WHITE);
