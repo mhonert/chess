@@ -32,7 +32,7 @@ import {
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
 import { fromFEN } from './fen';
 import { PositionHistory } from './history';
-import { PIECE_VALUES } from './pieces';
+import { PIECE_VALUES, QUEEN_VALUE } from './pieces';
 
 
 export const MIN_SCORE = -16383;
@@ -45,7 +45,8 @@ const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
 export class Engine {
 
-  private transpositionTable: TranspositionTable = new TranspositionTable();
+  private transpositionTableInitialized: bool = false;
+  private transpositionTable: TranspositionTable;
   private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
@@ -64,6 +65,10 @@ export class Engine {
   }
 
   setBoard(board: Board): void {
+    if (!this.transpositionTableInitialized) {
+      this.transpositionTableInitialized = true;
+      this.transpositionTable = new TranspositionTable();
+    }
     this.board = board;
 
     if (this.board.getHalfMoveClock() == 0 || this.previousHalfMoveClock > this.board.getHalfMoveClock()) {
@@ -382,6 +387,11 @@ export class Engine {
 
     if (standPat >= beta) {
       return beta;
+    }
+
+    // Delta pruning
+    if (!this.isEndGame && standPat < alpha - QUEEN_VALUE) {
+      return alpha;
     }
 
     if (alpha < standPat) {

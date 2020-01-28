@@ -26,7 +26,8 @@ export const QUEEN: i32 = 5;
 export const KING: i32 = 6;
 
 // Pieces values: PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
-export const PIECE_VALUES: Int32Array = toInt32Array([10, 32, 33, 50, 90, 1000]);
+export const QUEEN_VALUE = 90;
+export const PIECE_VALUES: Int32Array = toInt32Array([10, 32, 33, 50, QUEEN_VALUE, 1000]);
 
 export const pieces: Array<i32> = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
 

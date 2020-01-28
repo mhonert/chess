@@ -49,7 +49,7 @@ const SCORE_BITMASK: u64 = 0b11111111111111;
 
 
 // Transposition data
-const TRANSPOSITION_INDEX_BITS = 21;
+const TRANSPOSITION_INDEX_BITS = 23;
 export const TRANSPOSITION_INDEX_MASK: u64 = (1 << TRANSPOSITION_INDEX_BITS) - 1;
 
 export class TranspositionTable {
@@ -61,9 +61,8 @@ export class TranspositionTable {
     const index = this.calculateIndex(hash);
 
     const existingEntry = unchecked(this.entries[index]);
-    const existingType = i32((existingEntry >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
     const existingDepth = i32((existingEntry >> DEPTH_BITSHIFT) & DEPTH_MASK);
-    if (existingEntry != 0 && (existingEntry & HASHCHECK_MASK) == (hash & HASHCHECK_MASK) && type < existingType && depth <= existingDepth) {
+    if (existingEntry != 0 && (existingEntry & HASHCHECK_MASK) == (hash & HASHCHECK_MASK) && depth < existingDepth) {
       return; // keep existing entry
     }
 
