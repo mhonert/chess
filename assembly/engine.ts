@@ -212,6 +212,40 @@ export class Engine {
       return 0;
     }
 
+    // Quiescence search
+    if (remainingLevels <= 0) {
+      const score = this.quiescenceSearch(playerColor, alpha, beta, depth);
+      if (score == BLACK_MATE_SCORE) {
+        return (score - depth);
+      } else if (score == WHITE_MATE_SCORE) {
+        return (score + depth);
+      }
+      return score;
+    }
+
+    // Check transposition table
+    const ttHash = this.board.getHash();
+    let scoredMove = this.transpositionTable.getScoredMove(ttHash);
+
+    let moves: Int32Array | null = null;
+
+    let moveIndex: i32 = 0;
+    if (scoredMove != 0) {
+      if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
+        const score = decodeScore(scoredMove);
+        if (this.transpositionTable.getScoreType(ttHash) == ScoreType.EXACT) {
+          this.cacheHits++;
+          return score;
+        } else if (score >= beta) {
+          this.cacheHits++;
+          return beta;
+        }
+      }
+
+      this.moveHits++;
+    }
+
+    // Null move pruning
     if (!this.isEndGame && !principalVariation && !nullMovePerformed && remainingLevels > 3 && !this.board.isInCheck(playerColor)) {
       this.board.performNullMove();
       const result = this.recFindBestMove(
@@ -232,38 +266,8 @@ export class Engine {
       }
     }
 
-    if (remainingLevels <= 0) {
-      const score = this.quiescenceSearch(playerColor, alpha, beta, depth);
-      if (score == BLACK_MATE_SCORE) {
-        return (score - depth);
-      } else if (score == WHITE_MATE_SCORE) {
-        return (score + depth);
-      }
-      return score;
-    }
-
-    const ttHash = this.board.getHash();
-    let scoredMove = this.transpositionTable.getScoredMove(ttHash);
-
-    let moves: Int32Array | null = null;
-
-    let moveIndex: i32 = 0;
-    if (scoredMove != 0) {
-      if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
-        const score = decodeScore(scoredMove);
-        if (this.transpositionTable.getScoreType(ttHash) == ScoreType.EXACT) {
-          this.cacheHits++;
-          return score;
-        } else if (score >= beta) {
-          this.cacheHits++;
-          return beta;
-        }
-      }
-
-      this.moveHits++;
-
-    } else {
-
+    // Generate moves, if no good move was found in the transposition table
+    if (scoredMove == 0) {
       moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
