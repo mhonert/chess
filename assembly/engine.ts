@@ -43,6 +43,8 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
+const ASPIRATION_WINDOW_SIZE = 2;
+
 export class Engine {
 
   private transpositionTableInitialized: bool = false;
@@ -56,6 +58,7 @@ export class Engine {
   private timeLimitMillis: i32;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
+  private repeatedSearches: i32 = 0;
   private isEndGame: bool = false;
 
   private previousHalfMoveClock: i32 = 0;
@@ -116,16 +119,20 @@ export class Engine {
     let bestMove: i32 = 0;
 
     const initialAlpha = alpha;
+    const initialBeta = beta;
+
+    let repetitionCounter: i32 = 0;
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
     do {
-      trace('---------------------------------------------------');
-      trace('Start with search depth: ', 1, remainingLevels);
-
-      alpha = initialAlpha;
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
       let principalVariation = true;
+
+      let previousAlpha = alpha;
+      let previousBeta = beta;
+
+      let repeatSearch = false;
 
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
@@ -168,6 +175,12 @@ export class Engine {
         if (score > bestScore) {
           bestScore = score;
           bestMove = move;
+          alpha = max(alpha, bestScore);
+
+          if (bestScore <= previousAlpha || bestScore >= previousBeta) {
+            repeatSearch = true;
+            break;
+          }
         }
 
         unchecked(moves[i] = encodeScoredMove(move, score));
@@ -179,7 +192,6 @@ export class Engine {
         }
 
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-        alpha = max(alpha, bestScore);
       }
 
       if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
@@ -188,6 +200,7 @@ export class Engine {
         trace('Evaluated ' + this.quietMoveCount.toString() + ' quiet moves');
         trace('Cache hits ' + this.cacheHits.toString());
         trace('Best move hits ' + this.moveHits.toString());
+        trace('Repeated searches: ' + this.repeatedSearches.toString());
         trace('End game: ' + this.isEndGame.toString());
 
         const evaluatedMoveSubSet: Int32Array = moves.subarray(0, max(1, scoredMoves));
@@ -198,11 +211,39 @@ export class Engine {
         return selectedMove;
       }
 
+      if (repeatSearch) {
+        this.repeatedSearches++;
+        repetitionCounter++;
+
+        if (repetitionCounter > 3) {
+          alpha = initialAlpha;
+          beta = initialBeta;
+        } else {
+          if (bestScore <= previousAlpha) {
+            alpha = bestScore - (ASPIRATION_WINDOW_SIZE << repetitionCounter);
+            beta = bestScore + ASPIRATION_WINDOW_SIZE;
+          } else if (bestScore >= previousBeta) {
+            alpha = bestScore - ASPIRATION_WINDOW_SIZE;
+            beta = bestScore + (ASPIRATION_WINDOW_SIZE << repetitionCounter);
+          }
+        }
+        continue;
+      }
+
+
       let currentBestMove = encodeScoredMove(bestMove, bestScore);
+      trace('---------------------------------------------------');
+      trace('Finished search depth: ', 1, remainingLevels);
+
       logScoredMove(currentBestMove, 'Current best move');
 
       this.sortByScoreDescending(moves);
+
       remainingLevels += 1;
+
+      repetitionCounter = 0;
+      alpha = bestScore - ASPIRATION_WINDOW_SIZE;
+      beta = bestScore + ASPIRATION_WINDOW_SIZE;
 
     } while (true);
 
