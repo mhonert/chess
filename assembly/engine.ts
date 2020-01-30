@@ -319,7 +319,7 @@ export class Engine {
         // no more moves possible (i.e. check mate or stale mate)
         return this.terminalScore(depth) * playerColor;
       }
-      scoredMove = moves![0];
+      scoredMove = moves[0];
       moveIndex++;
     }
 
@@ -394,7 +394,7 @@ export class Engine {
           break;
       }
 
-      scoredMove = unchecked(moves![moveIndex]);
+      scoredMove = unchecked(moves[moveIndex]);
       moveIndex++;
 
     } while (true);

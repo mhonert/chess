@@ -5,6 +5,7 @@ module.exports = {
     "--runtime": ["full"],
     "--optimizeLevel": "3",
     "--shrinkLevel": "0",
+    "--converge": [],
   },
 
   disclude: [/node_modules/],
