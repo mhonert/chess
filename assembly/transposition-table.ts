@@ -34,18 +34,15 @@ const DEPTH_MASK: u64 = 0b111111;
 // Bits 16 - 15: Score Type
 export enum ScoreType {
   EXACT = 0,
-  CUTOFF
+  ALPHA,
+  BETA
 }
 
 const SCORE_TYPE_BITSHIFT = 15;
 const SCORE_TYPE_MASK: u64 = 0b11;
 
-// Bit 14: Score sign (1 = -, 0 = +)
-const SCORE_SIGN_BITMASK: u64 = 0b100000000000000;
-
-// Bits 13 - 0 : Score
-const SCORE_BITMASK: u64 = 0b11111111111111;
-
+// Bits 14 - 0: Age
+const AGE_MASK: u64 = 0b111111111111111;
 
 
 // Transposition data
@@ -55,29 +52,29 @@ export const TRANSPOSITION_INDEX_MASK: u64 = (1 << TRANSPOSITION_INDEX_BITS) - 1
 export class TranspositionTable {
   private entries: Uint64Array = new Uint64Array(1 << TRANSPOSITION_INDEX_BITS);
   private moves: Int32Array = new Int32Array(1 << TRANSPOSITION_INDEX_BITS);
+  private age: i32;
 
+  increaseAge(): void {
+    this.age = (this.age + 1) & i32(AGE_MASK);
+  }
 
-  writeEntry(hash: u64, depth: i32, move: i32, score: i32, type: ScoreType): void {
+  writeEntry(hash: u64, depth: i32, scoredMove: i32, type: ScoreType): void {
     const index = this.calculateIndex(hash);
 
     const existingEntry = unchecked(this.entries[index]);
     const existingDepth = i32((existingEntry >> DEPTH_BITSHIFT) & DEPTH_MASK);
-    if (existingEntry != 0 && (existingEntry & HASHCHECK_MASK) == (hash & HASHCHECK_MASK) && depth < existingDepth) {
+    const existingAge = i32(existingEntry & AGE_MASK);
+    if (existingEntry != 0 && existingAge == this.age && depth < existingDepth) {
       return; // keep existing entry
     }
 
     let newEntry: u64 = hash & HASHCHECK_MASK;
     newEntry |= (depth << DEPTH_BITSHIFT);
     newEntry |= (type << SCORE_TYPE_BITSHIFT);
-    if (score < 0) {
-      newEntry |= SCORE_SIGN_BITMASK;
-      newEntry |= -score;
-    } else {
-      newEntry |= score;
-    }
+    newEntry |= this.age;
 
     unchecked(this.entries[index] = newEntry);
-    unchecked(this.moves[index] = move);
+    unchecked(this.moves[index] = scoredMove);
   }
 
 
@@ -86,15 +83,12 @@ export class TranspositionTable {
     const index = this.calculateIndex(hash);
 
     const entry = unchecked(this.entries[index]);
-    if (entry == 0 || ((entry & HASHCHECK_MASK) != (hash & HASHCHECK_MASK))) {
+    const existingAge = i32(entry & AGE_MASK);
+    if (entry == 0 || existingAge > this.age || ((entry & HASHCHECK_MASK) != (hash & HASHCHECK_MASK))) {
       return 0;
     }
 
-    const score = i32((entry & SCORE_SIGN_BITMASK) != 0
-      ? -(entry & SCORE_BITMASK)
-      : (entry & SCORE_BITMASK));
-
-    return encodeScoredMove(unchecked(this.moves[index]), score);
+    return unchecked(this.moves[index]);
   }
 
 
@@ -118,6 +112,7 @@ export class TranspositionTable {
   clear(): void {
     this.entries.fill(0, 0, this.entries.length);
     this.moves.fill(0, 0, this.moves.length);
+    this.age = 0;
   }
 
 }

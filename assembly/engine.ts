@@ -33,6 +33,7 @@ import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transp
 import { fromFEN } from './fen';
 import { PositionHistory } from './history';
 import { PIECE_VALUES, QUEEN_VALUE } from './pieces';
+import { KillerMoveTable } from './killermove-table';
 
 
 export const MIN_SCORE = -16383;
@@ -43,23 +44,27 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-const ASPIRATION_WINDOW_SIZE = 2;
+const ASPIRATION_WINDOW_SIZE = 4;
+
+const CONTEMPT_FACTOR: i32 = 0;
 
 export class Engine {
 
-  private transpositionTableInitialized: bool = false;
+  private tablesInitialized: bool = false;
   private transpositionTable: TranspositionTable;
+  private killerMoveTable: KillerMoveTable;
   private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
   private moveCount: i32 = 0;
-  private quietMoveCount: i32 = 0;
+  private qsMoveCount: i32 = 0;
   private cacheHits: i32 = 0;
   private timeLimitMillis: i32;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
   private repeatedSearches: i32 = 0;
   private isEndGame: bool = false;
+  private isCancelPossible: bool = false;
 
   private previousHalfMoveClock: i32 = 0;
 
@@ -68,9 +73,13 @@ export class Engine {
   }
 
   setBoard(board: Board): void {
-    if (!this.transpositionTableInitialized) {
-      this.transpositionTableInitialized = true;
+    if (!this.tablesInitialized) {
+      this.tablesInitialized = true;
       this.transpositionTable = new TranspositionTable();
+      this.killerMoveTable = new KillerMoveTable();
+    } else {
+      this.killerMoveTable.clear();
+      this.transpositionTable.increaseAge();
     }
     this.board = board;
 
@@ -98,11 +107,11 @@ export class Engine {
     this.minimumDepth = minimumDepth;
     this.startTime = Date.now();
     this.moveCount = 0;
-    this.quietMoveCount = 0;
+    this.qsMoveCount = 0;
     this.cacheHits = 0;
     this.moveHits = 0;
 
-    const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor);
+    const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, depth, 0, 0);
 
     if (moves.length == 1) {
       const score = decodeScore(unchecked(moves[0]));
@@ -112,22 +121,23 @@ export class Engine {
 
     if (moves.length == 0) {
       // no more moves possible (i.e. check mate or stale mate)
-      return encodeScoredMove(0, this.terminalScore(depth) * playerColor);
+      return encodeScoredMove(0, this.terminalScore(playerColor, depth) * playerColor);
     }
 
 
     let bestMove: i32 = 0;
+    let bestScoredMove: i32 = 0;
 
     const initialAlpha = alpha;
     const initialBeta = beta;
 
     let repetitionCounter: i32 = 0;
+    this.isCancelPossible = false;
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
     do {
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
-      let principalVariation = true;
 
       let previousAlpha = alpha;
       let previousBeta = beta;
@@ -154,14 +164,11 @@ export class Engine {
           -playerColor,
           remainingLevels - 1,
           depth + 1,
-          principalVariation,
-          false
+          false,
+          true
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-          if (depth > 0) {
-            return CANCEL_SEARCH;
-          }
           trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
           break;
         }
@@ -169,7 +176,6 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-        principalVariation = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -186,7 +192,7 @@ export class Engine {
         unchecked(moves[i] = encodeScoredMove(move, score));
         scoredMoves++;
 
-        if (remainingLevels > minimumDepth && Date.now() - this.startTime >= timeLimitMillis) {
+        if (this.isCancelPossible && Date.now() - this.startTime >= timeLimitMillis) {
           trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
           break;
         }
@@ -194,48 +200,55 @@ export class Engine {
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
       }
 
-      if (remainingLevels >= minimumDepth && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
+      if (this.isCancelPossible && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
         trace('---------------------------------------------------');
         trace('Evaluated ' + this.moveCount.toString() + ' moves');
-        trace('Evaluated ' + this.quietMoveCount.toString() + ' quiet moves');
+        trace('Evaluated ' + this.qsMoveCount.toString() + ' moves during quiescence search');
         trace('Cache hits ' + this.cacheHits.toString());
         trace('Best move hits ' + this.moveHits.toString());
         trace('Repeated searches: ' + this.repeatedSearches.toString());
         trace('End game: ' + this.isEndGame.toString());
 
-        const evaluatedMoveSubSet: Int32Array = moves.subarray(0, max(1, scoredMoves));
-        this.sortByScoreDescending(evaluatedMoveSubSet);
+        if (repeatSearch) {
+          // Previous search is invalid => skip results
+          logScoredMove(bestScoredMove, 'Selected move');
+          return bestScoredMove;
 
-        const selectedMove = evaluatedMoveSubSet[0];
-        logScoredMove(selectedMove, 'Selected move');
-        return selectedMove;
+        } else {
+          const evaluatedMoveSubSet: Int32Array = moves.subarray(0, max(1, scoredMoves));
+          this.sortByScoreDescending(evaluatedMoveSubSet);
+
+          const selectedMove = evaluatedMoveSubSet[0];
+          logScoredMove(selectedMove, 'Selected move');
+          return selectedMove;
+
+        }
       }
 
       if (repeatSearch) {
         this.repeatedSearches++;
         repetitionCounter++;
 
-        if (repetitionCounter > 3) {
+        if (repetitionCounter > 1) {
           alpha = initialAlpha;
           beta = initialBeta;
         } else {
           if (bestScore <= previousAlpha) {
-            alpha = bestScore - (ASPIRATION_WINDOW_SIZE << repetitionCounter);
-            beta = bestScore + ASPIRATION_WINDOW_SIZE;
+            alpha = previousAlpha - (ASPIRATION_WINDOW_SIZE << repetitionCounter);
+            beta = previousBeta;
           } else if (bestScore >= previousBeta) {
-            alpha = bestScore - ASPIRATION_WINDOW_SIZE;
-            beta = bestScore + (ASPIRATION_WINDOW_SIZE << repetitionCounter);
+            alpha = previousAlpha;
+            beta = previousBeta + (ASPIRATION_WINDOW_SIZE << repetitionCounter);
           }
         }
         continue;
       }
 
-
-      let currentBestMove = encodeScoredMove(bestMove, bestScore);
+      bestScoredMove = encodeScoredMove(bestMove, bestScore);
       trace('---------------------------------------------------');
       trace('Finished search depth: ', 1, remainingLevels);
 
-      logScoredMove(currentBestMove, 'Current best move');
+      logScoredMove(bestScoredMove, 'Current best move');
 
       this.sortByScoreDescending(moves);
 
@@ -244,6 +257,7 @@ export class Engine {
       repetitionCounter = 0;
       alpha = bestScore - ASPIRATION_WINDOW_SIZE;
       beta = bestScore + ASPIRATION_WINDOW_SIZE;
+      this.isCancelPossible = remainingLevels > minimumDepth;
 
     } while (true);
 
@@ -252,10 +266,10 @@ export class Engine {
 
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
-  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, principalVariation: bool, nullMovePerformed: bool): i32 {
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, nullMovePerformed: bool, nullMoveVerificationRequired: bool): i32 {
 
     if (this.board.isThreefoldRepetion()) {
-      return 0;
+      return CONTEMPT_FACTOR * playerColor;
     }
 
     // Quiescence search
@@ -275,59 +289,81 @@ export class Engine {
 
     let moves: Int32Array | null = null;
 
+    let move: i32 = 0;
+    let hashMove: i32 = 0;
     let moveIndex: i32 = 0;
+
     if (scoredMove != 0) {
-      if (this.transpositionTable.getDepth(ttHash) == remainingLevels) {
+      if (this.transpositionTable.getDepth(ttHash) >= remainingLevels) {
         const score = decodeScore(scoredMove);
-        if (this.transpositionTable.getScoreType(ttHash) == ScoreType.EXACT) {
+        const type = this.transpositionTable.getScoreType(ttHash);
+        if (type == ScoreType.EXACT) {
           this.cacheHits++;
           return score;
-        } else if (score >= beta) {
+        } else if (type == ScoreType.ALPHA && score <= alpha) {
+          this.cacheHits++;
+          return alpha;
+        } else if (type == ScoreType.BETA && score >= beta) {
           this.cacheHits++;
           return beta;
         }
       }
 
+      move = decodeMove(scoredMove);
+      hashMove = move;
+
       this.moveHits++;
     }
 
+    let failHigh: bool = false;
+
     // Null move pruning
-    if (!this.isEndGame && !principalVariation && !nullMovePerformed && remainingLevels > 3 && !this.board.isInCheck(playerColor)) {
+    if (!nullMovePerformed && remainingLevels > 2 && !this.board.isInCheck(playerColor)) {
       this.board.performNullMove();
       const result = this.recFindBestMove(
         -beta,
         -beta + 1,
         -playerColor,
-        remainingLevels - 3,
-        depth,
-        false,
-        true
+        remainingLevels - 4,
+        depth + 1,
+        true,
+        false
       );
       this.board.undoNullMove();
       if (result == CANCEL_SEARCH) {
         return CANCEL_SEARCH;
       }
       if (-result >= beta) {
-        return beta;
+        if (nullMoveVerificationRequired) {
+          remainingLevels--;
+          nullMoveVerificationRequired = false;
+          failHigh = true;
+        } else {
+          return -result;
+        }
       }
     }
 
-    // Generate moves, if no good move was found in the transposition table
+    const primaryKillerMove = this.killerMoveTable.getPrimaryKiller(depth);
+    const secondaryKillerMove = this.killerMoveTable.getSecondaryKiller(depth);
+
     if (scoredMove == 0) {
-      moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+      // Generate moves, if no valid moves were found in the transposition or killer move tables
+      moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor, depth, primaryKillerMove, secondaryKillerMove);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
-        return this.terminalScore(depth) * playerColor;
+        return this.terminalScore(playerColor, depth) * playerColor;
       }
       scoredMove = moves[0];
+      move = decodeMove(scoredMove);
       moveIndex++;
     }
 
     let bestMove: i32 = 0;
     let bestScore: i32 = MIN_SCORE;
+    let scoreType: ScoreType = ScoreType.ALPHA;
 
     do {
-      const move = decodeMove(scoredMove);
 
       const targetPieceId = decodePiece(move);
       const moveStart = decodeStartIndex(move);
@@ -350,8 +386,8 @@ export class Engine {
           -playerColor,
           remainingLevels - 1,
           depth + 1,
-          principalVariation,
           false,
+          nullMoveVerificationRequired
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
@@ -361,29 +397,36 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-        principalVariation = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
           bestScore = score;
           bestMove = move;
+
+          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+          if (bestScore > alpha) {
+            alpha = bestScore;
+            scoreType = ScoreType.EXACT;
+          }
+          if (alpha >= beta) {
+            this.transpositionTable.writeEntry(ttHash, remainingLevels, encodeScoredMove(bestMove, bestScore), ScoreType.BETA);
+
+            if (bestMove != hashMove && removedPiece == EMPTY) {
+              this.killerMoveTable.writeEntry(depth, moveStart, moveEnd, bestMove);
+            }
+            return alpha;
+          }
         }
 
-        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
-        alpha = max(alpha, bestScore);
-        if (alpha >= beta) {
-          this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, ScoreType.CUTOFF);
-          return alpha;
-        }
       }
 
-      if (depth == this.minimumDepth && Date.now() - this.startTime >= this.timeLimitMillis) {
+      if (this.isCancelPossible && Date.now() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
         return CANCEL_SEARCH;
       }
 
       if (moves == null) {
-        moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor);
+        moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor, depth, primaryKillerMove, secondaryKillerMove);
 
         if (moves.length == 0) {
           // no more moves possible (i.e. check mate or stale mate)
@@ -391,10 +434,21 @@ export class Engine {
         }
 
       } else if (moveIndex == moves.length) {
+        if (failHigh && bestScore < beta) {
+          // research required, because a Zugzwang position was detected (fail-high report by null search, but no found cutoff)
+          remainingLevels++;
+          nullMoveVerificationRequired = true;
+          failHigh = false;
+          moveIndex = 0;
+        } else {
+          // Last move has been evaluated
           break;
+        }
       }
 
       scoredMove = unchecked(moves[moveIndex]);
+      move = decodeMove(scoredMove);
+
       moveIndex++;
 
     } while (true);
@@ -406,10 +460,10 @@ export class Engine {
       }
 
       // Stalemate
-      return 0;
+      return CONTEMPT_FACTOR * playerColor;
     }
 
-    this.transpositionTable.writeEntry(ttHash, remainingLevels, bestMove, bestScore, ScoreType.EXACT);
+    this.transpositionTable.writeEntry(ttHash, remainingLevels, encodeScoredMove(bestMove, bestScore), scoreType);
 
     return bestScore;
   };
@@ -417,7 +471,7 @@ export class Engine {
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
     if (this.board.isThreefoldRepetion()) {
-      return 0;
+      return CONTEMPT_FACTOR * activePlayer;
     }
 
     const standPat = this.evaluatePosition(activePlayer, depth) * activePlayer;
@@ -440,8 +494,8 @@ export class Engine {
     }
 
     const moves = this.board.isInCheck(activePlayer)
-      ? this.sortMovesByScore(generateMoves(this.board, activePlayer), activePlayer)
-      : this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer);
+      ? this.sortMovesByScore(generateMoves(this.board, activePlayer), activePlayer, depth, 0, 0)
+      : this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer, depth, 0, 0);
 
     for (let i = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
@@ -451,7 +505,7 @@ export class Engine {
       const previousPiece = this.board.getItem(moveStart);
 
       const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
-      this.quietMoveCount++;
+      this.qsMoveCount++;
 
       if (this.board.isInCheck(activePlayer)) {
         // Invalid move
@@ -486,7 +540,7 @@ export class Engine {
     const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
     const capturedPieceId = this.board.getItem(moveEnd);
 
-    const captureScore = capturedPieceId == EMPTY ? 2048 * -activePlayer : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId - 1]) - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]));
+    const captureScore = capturedPieceId == EMPTY ? -activePlayer * 4096 : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId - 1]) - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]));
     return captureScore + posScore;
   };
 
@@ -497,11 +551,20 @@ export class Engine {
   // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
   // the moves array can be modified and sorted in-place.
   @inline
-  sortMovesByScore(moves: Int32Array, playerColor: i32): Int32Array {
+  sortMovesByScore(moves: Int32Array, playerColor: i32, depth: i32, primaryKillerMove: i32, secondaryKillerMove: i32): Int32Array {
+    const killerScore = 64 * playerColor;
 
     for (let i: i32 = 0; i < moves.length; i++) {
-      const score: i32 = this.evaluateMoveScore(playerColor, unchecked(moves[i]));
-      unchecked(moves[i] = encodeScoredMove(moves[i], score));
+      const move = unchecked(moves[i]);
+      let score: i32 = this.evaluateMoveScore(playerColor, move);
+
+      if (move == primaryKillerMove) {
+        score += killerScore;
+      } else if (move == secondaryKillerMove) {
+        score += killerScore / 2;
+      }
+
+      unchecked(moves[i] = encodeScoredMove(move, score));
     }
 
     if (playerColor == WHITE) {
@@ -569,13 +632,14 @@ export class Engine {
 
   // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
   // to prevent unnecessary delays.
-  terminalScore(depth: i32): i32 {
-    if (isCheckMate(this.board, BLACK)) {
-      return BLACK_MATE_SCORE - depth;
-    } else if (isCheckMate(this.board, WHITE)) {
+  terminalScore(activePlayer: i32, depth: i32): i32 {
+    if (activePlayer == WHITE && isCheckMate(this.board, WHITE)) {
       return WHITE_MATE_SCORE + depth;
+    } else if (activePlayer == BLACK && isCheckMate(this.board, BLACK)) {
+      return BLACK_MATE_SCORE - depth;
     } else {
-      return 0; // Stalemate
+      // Stalemate
+      return CONTEMPT_FACTOR;
     }
   };
 }
@@ -618,3 +682,4 @@ export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
   const end = decodeEndIndex(move);
   trace(prefix + ' - Move ' + move.toString() + ': ' + piece.toString() + ' from ' + start.toString() + ' to ' + end.toString() + ' for score ' + score.toString());
 }
+

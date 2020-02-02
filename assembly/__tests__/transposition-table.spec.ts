@@ -27,10 +27,10 @@ describe("Transposition table", () => {
     const depth = TRANSPOSITION_MAX_DEPTH;
     const move = encodeMove(5, 32, 33);
     const score: i32 = -10;
-    const type = ScoreType.CUTOFF;
+    const type = ScoreType.EXACT;
 
     const tt = new TranspositionTable();
-    tt.writeEntry(hash, depth, move, score, type);
+    tt.writeEntry(hash, depth, encodeScoredMove(move, score), type);
 
     expect(tt.getScoredMove(hash)).toBe(encodeScoredMove(move, score), "move does not match");
     expect(tt.getDepth(hash)).toBe(depth, "Depth does not match");
@@ -42,7 +42,7 @@ describe("Transposition table", () => {
     const score: i32 = MIN_SCORE;
 
     const tt = new TranspositionTable();
-    tt.writeEntry(hash, 1, 0, score, ScoreType.EXACT);
+    tt.writeEntry(hash, 1, encodeScoredMove(0, score), ScoreType.EXACT);
 
     expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
@@ -52,7 +52,7 @@ describe("Transposition table", () => {
     const score: i32 = MAX_SCORE;
 
     const tt = new TranspositionTable();
-    tt.writeEntry(hash, 1, 0, score, ScoreType.EXACT);
+    tt.writeEntry(hash, 1, encodeScoredMove(0, score), ScoreType.EXACT);
 
     expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
   });
