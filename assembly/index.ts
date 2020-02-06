@@ -103,8 +103,6 @@ function encodeChessState(checkThreefoldRepetition: bool): Int32Array {
     | (isInsufficientMaterialDraw ? INSUFFICIENT_MATERIAL_DRAW : 0)
     | ((board.getActivePlayer() == BLACK) ? ACTIVE_PLAYER : 0)
 
-  trace("State: " + stateArray[64].toString());
-
   for (let i = 0; i < moves.length; i++) {
     stateArray[i + 65] = moves[i];
   }

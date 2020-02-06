@@ -56,7 +56,6 @@ const Game = () => {
   const addMove = useCallback(move => setMoveHistory([...moveHistory, move]), [setMoveHistory, moveHistory]);
 
   const updateGame = useCallback(async state => {
-    console.log("State", state);
     setBoard(state.board);
     setAvailableMoves(state.moves);
     setActivePlayer(state.activePlayer);
