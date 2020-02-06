@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/chess/static/css/main.de9a035c.chunk.css",
-    "main.js": "/chess/static/js/main.628872e2.chunk.js",
-    "main.js.map": "/chess/static/js/main.628872e2.chunk.js.map",
+    "main.js": "/chess/static/js/main.fc880098.chunk.js",
+    "main.js.map": "/chess/static/js/main.fc880098.chunk.js.map",
     "runtime-main.js": "/chess/static/js/runtime-main.4679dff0.js",
     "runtime-main.js.map": "/chess/static/js/runtime-main.4679dff0.js.map",
-    "static/js/2.bad0725f.chunk.js": "/chess/static/js/2.bad0725f.chunk.js",
-    "static/js/2.bad0725f.chunk.js.map": "/chess/static/js/2.bad0725f.chunk.js.map",
-    "d465b2c430cacb08bcdf.worker.js": "/chess/d465b2c430cacb08bcdf.worker.js",
-    "d465b2c430cacb08bcdf.worker.js.map": "/chess/d465b2c430cacb08bcdf.worker.js.map",
+    "static/js/2.5f1c282e.chunk.js": "/chess/static/js/2.5f1c282e.chunk.js",
+    "static/js/2.5f1c282e.chunk.js.map": "/chess/static/js/2.5f1c282e.chunk.js.map",
+    "bf0b969220ef808c557f.worker.js": "/chess/bf0b969220ef808c557f.worker.js",
+    "bf0b969220ef808c557f.worker.js.map": "/chess/bf0b969220ef808c557f.worker.js.map",
     "index.html": "/chess/index.html",
-    "precache-manifest.88f3d52648c9e11b765cf96a9a18e297.js": "/chess/precache-manifest.88f3d52648c9e11b765cf96a9a18e297.js",
+    "precache-manifest.6a86e6306b0021c4e40513c8c9d5474d.js": "/chess/precache-manifest.6a86e6306b0021c4e40513c8c9d5474d.js",
     "service-worker.js": "/chess/service-worker.js",
     "static/css/main.de9a035c.chunk.css.map": "/chess/static/css/main.de9a035c.chunk.css.map",
-    "static/js/2.bad0725f.chunk.js.LICENSE": "/chess/static/js/2.bad0725f.chunk.js.LICENSE",
+    "static/js/2.5f1c282e.chunk.js.LICENSE": "/chess/static/js/2.5f1c282e.chunk.js.LICENSE",
     "static/media/black_bishop.svg": "/chess/static/media/black_bishop.341337f4.svg",
     "static/media/black_king.svg": "/chess/static/media/black_king.12ae1430.svg",
     "static/media/black_knight.svg": "/chess/static/media/black_knight.88ad52be.svg",
@@ -29,8 +29,8 @@
   },
   "entrypoints": [
     "static/js/runtime-main.4679dff0.js",
-    "static/js/2.bad0725f.chunk.js",
+    "static/js/2.5f1c282e.chunk.js",
     "static/css/main.de9a035c.chunk.css",
-    "static/js/main.628872e2.chunk.js"
+    "static/js/main.fc880098.chunk.js"
   ]
 }
