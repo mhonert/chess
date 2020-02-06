@@ -18,12 +18,8 @@
 
 
 import { B, K, N, P, Q, QUEEN, R } from '../pieces';
-import {
-  BLACK_MATE_SCORE,
-  Engine,
-  findBestMove, findBestMoveIncrementally,
-  WHITE_MATE_SCORE
-} from '../engine';
+import { BLACK_MATE_SCORE, Engine, WHITE_MATE_SCORE } from '../engine';
+import EngineControl from '../engine';
 import {
   BLACK,
   BLACK_KING_MOVED,
@@ -36,6 +32,7 @@ import {
 } from '../board';
 import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
 import { toInt32Array } from '../util';
+
 
 describe('Encode and decode scored moves', () => {
   it('Zero score', () => {
@@ -462,3 +459,24 @@ describe("Move list sorting", () => {
     expect(decodeScore(moves[1])).toBe(12);
   });
 });
+
+
+// Test helper functions
+function findBestMove(board: Board, playerColor: i32, exactDepth: i32): i32 {
+  EngineControl.setBoard(board);
+  if (board.getActivePlayer() != playerColor) {
+    board.performNullMove();
+  }
+  return EngineControl.findBestMove(exactDepth, exactDepth, 0);
+}
+
+function findBestMoveIncrementally(board: Board, playerColor: i32, startingDepth: i32, minimumDepth: i32, timeLimitMillis: i32): i32 {
+  EngineControl.setBoard(board);
+  if (board.getActivePlayer() != playerColor) {
+    board.performNullMove();
+  }
+  return EngineControl.findBestMove(startingDepth, minimumDepth, timeLimitMillis);
+}
+
+
+

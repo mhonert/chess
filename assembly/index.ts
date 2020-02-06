@@ -19,29 +19,10 @@
 // The entry file of your WebAssembly module.
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
-import { generateFilteredMoves, isCheckMate as isCheckMateFn } from './move-generation';
-import { findBestMoveIncrementally, reset } from './engine';
-import { Board } from './board';
-import { fromFEN, toFEN } from './fen';
 
-export const INT32ARRAY_ID = idof<Int32Array>();
-
-
-export function newGame(): void {
-  reset();
-}
-
-
-function createBoard(items: Int32Array): Board {
-  const boardArray: Array<i32> = new Array<i32>();
-  for (let i: i32 = 0; i < items.length; i++) {
-    boardArray.push(items[i]);
-  }
-  const board = new Board(boardArray);
-  board.recalculateHash();
-
-  return board;
-}
+import EngineControl from './engine';
+import { isCheckMate as isCheckMateFn } from './move-generation';
+import { BLACK, WHITE } from './board';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [2, 3, 0],
@@ -51,52 +32,83 @@ const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [2, 9, 900, 1500]
 ]
 
-export function calculateMove(boardArray: Int32Array, color: i32, difficultyLevel: i32): i32 {
-  const board = createBoard(boardArray);
+export const INT32ARRAY_ID = idof<Int32Array>();
 
+
+const GAME_ENDED = 1
+const CHECK_MATE = 2;
+const STALE_MATE = 4;
+const THREEFOLD_REPETITION_DRAW = 8;
+const FIFTYMOVE_DRAW = 16;
+const INSUFFICIENT_MATERIAL_DRAW = 32;
+const ACTIVE_PLAYER = 64; // 0 - White, 1 - Black
+
+// Resets the engine state for a new game
+export function newGame(): void {
+  EngineControl.reset();
+}
+
+// Sets the current board to the given position and returns the encoded game state
+export function setPosition(fen: string, moves: Int32Array): Int32Array {
+  EngineControl.setPosition(fen);
+
+  for (let i = 0; i < moves.length; i++) {
+    EngineControl.performMove(moves[i]);
+  }
+
+  return encodeChessState(false);
+}
+
+// Calculates the best move for the current player using the given difficulty level
+export function calculateMove(difficultyLevel: i32): i32 {
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
-  const maxTime = board.isEndGame() ? levelSettings[3] : levelSettings[2];
-  const move = findBestMoveIncrementally(board, color, levelSettings[0], levelSettings[1], maxTime);
+  const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[3] : levelSettings[2];
+  const move = EngineControl.findBestMove(levelSettings[0], levelSettings[1], maxTime);
 
   return move;
 }
 
-export function performMove(boardArray: Int32Array, encodedMove: i32): Int32Array {
-  const board = createBoard(boardArray);
-  board.performEncodedMove(encodedMove);
+// Applies the given move to the current board and returns the encoded game state
+export function performMove(encodedMove: i32): Int32Array {
+  EngineControl.performMove(encodedMove);
 
-  const newBoard = new Int32Array(boardArray.length);
-  for (let i = 0; i < boardArray.length; i++) {
-    newBoard[i] = board.getItem(i);
-  }
-
-  trace("FEN: " + toFEN(board));
-
-  return newBoard;
+  return encodeChessState(true);
 }
 
-export function generatePlayerMoves(boardArray: Int32Array, color: i32): Int32Array {
-  const board = createBoard(boardArray);
-  const moves = generateFilteredMoves(board, color);
 
-  const movesArray = new Int32Array(moves.length);
+// Encodes the board (index 0-63), the game state (index 64) and all possible moves for the current player (index 65+)
+function encodeChessState(checkThreefoldRepetition: bool): Int32Array {
+  const board = EngineControl.getBoard();
+  const moves = EngineControl.generateAvailableMoves();
+
+  const stateArray = new Int32Array(64 + 1 + moves.length);
+
+  for (let i = 0; i < 64; i++) {
+    stateArray[i] = board.getItem(i);
+  }
+
+  const isCheckMate: bool = isCheckMateFn(board, board.getActivePlayer());
+  const isStaleMate: bool = moves.length == 0;
+  const isThreefoldRepetition: bool = checkThreefoldRepetition && board.isThreefoldRepetion();
+  const isFiftyMoveDraw: bool = board.isFiftyMoveDraw();
+  const isInsufficientMaterialDraw: bool = false;
+
+  const hasGameEnded: bool = isCheckMate || isStaleMate || isThreefoldRepetition || isFiftyMoveDraw || isInsufficientMaterialDraw;
+
+  stateArray[64] = (hasGameEnded ? GAME_ENDED : 0)
+    | (isCheckMate ? CHECK_MATE : 0)
+    | (isStaleMate ? STALE_MATE : 0)
+    | (isThreefoldRepetition ? THREEFOLD_REPETITION_DRAW : 0)
+    | (isFiftyMoveDraw ? FIFTYMOVE_DRAW : 0)
+    | (isInsufficientMaterialDraw ? INSUFFICIENT_MATERIAL_DRAW : 0)
+    | ((board.getActivePlayer() == BLACK) ? ACTIVE_PLAYER : 0)
+
+  trace("State: " + stateArray[64].toString());
+
   for (let i = 0; i < moves.length; i++) {
-    movesArray[i] = moves[i];
+    stateArray[i + 65] = moves[i];
   }
 
-  return movesArray;
+  return stateArray;
 }
 
-export function isCheckMate(boardArray: Int32Array, color: i32): bool {
-  const board = createBoard(boardArray);
-  return isCheckMateFn(board, color);
-}
-
-export function newBoardFromFEN(fen: string): Int32Array {
-  const board = fromFEN(fen);
-  const newBoard = new Int32Array(board.length());
-  for (let i = 0; i < board.length(); i++) {
-    newBoard[i] = board.getItem(i);
-  }
-  return newBoard;
-}

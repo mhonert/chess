@@ -141,7 +141,7 @@ function fullMoveNumber(board: Board): string {
 /* Creates a Board instance from a FEN string (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
  */
 export function fromFEN(fen: string): Board {
-  const boardItems: Array<i32> = new Array<i32>(67);
+  const boardItems = new Array<i32>(67);
   boardItems[64] = 0;
   boardItems[65] = 0;
   boardItems[66] = 0;

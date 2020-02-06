@@ -106,7 +106,7 @@ export class Board {
     this.items[HALFMOVE_CLOCK_INDEX] = items[HALFMOVE_CLOCK_INDEX];
     this.items[HALFMOVE_COUNT_INDEX] = items[HALFMOVE_COUNT_INDEX];
 
-    this.endgame = this.determineEndGame() ? 1 : 0;
+    this.updateEndGameStatus();
   }
 
   @inline
@@ -754,7 +754,12 @@ export class Board {
 
   @inline
   isThreefoldRepetion(): bool {
-    return this.positionHistory.isThreefoldRepetion(this.getHash());
+    return this.positionHistory.isThreefoldRepetion();
+  }
+
+  @inline
+  isFiftyMoveDraw(): bool {
+    return this.getHalfMoveClock() >= 100;
   }
 
   @inline
@@ -762,17 +767,18 @@ export class Board {
     return this.endgame != 0;
   }
 
-  determineEndGame(): bool {
+  updateEndGameStatus(): void {
     const pawnCount = popcnt(this.getBitBoard(PAWN * WHITE + 6)) + popcnt(this.getBitBoard(PAWN * BLACK + 6));
     if (pawnCount <= 3) {
-      return true;
+      this.endgame = 1;
+      return;
     }
     const otherPieceCount = popcnt(this.getBitBoard(KNIGHT * WHITE + 6)) + popcnt(this.getBitBoard(KNIGHT * BLACK + 6)) +
       popcnt(this.getBitBoard(BISHOP * WHITE + 6)) + popcnt(this.getBitBoard(BISHOP * BLACK + 6)) +
       popcnt(this.getBitBoard(ROOK * WHITE + 6)) + popcnt(this.getBitBoard(ROOK * BLACK + 6)) +
       popcnt(this.getBitBoard(QUEEN * WHITE + 6)) + popcnt(this.getBitBoard(QUEEN * BLACK + 6));
 
-    return otherPieceCount <= 3;
+    this.endgame = otherPieceCount <= 3 ? 1 : 0;
   }
 }
 

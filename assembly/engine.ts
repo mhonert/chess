@@ -66,10 +66,15 @@ export class Engine {
   private isEndGame: bool = false;
   private isCancelPossible: bool = false;
 
-  private previousHalfMoveClock: i32 = 0;
-
   constructor() {
     this.reset();
+  }
+
+  reset(): void {
+    this.history.clear();
+    this.board = fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    this.board.setHistory(this.history);
+    this.transpositionTable.clear();
   }
 
   setBoard(board: Board): void {
@@ -83,21 +88,20 @@ export class Engine {
     }
     this.board = board;
 
-    if (this.board.getHalfMoveClock() == 0 || this.previousHalfMoveClock > this.board.getHalfMoveClock()) {
-      this.history.clear();
-    }
+    this.history.clear();
 
-    this.previousHalfMoveClock = this.board.getHalfMoveClock();
     this.board.setHistory(this.history);
 
     this.isEndGame = board.isEndGame();
   }
 
-  reset(): void {
-    this.history.clear();
-    this.board = fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    this.board.setHistory(this.history);
-    this.transpositionTable.clear();
+  refreshStateAfterMove(): void {
+    this.transpositionTable.increaseAge();
+    this.killerMoveTable.clear();
+    if (this.board.getHalfMoveClock() == 0) {
+      this.history.clear();
+    }
+    this.isEndGame = this.board.isEndGame();
   }
 
   // Find the best possible move in response to the current board position.
@@ -644,34 +648,6 @@ export class Engine {
   };
 }
 
-const ENGINE = new Engine();
-
-export function reset(): void {
-  ENGINE.reset();
-}
-
-export function findBestMove(board: Board, playerColor: i32, exactDepth: i32): i32 {
-  return findBestMoveIncrementally(board, playerColor, exactDepth, exactDepth, 0);
-}
-
-/** Finds the best move for the current player color.
- *
- * @param board
- * @param playerColor BLACK (-1) or WHITE (1)
- * @param startingDepth Starting depth level for incremental search
- * @param minimumDepth Minimum depth level to achieve
- * @param timeLimitMillis Time limit for the search in milliseconds
- */
-export function findBestMoveIncrementally(board: Board, playerColor: i32, startingDepth: i32, minimumDepth: i32, timeLimitMillis: i32): i32 {
-  let alpha: i32 = MIN_SCORE;
-  let beta: i32 = MAX_SCORE;
-
-  ENGINE.setBoard(board);
-  const result = ENGINE.findBestMove(alpha, beta, playerColor, startingDepth, minimumDepth, timeLimitMillis, 0);
-
-  return decodeMove(result);
-};
-
 
 export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
   const move = decodeMove(scoredMove);
@@ -683,3 +659,54 @@ export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
   trace(prefix + ' - Move ' + move.toString() + ': ' + piece.toString() + ' from ' + start.toString() + ' to ' + end.toString() + ' for score ' + score.toString());
 }
 
+class EngineControl {
+  private board: Board;
+  private engine: Engine = new Engine();
+
+  setPosition(fen: string): void {
+    this.setBoard(fromFEN(fen));
+  }
+
+  setBoard(board: Board): void {
+    this.board = board;
+    this.board.updateEndGameStatus();
+    this.engine.setBoard(board);
+  }
+
+  performMove(move: i32): void {
+    this.board.performEncodedMove(move);
+    this.board.updateEndGameStatus();
+    this.engine.refreshStateAfterMove();
+  }
+
+  /** Finds the best move for the current player color.
+   *
+   * @param startingDepth Starting depth level for incremental search
+   * @param minimumDepth Minimum depth level to achieve
+   * @param timeLimitMillis Time limit for the search in milliseconds
+   */
+  findBestMove(startingDepth: i32, minimumDepth: i32, timeLimitMillis: i32): i32 {
+    let alpha: i32 = MIN_SCORE;
+    let beta: i32 = MAX_SCORE;
+
+    const result = this.engine.findBestMove(alpha, beta, this.board.getActivePlayer(), startingDepth, minimumDepth, timeLimitMillis, 0);
+
+    return decodeMove(result);
+  }
+
+  reset(): void {
+    this.engine.reset();
+  }
+
+  generateAvailableMoves(): Int32Array {
+    return generateFilteredMoves(this.board, this.board.getActivePlayer());
+  }
+
+  getBoard(): Board {
+    return this.board;
+  }
+}
+
+const CONTROL_INSTANCE = new EngineControl();
+
+export default CONTROL_INSTANCE;

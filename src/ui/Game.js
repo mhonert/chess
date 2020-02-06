@@ -16,67 +16,75 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components/macro';
 
 import engineWorkerLoader from 'workerize-loader!../engine/engine.worker'; // eslint-disable-line import/no-webpack-loader-syntax
-import { B, BLACK, K, P, Q, R, WHITE } from '../engine/constants';
+import { B, BLACK, N, P, Q, R, WHITE } from '../engine/constants';
+import AnimatedSpinner from './AnimatedSpinner';
+import { Move } from '../engine/move';
 import Board from './Board';
 import GameMenu from './GameMenu';
-import engine, { Move } from '../engine/engine-wasm-interop';
 
-const engineWebWorker = engineWorkerLoader();
+const engine = engineWorkerLoader();
 
 const GameArea = styled.div`
   display: flex;
   flex-wrap: wrap;
 `;
 
+const startPosition = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+
+const nextPlayer = playerColor => -playerColor;
+
 const Game = () => {
-  const initialBoard = engine.fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
   const [rotateBoard, setRotateBoard] = useState(false);
   const [activePlayer, setActivePlayer] = useState(WHITE);
   const [humanPlayerColor, setHumanPlayerColor] = useState(WHITE);
   const [isAiThinking, setAiThinking] = useState(false);
-  const [board, setBoard] = useState(initialBoard);
+  const [board, setBoard] = useState();
   const [gameEnded, setGameEnded] = useState(false);
-  const [lastMove, setLastMove] = useState({ start: -1, end: -1 });
-  const [availableMoves, setAvailableMoves] = useState(engine.generateMoves(board, activePlayer));
+  const [availableMoves, setAvailableMoves] = useState([]);
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
   const [difficultyLevel, setDifficultyLevel] = useState(3);
-  const [previousMoveState, setPreviousMoveState] = useState();
+  const [moveHistory, setMoveHistory] = useState([]);
+
+  const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : { start: -1, end: -1 };
 
   const clearAvailableMoves = () => setAvailableMoves([]);
+  const addMove = useCallback(move => setMoveHistory([...moveHistory, move]), [setMoveHistory, moveHistory]);
 
-  const nextPlayer = playerColor => -playerColor;
+  const updateGame = useCallback(async state => {
+    console.log("State", state);
+    setBoard(state.board);
+    setAvailableMoves(state.moves);
+    setActivePlayer(state.activePlayer);
 
-  const handleAIMove = (board, move, aiColor) => {
+    if (state.gameEnded) {
+      setGameEnded(true);
+
+      if (state.checkMate) {
+        setWinningPlayer(nextPlayer(state.activePlayer));
+      }
+    }
+  }, []);
+
+  const handleAIMove = useCallback(async move => {
+    const gameState = await engine.performMove(move);
     setAiThinking(false);
+    await updateGame(gameState);
+    addMove(move);
+  }, [updateGame, addMove]);
 
-    setLastMove(move);
-
-    const newBoard = engine.performMove(board, move);
-    setBoard(newBoard);
-
-    if (engine.isCheckMate(newBoard, -aiColor)) {
-      setGameEnded(true);
-      setWinningPlayer(aiColor);
-
-      return;
-    }
-
-    const availablePlayerMoves = engine.generateMoves(newBoard, -aiColor);
-    setAvailableMoves(availablePlayerMoves);
-
-    if (availablePlayerMoves.length === 0) {
-      setGameEnded(true);
-
-      return;
-    }
-
-    setActivePlayer(nextPlayer(aiColor));
-  };
+  useEffect(() => {
+    (async () => {
+      await engine.init();
+      await engine.newGame();
+      const gameState = await engine.setPosition(startPosition, []);
+      await updateGame(gameState);
+    })();
+  }, [updateGame]);
 
   const canMove = (start, end) => {
     return availableMoves.some(
@@ -84,51 +92,49 @@ const Game = () => {
     );
   };
 
+  const calculateAIMove = useCallback(async () => {
+    clearAvailableMoves();
+    setAiThinking(true);
+
+    const aiMove = await engine.calculateMove(difficultyLevel);
+    await handleAIMove(aiMove);
+  }, [difficultyLevel, handleAIMove]);
+
+  useEffect(() => {
+    if (humanPlayerColor !== activePlayer) {
+      calculateAIMove();
+    }
+  }, [humanPlayerColor, activePlayer, calculateAIMove]);
+
   const switchSides = () => {
     setRotateBoard(true);
-    setAiThinking(true);
     setHumanPlayerColor(-humanPlayerColor);
-    engineWebWorker
-      .calculateMove(board, activePlayer, difficultyLevel)
-      .then(move => handleAIMove(board, move, activePlayer));
-  };
-
-  const startNewGame = () => {
-    engineWebWorker.newGame()
-      .then(() => {
-        setRotateBoard(false);
-        setPreviousMoveState(undefined);
-        setBoard(initialBoard);
-        setActivePlayer(WHITE);
-        setHumanPlayerColor(WHITE);
-        setGameEnded(false);
-        setLastMove({ start: -1, end: -1 });
-        setWinningPlayer(undefined);
-        setAvailableMoves(engine.generateMoves(initialBoard, WHITE));
-        setCurrentPieceMoves(new Set());
-      });
-  };
-
-  const undoMove = () => {
-    const {previousBoard, previousLastMove, previousActivePlayer, previousAvailableMoves} = previousMoveState;
-    setBoard(previousBoard);
-    setLastMove(previousLastMove);
-    setActivePlayer(previousActivePlayer)
-    setAvailableMoves(previousAvailableMoves);
-
-    setPreviousMoveState(undefined);
   }
 
-  const saveCurrentMoveState = () => {
-    setPreviousMoveState({
-      previousBoard: board,
-      previousLastMove: lastMove,
-      previousActivePlayer: activePlayer,
-      previousAvailableMoves: availableMoves
-    })
-  }
+  const startNewGame = async () => {
+    setActivePlayer(WHITE);
+    setHumanPlayerColor(WHITE);
 
-  const handlePlayerMove = (piece, start, end) => {
+    await engine.newGame();
+    const gameState = await engine.setPosition(startPosition, []);
+
+    setRotateBoard(false);
+    setGameEnded(false);
+    setMoveHistory([]);
+    setWinningPlayer(undefined);
+    setCurrentPieceMoves(new Set());
+
+    await updateGame(gameState);
+  };
+
+  const undoMove = useCallback(async () => {
+    const previousMoveHistory = moveHistory.slice(0, moveHistory.length - 2);
+    const gameState = await engine.setPosition(startPosition, previousMoveHistory);
+    setMoveHistory(previousMoveHistory);
+    await updateGame(gameState);
+  }, [moveHistory, setMoveHistory, updateGame]);
+
+  const handlePlayerMove = async (piece, start, end) => {
     let pieceId = Math.abs(piece);
     if (gameEnded || isAiThinking) {
       return;
@@ -138,13 +144,12 @@ const Game = () => {
       return;
     }
 
-    saveCurrentMoveState();
-    setLastMove({ start, end });
+    setCurrentPieceMoves(new Set());
 
     // TODO: Replace browser prompt dialog with own dialog
     if (pieceId === P && ((activePlayer === WHITE && end < 8) || (activePlayer === BLACK && end >= 56))) {
       // Promotion
-      const choice = prompt('Choose promotion (Q, R, B, K)', 'Q');
+      const choice = prompt('Choose promotion (Q, R, B, N)', 'Q');
       switch (choice.toUpperCase()) {
         case 'R':
           pieceId = R;
@@ -152,8 +157,8 @@ const Game = () => {
         case 'B':
           pieceId = B;
           break;
-        case 'K':
-          pieceId = K;
+        case 'N':
+          pieceId = N;
           break;
         case 'Q':
         default:
@@ -162,30 +167,13 @@ const Game = () => {
       }
     }
 
-    const newBoard = engine.performMove(board, new Move(pieceId, start, end));
-    setBoard(newBoard);
+    const interimBoard = board.slice();
+    interimBoard[start] = 0;
+    setBoard(interimBoard);
 
-    if (engine.isCheckMate(newBoard, -activePlayer)) {
-      setGameEnded(true);
-      setWinningPlayer(activePlayer);
-
-      return;
-    }
-
-    const moves = engine.generateMoves(newBoard, -activePlayer);
-
-    if (moves.length === 0) {
-      setGameEnded(true);
-      return;
-    }
-
-    setAiThinking(true);
-    clearAvailableMoves();
-    engineWebWorker
-      .calculateMove(newBoard, -activePlayer, difficultyLevel)
-      .then(move => handleAIMove(newBoard, move, -activePlayer));
-
-    setActivePlayer(-activePlayer);
+    const gameState = await engine.performMove(new Move(pieceId, start, end));
+    addMove(new Move(piece, start, end));
+    await updateGame(gameState);
   };
 
   const updatePossibleMoves = start => {
@@ -200,32 +188,44 @@ const Game = () => {
   };
 
   return (
-    <GameArea>
-      <Board
-        board={board}
-        isRotated={rotateBoard}
-        lastMove={lastMove}
-        currentPieceMoves={currentPieceMoves}
-        handlePlayerMove={handlePlayerMove}
-        updatePossibleMoves={updatePossibleMoves}
-        clearPossibleMoves={clearPossibleMoves}
-      />
-      <GameMenu
-        isAiThinking={isAiThinking}
-        firstMovePlayed={lastMove.start !== -1}
-        humanPlayerColor={humanPlayerColor}
-        gameEnded={gameEnded}
-        winningPlayerColor={winningPlayer}
-        startNewGame={startNewGame}
-        switchSides={switchSides}
-        rotateBoard={() => setRotateBoard(!rotateBoard)}
-        difficultyLevel={difficultyLevel}
-        setDifficultyLevel={setDifficultyLevel}
-        canUndoMove={!!previousMoveState}
-        undoMove={undoMove}
-      />
-    </GameArea>
+    board
+      ? (
+        <GameArea>
+          <Board
+            board={board}
+            isRotated={rotateBoard}
+            lastMove={lastMove}
+            currentPieceMoves={currentPieceMoves}
+            handlePlayerMove={handlePlayerMove}
+            updatePossibleMoves={updatePossibleMoves}
+            clearPossibleMoves={clearPossibleMoves}
+          />
+          <GameMenu
+            isAiThinking={isAiThinking}
+            firstMovePlayed={lastMove.start !== -1}
+            humanPlayerColor={humanPlayerColor}
+            gameEnded={gameEnded}
+            winningPlayerColor={winningPlayer}
+            startNewGame={startNewGame}
+            switchSides={switchSides}
+            rotateBoard={() => setRotateBoard(!rotateBoard)}
+            difficultyLevel={difficultyLevel}
+            setDifficultyLevel={setDifficultyLevel}
+            canUndoMove={!gameEnded && moveHistory.length > 1}
+            undoMove={undoMove}
+          />
+        </GameArea>
+      )
+      : (
+        <Centered><AnimatedSpinner/></Centered>
+      )
   );
 };
+
+const Centered = styled.div`
+  position: absolute;
+  left: calc(50% - 60px);
+  top: calc(50% - 60px);
+`;
 
 export default Game;

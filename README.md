@@ -25,14 +25,12 @@ and do not block the main thread for the UI.
 
 ## Planned features
 - Save game in local storage
-- Check for threefold repetition rule
-- Display move history in algebraic chess notation
 - Export and import positions in [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
 
 ## Planned engine improvements
-- Optimize move generation
 - Improve position evaluation
-- Use opening database and endgame tables
+- Use opening database
+- Support UCI protocol
 
 ## Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine

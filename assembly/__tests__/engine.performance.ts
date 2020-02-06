@@ -18,7 +18,7 @@
 
 import { Board } from '../board';
 import { fromFEN } from '../fen';
-import { findBestMoveIncrementally, reset } from '../engine';
+import EngineControl from '../engine';
 import { isCheckMate } from '../move-generation';
 
 describe('Engine performance', () => {
@@ -38,14 +38,15 @@ describe('Engine performance', () => {
 
 
 function measureEnginePerformance(fen: string, startingDepth: i32, depth: i32, moveLimit: i32): void {
-  reset();
+  EngineControl.reset();
   playAgainstSelf(fromFEN(fen), startingDepth, depth, moveLimit);
 }
 
 
 function playAgainstSelf(board: Board, startingDepth: i32, depth: i32, moveLimit: i32): void {
+  EngineControl.setBoard(board);
   while (board.getFullMoveCount() <= moveLimit) {
-    const move = findBestMoveIncrementally(board, board.getActivePlayer(), startingDepth, depth, 0);
+    const move = EngineControl.findBestMove(startingDepth, depth, 0);
     board.performEncodedMove(move);
     if (isCheckMate(board, board.getActivePlayer())) {
       trace("Player " + board.getActivePlayer().toString() + " is checkmate");

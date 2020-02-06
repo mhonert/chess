@@ -24,10 +24,11 @@ describe("Position History", () => {
   it("Detects threefold repetition", () => {
     const history = new PositionHistory();
     history.push(1);
-    expect(history.isThreefoldRepetion(1)).toBeFalsy("Position only occured twice");
+    history.push(1);
+    expect(history.isThreefoldRepetion()).toBeFalsy("Position only occured twice");
 
     history.push(1);
-    expect(history.isThreefoldRepetion(1)).toBeTruthy("Threefold repetion not detected");
+    expect(history.isThreefoldRepetion()).toBeTruthy("Threefold repetion not detected");
   });
 
 });

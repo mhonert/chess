@@ -28,13 +28,15 @@ export class PositionHistory {
     this.index--;
   }
 
-  isThreefoldRepetion(hash: u64): bool {
+  isThreefoldRepetion(): bool {
     if (this.index < 2) {
       return false;
     }
 
+    const hash = unchecked(this.positions[this.index - 1]);
+
     let count = 0;
-    for (let i = 0; i < this.index; i++) {
+    for (let i = 0; i < this.index - 1; i++) {
       if (unchecked(this.positions[i]) == hash) {
         count++;
         if (count == 2) {
