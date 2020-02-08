@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/chess/static/css/main.de9a035c.chunk.css",
-    "main.js": "/chess/static/js/main.c96df5be.chunk.js",
-    "main.js.map": "/chess/static/js/main.c96df5be.chunk.js.map",
-    "runtime-main.js": "/chess/static/js/runtime-main.4679dff0.js",
-    "runtime-main.js.map": "/chess/static/js/runtime-main.4679dff0.js.map",
-    "static/js/2.5f1c282e.chunk.js": "/chess/static/js/2.5f1c282e.chunk.js",
-    "static/js/2.5f1c282e.chunk.js.map": "/chess/static/js/2.5f1c282e.chunk.js.map",
-    "bf0b969220ef808c557f.worker.js": "/chess/bf0b969220ef808c557f.worker.js",
-    "bf0b969220ef808c557f.worker.js.map": "/chess/bf0b969220ef808c557f.worker.js.map",
+    "main.js": "/chess/static/js/main.837cff92.chunk.js",
+    "main.js.map": "/chess/static/js/main.837cff92.chunk.js.map",
+    "runtime-main.js": "/chess/static/js/runtime-main.365697bc.js",
+    "runtime-main.js.map": "/chess/static/js/runtime-main.365697bc.js.map",
+    "static/js/2.488b68d4.chunk.js": "/chess/static/js/2.488b68d4.chunk.js",
+    "static/js/2.488b68d4.chunk.js.map": "/chess/static/js/2.488b68d4.chunk.js.map",
+    "5cfbaf910f6743ac775f.worker.js": "/chess/5cfbaf910f6743ac775f.worker.js",
+    "5cfbaf910f6743ac775f.worker.js.map": "/chess/5cfbaf910f6743ac775f.worker.js.map",
     "index.html": "/chess/index.html",
-    "precache-manifest.bd815b7c9df34ae5ee74bdfbb63f3039.js": "/chess/precache-manifest.bd815b7c9df34ae5ee74bdfbb63f3039.js",
+    "precache-manifest.e73ca5dcf27afbc8f114f95f68dc4b84.js": "/chess/precache-manifest.e73ca5dcf27afbc8f114f95f68dc4b84.js",
     "service-worker.js": "/chess/service-worker.js",
     "static/css/main.de9a035c.chunk.css.map": "/chess/static/css/main.de9a035c.chunk.css.map",
-    "static/js/2.5f1c282e.chunk.js.LICENSE": "/chess/static/js/2.5f1c282e.chunk.js.LICENSE",
+    "static/js/2.488b68d4.chunk.js.LICENSE.txt": "/chess/static/js/2.488b68d4.chunk.js.LICENSE.txt",
     "static/media/black_bishop.svg": "/chess/static/media/black_bishop.341337f4.svg",
     "static/media/black_king.svg": "/chess/static/media/black_king.12ae1430.svg",
     "static/media/black_knight.svg": "/chess/static/media/black_knight.88ad52be.svg",
@@ -28,9 +28,9 @@
     "static/media/white_rook.svg": "/chess/static/media/white_rook.007b43f5.svg"
   },
   "entrypoints": [
-    "static/js/runtime-main.4679dff0.js",
-    "static/js/2.5f1c282e.chunk.js",
+    "static/js/runtime-main.365697bc.js",
+    "static/js/2.488b68d4.chunk.js",
     "static/css/main.de9a035c.chunk.css",
-    "static/js/main.c96df5be.chunk.js"
+    "static/js/main.837cff92.chunk.js"
   ]
 }
