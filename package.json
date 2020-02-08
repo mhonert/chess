@@ -5,15 +5,15 @@
   "homepage": "https://mhonert.github.io/chess",
   "license": "GPL-3.0-or-later",
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.26",
-    "@fortawesome/free-solid-svg-icons": "^5.12.0",
+    "@fortawesome/fontawesome-svg-core": "^1.2.27",
+    "@fortawesome/free-solid-svg-icons": "^5.12.1",
     "@fortawesome/react-fontawesome": "^0.1.8",
     "react": "^16.12.0",
     "react-dnd": "^9.5.1",
     "react-dnd-html5-backend": "^9.5.1",
     "react-dnd-touch-backend": "^9.5.1",
     "react-dom": "^16.12.0",
-    "react-scripts": "^3.3.0",
+    "react-scripts": "^3.3.1",
     "styled-components": "^4.4.1"
   },
   "scripts": {
@@ -25,7 +25,7 @@
     "start": "npm run asbuild && npm run jsstart",
     "start:debug": "npm run asbuild:debug && npm run jsstart",
     "jstest": "react-scripts test",
-    "test": "asp --nortrace",
+    "test": "asp",
     "perft:full": "asp --nortrace -c as-pect-perft.config.js --test='.*#full.*'",
     "perft:quick": "asp --nortrace -c as-pect-perft.config.js --test='.*#quick.*'",
     "perft:engine": "asp --nortrace -c as-pect-perft.config.js --test='.*#engine.*'",
@@ -49,12 +49,12 @@
     ]
   },
   "devDependencies": {
-    "@as-pect/assembly": "^2.7.0",
-    "@as-pect/cli": "^2.7.0",
-    "@as-pect/core": "^2.7.0",
+    "@as-pect/assembly": "^2.8.0",
+    "@as-pect/cli": "^2.8.0",
+    "@as-pect/core": "^2.8.0",
     "assemblyscript": "^0.9.1",
-    "babel-plugin-macros": "^2.7.1",
-    "gh-pages": "^2.1.1",
+    "babel-plugin-macros": "^2.8.0",
+    "gh-pages": "^2.2.0",
     "workerize-loader": "^1.1.0"
   },
   "babelMacros": {
