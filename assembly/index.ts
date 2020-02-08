@@ -23,6 +23,7 @@
 import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
 import { BLACK, WHITE } from './board';
+import { clock_time_get, clockid } from 'bindings/wasi';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [2, 3, 0],
@@ -33,7 +34,6 @@ const DIFFICULTY_LEVELS: Array<Array<i32>> = [
 ]
 
 export const INT32ARRAY_ID = idof<Int32Array>();
-
 
 const GAME_ENDED = 1
 const CHECK_MATE = 2;

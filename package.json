@@ -17,8 +17,9 @@
     "styled-components": "^4.4.1"
   },
   "scripts": {
-    "asbuild": "asc assembly/index.ts --validate --optimizeLevel 3 --shrinkLevel 0 --converge -b public/as-api.wasm",
-    "asbuild:debug": "asc assembly/index.ts --debug -b public/as-api.wasm",
+    "asbuild": "asc assembly/index.ts --validate --noAssert --optimizeLevel 3 --shrinkLevel 0 --converge --use IS_WASI=0 -b public/as-api.wasm",
+    "build:engine": "asc assembly/standalone.ts --sourceMap --runtime half --validate --optimizeLevel 3 --shrinkLevel 0 --converge --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wat",
+    "asbuild:debug": "asc assembly/index.ts --debug --use IS_WASI=0 -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",
     "jsbuild": "react-scripts build",
     "jsstart": "react-scripts start",

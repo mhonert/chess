@@ -34,7 +34,7 @@ import { fromFEN } from './fen';
 import { PositionHistory } from './history';
 import { PIECE_VALUES, QUEEN_VALUE } from './pieces';
 import { KillerMoveTable } from './killermove-table';
-
+import { clock, stdio } from './io';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -55,11 +55,11 @@ export class Engine {
   private killerMoveTable: KillerMoveTable;
   private history: PositionHistory = new PositionHistory();
   private board: Board;
-  private startTime: i64 = 0;
+  private startTime: u64 = 0;
   private moveCount: i32 = 0;
   private qsMoveCount: i32 = 0;
   private cacheHits: i32 = 0;
-  private timeLimitMillis: i32;
+  private timeLimitMillis: u64;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
   private repeatedSearches: i32 = 0;
@@ -105,11 +105,11 @@ export class Engine {
   }
 
   // Find the best possible move in response to the current board position.
-  findBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i32, depth: i32): i32 {
+  findBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: u64, depth: i32): i32 {
 
     this.timeLimitMillis = timeLimitMillis;
     this.minimumDepth = minimumDepth;
-    this.startTime = Date.now();
+    this.startTime = clock.currentMillis();
     this.moveCount = 0;
     this.qsMoveCount = 0;
     this.cacheHits = 0;
@@ -173,7 +173,7 @@ export class Engine {
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+          stdio.writeLine('Stop search due to time limit: ' + remainingLevels.toString() + " - " + scoredMoves.toString());
           break;
         }
 
@@ -196,22 +196,22 @@ export class Engine {
         unchecked(moves[i] = encodeScoredMove(move, score));
         scoredMoves++;
 
-        if (this.isCancelPossible && Date.now() - this.startTime >= timeLimitMillis) {
-          trace('Stop search due to time limit: ', 2, remainingLevels, scoredMoves);
+        if (this.isCancelPossible && clock.currentMillis() - this.startTime >= timeLimitMillis) {
+          stdio.writeLine('Stop search due to time limit: ' + remainingLevels.toString() + " - " + scoredMoves.toString());
           break;
         }
 
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
       }
 
-      if (this.isCancelPossible && (Date.now() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
-        trace('---------------------------------------------------');
-        trace('Evaluated ' + this.moveCount.toString() + ' moves');
-        trace('Evaluated ' + this.qsMoveCount.toString() + ' moves during quiescence search');
-        trace('Cache hits ' + this.cacheHits.toString());
-        trace('Best move hits ' + this.moveHits.toString());
-        trace('Repeated searches: ' + this.repeatedSearches.toString());
-        trace('End game: ' + this.isEndGame.toString());
+      if (this.isCancelPossible && (clock.currentMillis() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
+        stdio.writeLine('---------------------------------------------------');
+        stdio.writeLine('Evaluated ' + this.moveCount.toString() + ' moves');
+        stdio.writeLine('Evaluated ' + this.qsMoveCount.toString() + ' moves during quiescence search');
+        stdio.writeLine('Cache hits ' + this.cacheHits.toString());
+        stdio.writeLine('Best move hits ' + this.moveHits.toString());
+        stdio.writeLine('Repeated searches: ' + this.repeatedSearches.toString());
+        stdio.writeLine('End game: ' + this.isEndGame.toString());
 
         if (repeatSearch) {
           // Previous search is invalid => skip results
@@ -249,8 +249,8 @@ export class Engine {
       }
 
       bestScoredMove = encodeScoredMove(bestMove, bestScore);
-      trace('---------------------------------------------------');
-      trace('Finished search depth: ', 1, remainingLevels);
+      stdio.writeLine('---------------------------------------------------');
+      stdio.writeLine('Finished search depth: ' + remainingLevels.toString());
 
       logScoredMove(bestScoredMove, 'Current best move');
 
@@ -424,7 +424,7 @@ export class Engine {
 
       }
 
-      if (this.isCancelPossible && Date.now() - this.startTime >= this.timeLimitMillis) {
+      if (this.isCancelPossible && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
         return CANCEL_SEARCH;
       }
@@ -656,7 +656,7 @@ export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
   const piece = decodePiece(move);
   const start = decodeStartIndex(move);
   const end = decodeEndIndex(move);
-  trace(prefix + ' - Move ' + move.toString() + ': ' + piece.toString() + ' from ' + start.toString() + ' to ' + end.toString() + ' for score ' + score.toString());
+  stdio.writeLine(prefix + ' - Move ' + move.toString() + ': ' + piece.toString() + ' from ' + start.toString() + ' to ' + end.toString() + ' for score ' + score.toString());
 }
 
 class EngineControl {
@@ -685,7 +685,7 @@ class EngineControl {
    * @param minimumDepth Minimum depth level to achieve
    * @param timeLimitMillis Time limit for the search in milliseconds
    */
-  findBestMove(startingDepth: i32, minimumDepth: i32, timeLimitMillis: i32): i32 {
+  findBestMove(startingDepth: i32, minimumDepth: i32, timeLimitMillis: u64): i32 {
     let alpha: i32 = MIN_SCORE;
     let beta: i32 = MAX_SCORE;
 
