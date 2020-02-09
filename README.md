@@ -5,8 +5,9 @@
 
 Wasabi - a WebAssembly Chess Engine written in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript).
 
-It runs as a standalone UCI chess engine or embedded as a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
-in a React web app.
+It runs as a standalone UCI chess engine or as a [React](https://reactjs.org/) app in the browser.
+The web app embeds the engine using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+to run all calculations in the background without blocking the main thread for the UI.
 
 ![Screenshot](chess_screenshot.png)
 
