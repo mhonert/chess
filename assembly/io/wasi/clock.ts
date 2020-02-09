@@ -20,6 +20,6 @@ import { clock_time_get, clockid } from 'bindings/wasi';
 
 export function currentMillis(): u64 {
   let time_ptr = changetype<usize>(new ArrayBuffer(8));
-  clock_time_get(clockid.MONOTONIC, 1000, time_ptr);
+  clock_time_get(clockid.MONOTONIC, 1_000_000, time_ptr);
   return load<u64>(time_ptr) / 1_000_000;
 }

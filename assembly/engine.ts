@@ -30,11 +30,13 @@ import {
   isCheckMate
 } from './move-generation';
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
-import { fromFEN } from './fen';
+import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
 import { PIECE_VALUES, QUEEN_VALUE } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
+import { UCIMove } from './uci-move-notation';
+import { perft } from './perft';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -70,18 +72,26 @@ export class Engine {
     this.reset();
   }
 
-  reset(): void {
-    this.history.clear();
-    this.board = fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    this.board.setHistory(this.history);
-    this.transpositionTable.clear();
-  }
-
-  setBoard(board: Board): void {
+  init(): void {
     if (!this.tablesInitialized) {
       this.tablesInitialized = true;
       this.transpositionTable = new TranspositionTable();
       this.killerMoveTable = new KillerMoveTable();
+    }
+  }
+
+  reset(): void {
+    this.history.clear();
+    this.board = fromFEN(STARTPOS);
+    this.board.setHistory(this.history);
+    if (this.transpositionTable != null) {
+      this.transpositionTable.clear();
+    }
+  }
+
+  setBoard(board: Board): void {
+    if (!this.tablesInitialized) {
+      this.init();
     } else {
       this.killerMoveTable.clear();
       this.transpositionTable.increaseAge();
@@ -173,7 +183,6 @@ export class Engine {
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-          stdio.writeLine('Stop search due to time limit: ' + remainingLevels.toString() + " - " + scoredMoves.toString());
           break;
         }
 
@@ -197,7 +206,6 @@ export class Engine {
         scoredMoves++;
 
         if (this.isCancelPossible && clock.currentMillis() - this.startTime >= timeLimitMillis) {
-          stdio.writeLine('Stop search due to time limit: ' + remainingLevels.toString() + " - " + scoredMoves.toString());
           break;
         }
 
@@ -205,17 +213,9 @@ export class Engine {
       }
 
       if (this.isCancelPossible && (clock.currentMillis() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
-        stdio.writeLine('---------------------------------------------------');
-        stdio.writeLine('Evaluated ' + this.moveCount.toString() + ' moves');
-        stdio.writeLine('Evaluated ' + this.qsMoveCount.toString() + ' moves during quiescence search');
-        stdio.writeLine('Cache hits ' + this.cacheHits.toString());
-        stdio.writeLine('Best move hits ' + this.moveHits.toString());
-        stdio.writeLine('Repeated searches: ' + this.repeatedSearches.toString());
-        stdio.writeLine('End game: ' + this.isEndGame.toString());
 
         if (repeatSearch) {
           // Previous search is invalid => skip results
-          logScoredMove(bestScoredMove, 'Selected move');
           return bestScoredMove;
 
         } else {
@@ -223,7 +223,6 @@ export class Engine {
           this.sortByScoreDescending(evaluatedMoveSubSet);
 
           const selectedMove = evaluatedMoveSubSet[0];
-          logScoredMove(selectedMove, 'Selected move');
           return selectedMove;
 
         }
@@ -249,10 +248,10 @@ export class Engine {
       }
 
       bestScoredMove = encodeScoredMove(bestMove, bestScore);
-      stdio.writeLine('---------------------------------------------------');
-      stdio.writeLine('Finished search depth: ' + remainingLevels.toString());
-
-      logScoredMove(bestScoredMove, 'Current best move');
+      const depthInfo = "depth " + remainingLevels.toString();
+      const scoreInfo = "score cp " + (bestScore * playerColor).toString();
+      const pvInfo = "pv " + UCIMove.fromEncodedMove(this.board, bestMove).toUCINotation();
+      stdio.writeLine("info " + depthInfo + " " + scoreInfo + " " + pvInfo);
 
       this.sortByScoreDescending(moves);
 
@@ -649,19 +648,13 @@ export class Engine {
 }
 
 
-export function logScoredMove(scoredMove: i32, prefix: string = ''): void {
-  const move = decodeMove(scoredMove);
-  const score = decodeScore(scoredMove);
-
-  const piece = decodePiece(move);
-  const start = decodeStartIndex(move);
-  const end = decodeEndIndex(move);
-  stdio.writeLine(prefix + ' - Move ' + move.toString() + ': ' + piece.toString() + ' from ' + start.toString() + ' to ' + end.toString() + ' for score ' + score.toString());
-}
-
 class EngineControl {
   private board: Board;
   private engine: Engine = new Engine();
+
+  init(): void {
+    this.engine.init();
+  }
 
   setPosition(fen: string): void {
     this.setBoard(fromFEN(fen));
@@ -677,6 +670,10 @@ class EngineControl {
     this.board.performEncodedMove(move);
     this.board.updateEndGameStatus();
     this.engine.refreshStateAfterMove();
+  }
+
+  perft(depth: i32): u64 {
+    return perft(this.getBoard(), depth);
   }
 
   /** Finds the best move for the current player color.

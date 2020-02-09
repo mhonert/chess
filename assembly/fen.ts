@@ -33,6 +33,8 @@ import {
   WHITE_ENPASSANT_LINE_START, WHITE_PAWNS_BASELINE_START
 } from './pieces';
 
+export const STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 /* Transforms the given board to a string representation of FEN (see https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
  */
 export function toFEN(board: Board): string {

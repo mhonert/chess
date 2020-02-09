@@ -20,37 +20,115 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
 import EngineControl from './engine';
-import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { clock, stdio } from './io';
+import { STARTPOS } from './fen';
+import { UCIMove } from './uci-move-notation';
+import { TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 
 export { _abort } from './io/wasi/abort';
 
+const AFTER_GO = "go".length;
+const AFTER_POSITION = "position".length;
+const AFTER_PERFT = "perft".length;
+
 // Entry point for the standalone engine
 export function _start(): void {
-  stdio.writeLine("Chess engine started ...");
+  let isRunning = true;
 
-  const fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-  // const board = fromFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+  do {
+    const line: string = stdio.readLine();
+    const command = line.trim();
+    if (command.startsWith("ucinewgame")) {
+      uciNewGame();
+    } else if (command.startsWith("uci")) {
+      uci();
+    } else if (command.startsWith("isready")) {
+      isReady();
+    } else if (command.startsWith("position")) {
+      position(command.substring(AFTER_POSITION).trimLeft());
+    } else if (command.startsWith("go")) {
+      go(command.substring(AFTER_GO).trimLeft());
+    } else if (command.startsWith("quit")) {
+      isRunning = false;
+    } else if (command.startsWith("perft")) {
+      perft(command.substring(AFTER_PERFT).trimLeft());
+    }
+  } while (isRunning);
 
-  EngineControl.reset();
-  EngineControl.setPosition(fen);
-
-  const start: u64 = clock.currentMillis();
-  // const nodes: u64 = perft(board, 6);
-
-  const move = EngineControl.findBestMove(2, 9, 0);
-
-  const duration = clock.currentMillis() - start;
-  // const nodesPerSecond: u64 = nodes * 1000 / duration;
-
-  const movePiece = decodePiece(move);
-  const moveFrom = decodeStartIndex(move);
-  const moveTo = decodeEndIndex(move);
-  // Log.info("Result: " + nodes.toString());
-  stdio.writeLine("Move " + movePiece.toString() + " from " + moveFrom.toString() + " to " + moveTo.toString());
-  stdio.writeLine("Duration (ms)   : " + duration.toString());
-  // Log.info("Nodes per second: " + nodesPerSecond.toString());
-  const line = stdio.readLine();
-  stdio.writeLine(line);
 }
 
+function uci(): void {
+  stdio.writeLine("id name Wasabi 1.0.0");
+  stdio.writeLine("id author mhonert");
+  stdio.writeLine("uciok");
+}
+
+function isReady(): void {
+  EngineControl.init();
+  stdio.writeLine("readyok");
+}
+
+function uciNewGame(): void {
+  EngineControl.reset();
+}
+
+const MOVES_LENGTH = "moves".length;
+const FEN_LENGTH = "fen".length;
+
+function position(parameters: string): void {
+  const movesStart = parameters.indexOf("moves");
+
+  const fenStart = parameters.indexOf("fen");
+
+  let fen: string;
+  if (fenStart >= 0) {
+    if (movesStart >= 0) {
+      fen = parameters.substring(fenStart + FEN_LENGTH, movesStart - 1);
+    } else {
+      fen = parameters.substring(fenStart + FEN_LENGTH);
+    }
+  } else if (parameters.startsWith("startpos")) {
+    fen = STARTPOS;
+  } else {
+    throw new Error("Invalid position parameters: " + parameters);
+  }
+
+  const fenTrimmed = fen.trim();
+
+  EngineControl.setPosition(fenTrimmed);
+
+  if (movesStart == -1) {
+    return;
+  }
+
+  const board = EngineControl.getBoard();
+  const movesStr = parameters.substring(movesStart + MOVES_LENGTH).trimLeft();
+  const moves = movesStr.split(' ');
+  for (let i = 0; i < moves.length; i++) {
+    const move = UCIMove.fromUCINotation(moves[i]);
+    EngineControl.performMove(move.toEncodedMove(board));
+  }
+}
+
+function go(parameters: string): void {
+  const move = EngineControl.findBestMove(2, 8, 500);
+  stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
+}
+
+function perft(parameter: string): void {
+  const depth = I32.parseInt(parameter);
+  if (depth < 0 || depth > TRANSPOSITION_MAX_DEPTH) {
+    throw new Error("Invalid perft parameter: " + parameter);
+  }
+
+  const start: u64 = clock.currentMillis();
+
+  const nodes: u64 = EngineControl.perft(depth);
+
+  const duration = clock.currentMillis() - start;
+  const nodesPerSecond: u64 = nodes * 1000 / duration;
+
+  stdio.writeLine("Nodes: " + nodes.toString());
+  stdio.writeLine("Duration (ms)   : " + duration.toString());
+  stdio.writeLine("Nodes per second: " + nodesPerSecond.toString());
+}
