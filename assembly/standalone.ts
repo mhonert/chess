@@ -24,6 +24,7 @@ import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { TRANSPOSITION_MAX_DEPTH } from './transposition-table';
+import { WHITE } from './board';
 
 export { _abort } from './io/wasi/abort';
 
@@ -34,6 +35,7 @@ const AFTER_PERFT = "perft".length;
 // Entry point for the standalone engine
 export function _start(): void {
   let isRunning = true;
+  let isPositionSet = false;
 
   do {
     const line: string = stdio.readLine();
@@ -46,12 +48,13 @@ export function _start(): void {
       isReady();
     } else if (command.startsWith("position")) {
       position(command.substring(AFTER_POSITION).trimLeft());
-    } else if (command.startsWith("go")) {
+      isPositionSet = true;
+    } else if (isPositionSet && command.startsWith("go")) {
       go(command.substring(AFTER_GO).trimLeft());
+    } else if (isPositionSet && command.startsWith("perft")) {
+      perft(command.substring(AFTER_PERFT).trimLeft());
     } else if (command.startsWith("quit")) {
       isRunning = false;
-    } else if (command.startsWith("perft")) {
-      perft(command.substring(AFTER_PERFT).trimLeft());
     }
   } while (isRunning);
 
@@ -110,13 +113,45 @@ function position(parameters: string): void {
   }
 }
 
+const WTIME = "wtime";
+const WINC = "winc";
+const BTIME = "btime";
+const BINC = "binc";
+const MOVES_TO_GO = "movestogo";
+
 function go(parameters: string): void {
-  const move = EngineControl.findBestMove(2, 8, 500);
+  const wtime = extractIntegerValue(parameters, WTIME, 0);
+  const btime = extractIntegerValue(parameters, BTIME, 0);
+  const winc = extractIntegerValue(parameters, WINC, 0);
+  const binc = extractIntegerValue(parameters, BINC, 0);
+  const movesToGo = extractIntegerValue(parameters, MOVES_TO_GO, 40);
+
+  const timeLimitMillis: i32 = (EngineControl.getBoard().getActivePlayer() == WHITE)
+    ? calculateTimeLimit(wtime, winc, movesToGo)
+    : calculateTimeLimit(btime, binc, movesToGo);
+
+  const move = EngineControl.findBestMove(2, 5, timeLimitMillis);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
+function calculateTimeLimit(timeLeftMillis: i32, timeIncrementMillis: i32, movesToGo: i32): i32 {
+  const timeForMove = movesToGo == 0
+    ? timeLeftMillis + timeIncrementMillis / 2
+    : timeLeftMillis / movesToGo + timeIncrementMillis / 2;
+
+  if (timeForMove >= timeLeftMillis) {
+    return max(100, timeLeftMillis - 100);
+  }
+
+  return timeLeftMillis;
+}
+
 function perft(parameter: string): void {
-  const depth = I32.parseInt(parameter);
+  const depthStr = parameter.trim();
+  if (depthStr.length == 0) {
+    throw new Error("Invalid perft parameter: " + parameter);
+  }
+  const depth = I32.parseInt(depthStr);
   if (depth < 0 || depth > TRANSPOSITION_MAX_DEPTH) {
     throw new Error("Invalid perft parameter: " + parameter);
   }
@@ -124,11 +159,31 @@ function perft(parameter: string): void {
   const start: u64 = clock.currentMillis();
 
   const nodes: u64 = EngineControl.perft(depth);
+  stdio.writeLine("Nodes: " + nodes.toString());
 
   const duration = clock.currentMillis() - start;
-  const nodesPerSecond: u64 = nodes * 1000 / duration;
 
-  stdio.writeLine("Nodes: " + nodes.toString());
   stdio.writeLine("Duration (ms)   : " + duration.toString());
-  stdio.writeLine("Nodes per second: " + nodesPerSecond.toString());
+  if (duration > 0) {
+    const nodesPerSecond: u64 = nodes * 1000 / duration;
+    stdio.writeLine("Nodes per second: " + nodesPerSecond.toString());
+  }
+}
+
+// Helper functions
+
+function extractIntegerValue(str: string, name: string, defaultValue: i32): i32 {
+  const nameIndex = str.indexOf(WTIME);
+  if (nameIndex < 0) {
+    return defaultValue;
+  }
+
+  const valueStartIndex = nameIndex + name.length;
+
+  const valueUntrimmed = str.substring(valueStartIndex);
+  const valueStr = valueUntrimmed.trim();
+  const endIndex = valueStr.indexOf(" ");
+  const value = endIndex >= 0 ? valueStr.substring(0, endIndex - 1) : valueStr;
+
+  return I32.parseInt(value);
 }

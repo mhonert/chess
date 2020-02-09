@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-export function currentMillis(): u64 {
-  return u64(Date.now());
+@inline
+export function currentMillis(): i64 {
+  return Date.now();
 }

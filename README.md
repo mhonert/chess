@@ -1,22 +1,19 @@
-# Web Chess ([Play it here!](https://mhonert.github.io/chess))
+# :sushi: Wasabi Chess Engine ([Play here!](https://mhonert.github.io/chess))
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Website mhonert.github.io./chess](https://img.shields.io/website-up-down-green-red/http/mhonert.github.io/chess)](https://mhonert.github.io/chess)
 
+Wasabi - a WebAssembly Chess Engine written in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript).
 
-A free and open source chess game using [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) 
-and [React](https://reactjs.org/).
-
-The chess engine runs completely standalone in the browser and does not require any backend.
-All computer moves are calculated in the background using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
-and do not block the main thread for the UI.
-
+It runs as a standalone UCI chess engine or embedded as a [Web Worker](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+in a React web app.
 
 ![Screenshot](chess_screenshot.png)
 
 
 ## Features
 - Chess engine implemented in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript)
+- Basic UCI protocol support (standalone engine)
 - Computer opponent with 5 difficulty levels
 - Drag'n'Drop support to move chess pieces
 - Touch support for mobile devices
@@ -30,7 +27,6 @@ and do not block the main thread for the UI.
 ## Planned engine improvements
 - Improve position evaluation
 - Use opening database
-- Support UCI protocol
 
 ## Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine

@@ -57,11 +57,11 @@ export class Engine {
   private killerMoveTable: KillerMoveTable;
   private history: PositionHistory = new PositionHistory();
   private board: Board;
-  private startTime: u64 = 0;
+  private startTime: i64 = 0;
   private moveCount: i32 = 0;
   private qsMoveCount: i32 = 0;
   private cacheHits: i32 = 0;
-  private timeLimitMillis: u64;
+  private timeLimitMillis: i64;
   private minimumDepth: i32;
   private moveHits: i32 = 0;
   private repeatedSearches: i32 = 0;
@@ -115,7 +115,7 @@ export class Engine {
   }
 
   // Find the best possible move in response to the current board position.
-  findBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: u64, depth: i32): i32 {
+  findBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, minimumDepth: i32, timeLimitMillis: i64, depth: i32): i32 {
 
     this.timeLimitMillis = timeLimitMillis;
     this.minimumDepth = minimumDepth;
@@ -148,6 +148,8 @@ export class Engine {
     let repetitionCounter: i32 = 0;
     this.isCancelPossible = false;
 
+
+
     // Use iterative deepening, i.e. increase the search depth after each iteration
     do {
       let bestScore: i32 = MIN_SCORE;
@@ -157,6 +159,8 @@ export class Engine {
       let previousBeta = beta;
 
       let repeatSearch = false;
+
+      const iterationStartTime = clock.currentMillis();
 
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
@@ -212,7 +216,10 @@ export class Engine {
         // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
       }
 
-      if (this.isCancelPossible && (clock.currentMillis() - this.startTime >= timeLimitMillis || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
+      const iterationDuration = clock.currentMillis() - iterationStartTime;
+      const remainingTime = timeLimitMillis - (clock.currentMillis() - this.startTime);
+
+      if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2) || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
 
         if (repeatSearch) {
           // Previous search is invalid => skip results
@@ -423,7 +430,7 @@ export class Engine {
 
       }
 
-      if (this.isCancelPossible && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
+      if (this.isCancelPossible && (this.moveCount & 3) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
         return CANCEL_SEARCH;
       }
