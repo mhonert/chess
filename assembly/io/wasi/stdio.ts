@@ -30,9 +30,6 @@ const LINEFEED = 10;
 const CARRIAGE_RETURN = 13;
 
 const LF_STR = String.fromCharCode(LINEFEED);
-const CR_STR = String.fromCharCode(LINEFEED);
-
-let writeLineFeed: bool = false;
 
 export function writeLine(str: string): void {
   write(str, STDOUT);
@@ -43,7 +40,7 @@ export function writeErrorMessage(str: string): void {
 }
 
 function write(str: string, target: fd): void {
-  const strWithNewLine = str + (writeLineFeed ? LF_STR + CR_STR : CR_STR);
+  const strWithNewLine = str + LF_STR;
 
   // Prepare write buffer
   const writeChars = String.UTF8.encode(strWithNewLine);
@@ -56,7 +53,7 @@ function write(str: string, target: fd): void {
   // Prepare 'written' pointer
   const writtenSizeBuffer = new ArrayBuffer(PTR_SIZE);
   const writtenSizeBufferPtr = changetype<ptr>(writtenSizeBuffer);
-  fd_write(STDOUT, ioVecPtr, 1, writtenSizeBufferPtr);
+  fd_write(target, ioVecPtr, 1, writtenSizeBufferPtr);
 }
 
 // Reads characters one by one until a line feed character occurs or the stream ended
@@ -92,10 +89,7 @@ export function readLine(maxLength: i32 = 1024): string {
 
     const char = load<u8>(singleCharPtr);
     if (char == CARRIAGE_RETURN) {
-      // If reading from stdin produces LF, then also emit LF when writing to stdout
-      writeLineFeed = true;
-
-      // skip carriage return char
+      // skip carriage return char (for Windows)
       continue;
     }
 
