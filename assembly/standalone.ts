@@ -61,7 +61,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.0");
+  stdio.writeLine("id name Wasabi 1.0.1");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("uciok");
 }
@@ -117,6 +117,7 @@ const WTIME = "wtime";
 const WINC = "winc";
 const BTIME = "btime";
 const BINC = "binc";
+const MOVETIME = "movetime";
 const MOVES_TO_GO = "movestogo";
 
 function go(parameters: string): void {
@@ -124,17 +125,22 @@ function go(parameters: string): void {
   const btime = extractIntegerValue(parameters, BTIME, 0);
   const winc = extractIntegerValue(parameters, WINC, 0);
   const binc = extractIntegerValue(parameters, BINC, 0);
+  const movetime = extractIntegerValue(parameters, MOVETIME, 0);
   const movesToGo = extractIntegerValue(parameters, MOVES_TO_GO, 40);
 
   const timeLimitMillis: i32 = (EngineControl.getBoard().getActivePlayer() == WHITE)
-    ? calculateTimeLimit(wtime, winc, movesToGo)
-    : calculateTimeLimit(btime, binc, movesToGo);
+    ? calculateTimeLimit(movetime, wtime, winc, movesToGo)
+    : calculateTimeLimit(movetime, btime, binc, movesToGo);
 
   const move = EngineControl.findBestMove(2, 5, timeLimitMillis);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
-function calculateTimeLimit(timeLeftMillis: i32, timeIncrementMillis: i32, movesToGo: i32): i32 {
+function calculateTimeLimit(movetime: i32, timeLeftMillis: i32, timeIncrementMillis: i32, movesToGo: i32): i32 {
+  if (movetime > 0) {
+    return movetime;
+  }
+
   const timeForMove = movesToGo == 0
     ? timeLeftMillis + timeIncrementMillis / 2
     : timeLeftMillis / movesToGo + timeIncrementMillis / 2;
@@ -143,7 +149,7 @@ function calculateTimeLimit(timeLeftMillis: i32, timeIncrementMillis: i32, moves
     return max(100, timeLeftMillis - 100);
   }
 
-  return timeLeftMillis;
+  return timeForMove;
 }
 
 function perft(parameter: string): void {
@@ -173,7 +179,7 @@ function perft(parameter: string): void {
 // Helper functions
 
 function extractIntegerValue(str: string, name: string, defaultValue: i32): i32 {
-  const nameIndex = str.indexOf(WTIME);
+  const nameIndex = str.indexOf(name);
   if (nameIndex < 0) {
     return defaultValue;
   }
@@ -183,7 +189,7 @@ function extractIntegerValue(str: string, name: string, defaultValue: i32): i32 
   const valueUntrimmed = str.substring(valueStartIndex);
   const valueStr = valueUntrimmed.trim();
   const endIndex = valueStr.indexOf(" ");
-  const value = endIndex >= 0 ? valueStr.substring(0, endIndex - 1) : valueStr;
+  const value = endIndex >= 0 ? valueStr.substring(0, endIndex) : valueStr;
 
   return I32.parseInt(value);
 }
