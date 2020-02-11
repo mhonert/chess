@@ -61,7 +61,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.1");
+  stdio.writeLine("id name Wasabi 1.0.2");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("uciok");
 }

@@ -57,7 +57,7 @@ function write(str: string, target: fd): void {
 }
 
 // Reads characters one by one until a line feed character occurs or the stream ended
-export function readLine(maxLength: i32 = 1024): string {
+export function readLine(maxLength: i32 = 16384): string {
   const readChars = new ArrayBuffer(maxLength);
   const readCharsPtr = changetype<ptr>(readChars);
 
