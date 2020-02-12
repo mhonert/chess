@@ -42,6 +42,7 @@ const MenuBar = styled.div`
   margin-top: 1rem;
   margin-left: 1.5rem;
   text-align: center;
+  align-items: center;
 
   // center menubar below board, if window width is < window height
   @media (max-aspect-ratio: 100/99) {

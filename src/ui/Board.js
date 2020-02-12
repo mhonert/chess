@@ -26,6 +26,15 @@ const BoardGrid = styled.div`
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
 
+    @media (min-aspect-ratio: 99/100) {
+      width: 100vh;
+      height: 100vh;
+    }
+    @media (max-aspect-ratio: 100/99) {
+      width: 100vw;
+      height: 100vw;
+    }
+    
     box-shadow: 3px 3px 3px #586e75;
 `;
 

@@ -53,7 +53,7 @@
     "@as-pect/assembly": "^2.8.0",
     "@as-pect/cli": "^2.8.0",
     "@as-pect/core": "^2.8.0",
-    "assemblyscript": "0.9.1-nightly.20200210",
+    "assemblyscript": "0.9.1-nightly.20200212",
     "babel-plugin-macros": "^2.8.0",
     "gh-pages": "^2.2.0",
     "workerize-loader": "^1.1.0"
