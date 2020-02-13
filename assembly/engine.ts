@@ -46,9 +46,7 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-const ASPIRATION_WINDOW_SIZE = 4;
-
-const CONTEMPT_FACTOR: i32 = 0;
+const ASPIRATION_WINDOW_SIZE = 25;
 
 export class Engine {
 
@@ -279,7 +277,7 @@ export class Engine {
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, nullMovePerformed: bool, nullMoveVerificationRequired: bool): i32 {
 
     if (this.board.isThreefoldRepetion()) {
-      return CONTEMPT_FACTOR * playerColor;
+      return 0;
     }
 
     // Quiescence search
@@ -470,7 +468,7 @@ export class Engine {
       }
 
       // Stalemate
-      return CONTEMPT_FACTOR * playerColor;
+      return 0;
     }
 
     this.transpositionTable.writeEntry(ttHash, remainingLevels, encodeScoredMove(bestMove, bestScore), scoreType);
@@ -481,7 +479,7 @@ export class Engine {
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
     if (this.board.isThreefoldRepetion()) {
-      return CONTEMPT_FACTOR * activePlayer;
+      return 0;
     }
 
     const standPat = this.evaluatePosition(activePlayer, depth) * activePlayer;
@@ -562,7 +560,7 @@ export class Engine {
   // the moves array can be modified and sorted in-place.
   @inline
   sortMovesByScore(moves: Int32Array, playerColor: i32, depth: i32, primaryKillerMove: i32, secondaryKillerMove: i32): Int32Array {
-    const killerScore = 64 * playerColor;
+    const killerScore = 256 * playerColor;
 
     for (let i: i32 = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
@@ -649,7 +647,7 @@ export class Engine {
       return BLACK_MATE_SCORE - depth;
     } else {
       // Stalemate
-      return CONTEMPT_FACTOR;
+      return 0;
     }
   };
 }

@@ -891,14 +891,14 @@ const KING_POSITION_SCORES: Int32Array = toInt32Array([
 ]);
 
 const KING_ENDGAME_POSITION_SCORES: Int32Array = toInt32Array([
-  -5, -4, -3, -2, -2, -3, -4, -5,
-  -3, -2, -1,  0,  0, -1, -2, -3,
-  -3, -1,  2,  3,  3,  2, -1, -3,
-  -3, -1,  3,  4,  4,  3, -1, -3,
-  -3, -1,  3,  4,  4,  3, -1, -3,
-  -3, -1,  2,  3,  3,  2, -1, -3,
-  -3, -3,  0,  0,  0,  0, -3, -3,
-  -5, -3, -3, -3, -3, -3, -3, -5
+  -10, -8, -6, -4, -4, -6, -8, -10,
+  -6, -4, -2,  0,  0, -2, -4, -6,
+  -6, -2,  4,  6,  6,  4, -2, -6,
+  -6, -2,  6,  8,  8,  6, -2, -6,
+  -6, -2,  6,  8,  8,  6, -2, -6,
+  -6, -2,  4,  6,  6,  4, -2, -6,
+  -6, -6,  0,  0,  0,  0, -6, -6,
+  -10, -6, -6, -6, -6, -6, -6, -10
 ]);
 
 function combineScores(color: i32, arrays: Int32Array[]): Int32Array {
@@ -918,7 +918,7 @@ function combineScores(color: i32, arrays: Int32Array[]): Int32Array {
     }
     const pieceValue = PIECE_VALUES[i % 6] * color;
     for (let j = 0; j < arrays[i].length; j++) {
-      result[index++] = arrays[i][j] * color + pieceValue;
+      result[index++] = arrays[i][j] * 5 * color + pieceValue;
     }
   }
   return result;
