@@ -20,7 +20,7 @@ import React from 'react';
 import { useDrop } from 'react-dnd';
 import styled from 'styled-components/macro';
 
-const FieldDiv = styled.div`
+export const FieldDiv = styled.div`
   position: relative;
   background-color: ${props => props.isEven ? "#fdf6e3" : "#eee8d5"};
   

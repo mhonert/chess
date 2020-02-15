@@ -32,6 +32,7 @@ import whiteQueen from './img/white_queen.svg';
 import blackQueen from './img/black_queen.svg';
 import whiteKing from './img/white_king.svg';
 import blackKing from './img/black_king.svg';
+import { BLACK } from '../engine/constants';
 
 const whiteImages = [
   whitePawn,
@@ -53,7 +54,7 @@ const blackImages = [
 
 const pieceNames = [ 'Pawn', 'Knight', 'Bishop', 'Rook', 'Queen', 'King' ]
 
-const PieceImage = styled.img`
+const Image = styled.img`
   display: block;
   margin: 13%;
   height: 74%;
@@ -69,10 +70,14 @@ const PieceImage = styled.img`
 
 const isFirefox = typeof InstallTrigger !== 'undefined';
 
+export const PieceImage = ({color, pieceId, ...props}) => {
+  const img = color === BLACK ? blackImages[pieceId - 1] : whiteImages[pieceId - 1];
+  return <Image src={img} alt={pieceNames[pieceId - 1]} {...props} />;
+}
+
 const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
   const pieceId = Math.abs(piece);
-  const img =
-    color === 'black' ? blackImages[pieceId - 1] : whiteImages[pieceId - 1];
+  const img = color === BLACK ? blackImages[pieceId - 1] : whiteImages[pieceId - 1];
 
   const [{ isDragging }, drag] = useDrag({
     item: {
@@ -88,10 +93,9 @@ const Piece = ({ boardIndex, color, piece, onPickup, onDrop }) => {
   });
 
   const pieceImage =
-    <PieceImage
+    <Image
       ref={drag}
       src={img}
-      alt={pieceNames[pieceId - 1]}
       className={isDragging ? 'dragging' : ''}
     />;
 

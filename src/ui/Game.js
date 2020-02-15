@@ -20,11 +20,12 @@ import React, { useCallback, useEffect, useState } from 'react';
 import styled from 'styled-components/macro';
 
 import engineWorkerLoader from 'workerize-loader!../engine/engine.worker'; // eslint-disable-line import/no-webpack-loader-syntax
-import { B, BLACK, N, P, Q, R, WHITE } from '../engine/constants';
+import { BLACK, P, WHITE } from '../engine/constants';
 import AnimatedSpinner from './AnimatedSpinner';
 import { Move } from '../engine/move';
 import Board from './Board';
 import GameMenu from './GameMenu';
+import PromotionPieceSelection from './PromotionPieceSelection';
 
 const engine = engineWorkerLoader();
 
@@ -41,7 +42,7 @@ const Game = () => {
   const [rotateBoard, setRotateBoard] = useState(false);
   const [activePlayer, setActivePlayer] = useState(WHITE);
   const [humanPlayerColor, setHumanPlayerColor] = useState(WHITE);
-  const [isAiThinking, setAiThinking] = useState(false);
+  const [isAiTurn, setAiTurn] = useState(false);
   const [board, setBoard] = useState();
   const [gameEnded, setGameEnded] = useState(false);
   const [availableMoves, setAvailableMoves] = useState([]);
@@ -49,33 +50,32 @@ const Game = () => {
   const [winningPlayer, setWinningPlayer] = useState();
   const [difficultyLevel, setDifficultyLevel] = useState(3);
   const [moveHistory, setMoveHistory] = useState([]);
+  const [promotion, setPromotion] = useState(undefined);
 
   const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : { start: -1, end: -1 };
 
   const clearAvailableMoves = () => setAvailableMoves([]);
-  const addMove = useCallback(move => setMoveHistory([...moveHistory, move]), [setMoveHistory, moveHistory]);
+
+  const addMove = useCallback(move => {
+    setMoveHistory([...moveHistory, move])
+  }, [setMoveHistory, moveHistory]);
 
   const updateGame = useCallback(async state => {
     setBoard(state.board);
     setAvailableMoves(state.moves);
-    setActivePlayer(state.activePlayer);
-
     if (state.gameEnded) {
       setGameEnded(true);
 
       if (state.checkMate) {
         setWinningPlayer(nextPlayer(state.activePlayer));
       }
+    } else {
+      setActivePlayer(state.activePlayer);
     }
+
   }, []);
 
-  const handleAIMove = useCallback(async move => {
-    const gameState = await engine.performMove(move);
-    setAiThinking(false);
-    await updateGame(gameState);
-    addMove(move);
-  }, [updateGame, addMove]);
-
+  // Initialize chess engine and game state
   useEffect(() => {
     (async () => {
       await engine.init();
@@ -85,45 +85,52 @@ const Game = () => {
     })();
   }, [updateGame]);
 
-  const canMove = (start, end) => {
+  const canMove = useCallback((start, end) => {
     return availableMoves.some(
       move => move.start === start && move.end === end
     );
-  };
+  }, [availableMoves]);
 
   const calculateAIMove = useCallback(async () => {
     clearAvailableMoves();
-    setAiThinking(true);
+    setAiTurn(true);
 
-    const aiMove = await engine.calculateMove(difficultyLevel);
-    await handleAIMove(aiMove);
-  }, [difficultyLevel, handleAIMove]);
+    const move = await engine.calculateMove(difficultyLevel);
 
-  useEffect(() => {
-    if (humanPlayerColor !== activePlayer) {
-      calculateAIMove();
-    }
-  }, [humanPlayerColor, activePlayer, calculateAIMove]);
+    const gameState = await engine.performMove(move);
+    setAiTurn(false);
+    await updateGame(gameState);
+    addMove(move);
+  }, [difficultyLevel, addMove, updateGame]);
 
-  const switchSides = () => {
+  const switchSides = async () => {
     setRotateBoard(true);
     setHumanPlayerColor(-humanPlayerColor);
-  }
+    setAiTurn(true);
+  };
+
+  // Calculate next AI move whenever isAiTurn is set to true
+  useEffect( () => {
+    if (isAiTurn) {
+      (async () => {
+        await calculateAIMove();
+      })();
+    }
+  }, [isAiTurn, calculateAIMove]);
 
   const startNewGame = async () => {
+    setGameEnded(false);
+    setWinningPlayer(undefined);
     setActivePlayer(WHITE);
     setHumanPlayerColor(WHITE);
+    setMoveHistory([]);
+    setCurrentPieceMoves(new Set());
 
     await engine.newGame();
     const gameState = await engine.setPosition(startPosition, []);
+    await updateGame(gameState);
 
     setRotateBoard(false);
-    setGameEnded(false);
-    setMoveHistory([]);
-    setWinningPlayer(undefined);
-    setCurrentPieceMoves(new Set());
-
-    await updateGame(gameState);
   };
 
   const undoMove = useCallback(async () => {
@@ -133,9 +140,9 @@ const Game = () => {
     await updateGame(gameState);
   }, [moveHistory, setMoveHistory, updateGame]);
 
-  const handlePlayerMove = async (piece, start, end) => {
+  const handlePlayerMove = useCallback(async (piece, start, end) => {
     let pieceId = Math.abs(piece);
-    if (gameEnded || isAiThinking) {
+    if (gameEnded || isAiTurn) {
       return;
     }
 
@@ -145,35 +152,51 @@ const Game = () => {
 
     setCurrentPieceMoves(new Set());
 
-    // TODO: Replace browser prompt dialog with own dialog
     if (pieceId === P && ((activePlayer === WHITE && end < 8) || (activePlayer === BLACK && end >= 56))) {
       // Promotion
-      const choice = prompt('Choose promotion (Q, R, B, N)', 'Q');
-      switch (choice.toUpperCase()) {
-        case 'R':
-          pieceId = R;
-          break;
-        case 'B':
-          pieceId = B;
-          break;
-        case 'N':
-          pieceId = N;
-          break;
-        case 'Q':
-        default:
-          pieceId = Q;
-          break;
+
+      clearAvailableMoves();
+      setPromotion({
+        start: start,
+        end: end,
+        column: end & 7,
+        color: activePlayer
+      });
+    } else {
+
+      // Standard move
+      const interimBoard = board.slice();
+      interimBoard[start] = 0;
+      setBoard(interimBoard);
+
+      const move = new Move(pieceId, start, end);
+      const gameState = await engine.performMove(move);
+      await updateGame(gameState);
+      addMove(move);
+
+      if (!gameState.gameEnded) {
+        setAiTurn(true);
       }
     }
 
+  }, [activePlayer, addMove, board, canMove, gameEnded, isAiTurn, updateGame]);
+
+  const handlePromotion = useCallback(async (pieceId) => {
+    const { start, end } = promotion;
+    setPromotion(undefined);
     const interimBoard = board.slice();
     interimBoard[start] = 0;
     setBoard(interimBoard);
 
-    const gameState = await engine.performMove(new Move(pieceId, start, end));
-    addMove(new Move(piece, start, end));
+    const move = new Move(pieceId, start, end);
+    const gameState = await engine.performMove(move);
     await updateGame(gameState);
-  };
+    addMove(move);
+
+    if (!gameState.gameEnded) {
+      setAiTurn(true);
+    }
+  }, [addMove, board, promotion, setPromotion, updateGame]);
 
   const updatePossibleMoves = start => {
     const possibleMoves = availableMoves
@@ -190,6 +213,9 @@ const Game = () => {
     board
       ? (
         <GameArea>
+          {promotion &&
+          <PromotionPieceSelection column={promotion.column} playerColor={promotion.color} isRotated={rotateBoard}
+                                   onSelection={handlePromotion}/>}
           <Board
             board={board}
             isRotated={rotateBoard}
@@ -200,7 +226,7 @@ const Game = () => {
             clearPossibleMoves={clearPossibleMoves}
           />
           <GameMenu
-            isAiThinking={isAiThinking}
+            isAiThinking={isAiTurn}
             firstMovePlayed={lastMove.start !== -1}
             humanPlayerColor={humanPlayerColor}
             gameEnded={gameEnded}

@@ -26,7 +26,7 @@ import { BLACK, WHITE } from './board';
 import { clock_time_get, clockid } from 'bindings/wasi';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
-  [2, 3, 0],
+  [2, 3, 0, 0],
   [2, 3, 200, 400],
   [2, 5, 250, 500],
   [2, 5, 500, 1000],

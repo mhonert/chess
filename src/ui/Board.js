@@ -20,6 +20,7 @@ import React from 'react';
 import Field from './Field';
 import Piece from './Piece';
 import styled from 'styled-components/macro';
+import { BLACK, WHITE } from '../engine/constants';
 
 const BoardGrid = styled.div`
     display: grid;
@@ -58,7 +59,7 @@ const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove,
             {item !== 0 && (
               <Piece
                 boardIndex={rotatedIndex}
-                color={item < 0 ? 'black' : 'white'}
+                color={item < 0 ? BLACK : WHITE}
                 piece={item}
                 onPickup={updatePossibleMoves}
                 onDrop={clearPossibleMoves}
