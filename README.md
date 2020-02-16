@@ -3,7 +3,7 @@
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Website mhonert.github.io./chess](https://img.shields.io/website-up-down-green-red/http/mhonert.github.io/chess)](https://mhonert.github.io/chess)
 
-Wasabi - a WebAssembly Chess Engine written in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript).
+Wasabi - WebAssembly Chess Engine written in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript).
 
 It runs as a standalone UCI chess engine or as a [React](https://reactjs.org/) app in the browser.
 The web app embeds the engine using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)

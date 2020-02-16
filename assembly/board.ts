@@ -51,7 +51,7 @@ export const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields
 
 const MAX_GAME_HALFMOVES = 5898 * 2;
 
-const EN_PASSANT_BIT = 1 << 31;
+export const EN_PASSANT_BIT = 1 << 31;
 
 export class Board {
   private items: Int32Array;
