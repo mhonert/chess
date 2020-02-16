@@ -348,10 +348,12 @@ export class Engine {
       scoredMove = 0;
     }
 
+    const isInCheck = this.board.isInCheck(playerColor);
+
     let failHigh: bool = false;
 
     // Null move pruning
-    if (!nullMovePerformed && remainingLevels > 2 && !this.board.isInCheck(playerColor)) {
+    if (!nullMovePerformed && remainingLevels > 2 && !isInCheck) {
       this.board.performNullMove();
       const result = this.recFindBestMove(
         -beta,
@@ -376,6 +378,11 @@ export class Engine {
           return -result;
         }
       }
+    }
+
+    // Check extension: increase search depth if in check
+    if (isInCheck) {
+      remainingLevels++;
     }
 
     const primaryKillerMove = this.killerMoveTable.getPrimaryKiller(depth);
