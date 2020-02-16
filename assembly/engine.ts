@@ -27,7 +27,7 @@ import {
   generateCaptureMoves,
   generateFilteredMoves,
   generateMoves,
-  isCheckMate
+  isCheckMate, isValidMove
 } from './move-generation';
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
@@ -147,7 +147,6 @@ export class Engine {
     this.isCancelPossible = false;
 
 
-
     // Use iterative deepening, i.e. increase the search depth after each iteration
     do {
       let bestScore: i32 = MIN_SCORE;
@@ -157,6 +156,7 @@ export class Engine {
       let previousBeta = beta;
 
       let repeatSearch = false;
+      let isPV = true;
 
       const iterationStartTime = clock.currentMillis();
 
@@ -181,7 +181,8 @@ export class Engine {
           remainingLevels - 1,
           depth + 1,
           false,
-          true
+          true,
+          isPV
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
@@ -191,6 +192,7 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        isPV = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -198,6 +200,7 @@ export class Engine {
           bestMove = move;
           alpha = max(alpha, bestScore);
 
+          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
           if (bestScore <= previousAlpha || bestScore >= previousBeta) {
             repeatSearch = true;
             break;
@@ -211,7 +214,6 @@ export class Engine {
           break;
         }
 
-        // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
       }
 
       const iterationDuration = clock.currentMillis() - iterationStartTime;
@@ -274,7 +276,7 @@ export class Engine {
 
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
-  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, nullMovePerformed: bool, nullMoveVerificationRequired: bool): i32 {
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, nullMovePerformed: bool, nullMoveVerificationRequired: bool, isPV: bool): i32 {
 
     if (this.board.isThreefoldRepetion()) {
       return 0;
@@ -294,6 +296,25 @@ export class Engine {
     // Check transposition table
     const ttHash = this.board.getHash();
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
+
+    // Internal iterative deepening
+    if (scoredMove == 0 && isPV && remainingLevels >= 4) {
+      const reducedLevels = remainingLevels > 12 ? remainingLevels / 3 + 1 : remainingLevels / 2;
+      const result = this.recFindBestMove(
+        alpha,
+        beta,
+        playerColor,
+        reducedLevels,
+        depth + 1,
+        false,
+        nullMoveVerificationRequired,
+        false
+      );
+      if (result == CANCEL_SEARCH) {
+        return CANCEL_SEARCH;
+      }
+      scoredMove = this.transpositionTable.getScoredMove(ttHash);
+    }
 
     let moves: Int32Array | null = null;
 
@@ -323,6 +344,10 @@ export class Engine {
       this.moveHits++;
     }
 
+    if (scoredMove != 0 && !isValidMove(this.board, playerColor, decodeMove(scoredMove))) {
+      scoredMove = 0;
+    }
+
     let failHigh: bool = false;
 
     // Null move pruning
@@ -335,7 +360,8 @@ export class Engine {
         remainingLevels - 4,
         depth + 1,
         true,
-        false
+        false,
+        isPV
       );
       this.board.undoNullMove();
       if (result == CANCEL_SEARCH) {
@@ -395,7 +421,8 @@ export class Engine {
           remainingLevels - 1,
           depth + 1,
           false,
-          nullMoveVerificationRequired
+          nullMoveVerificationRequired,
+          isPV
         );
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
@@ -405,6 +432,7 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        isPV = false;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {

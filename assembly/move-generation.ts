@@ -19,7 +19,7 @@
 import {
   BLACK,
   BLACK_KING_START,
-  Board,
+  Board, EMPTY,
   indexFromColor,
   WHITE,
   WHITE_KING_START
@@ -38,6 +38,7 @@ import {
   WHITE_BIG_CASTLING_BIT_PATTERN,
   WHITE_SMALL_CASTLING_BIT_PATTERN
 } from './bitboard';
+import { sign } from './util';
 
 
 const MAX_MOVES = 218;
@@ -211,6 +212,58 @@ class MoveGenerator {
     }
 
     return count;
+  }
+
+  @inline
+  isValidMove(board: Board, activeColor: i32, move: i32): bool {
+    this.board = board;
+    this.count = 0;
+    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
+    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
+    this.emptyBitBoard = ~this.occupiedBitBoard;
+
+    const start = decodeStartIndex(move);
+    const end = decodeStartIndex(move);
+    const piece = this.board.getItem(start);
+    if (piece == EMPTY || sign(piece) != activeColor) {
+      return false;
+    }
+
+    switch (piece * activeColor) {
+      case PAWN:
+        if (activeColor == WHITE) {
+          this.generateWhitePawnMoves();
+        } else {
+          this.generateBlackPawnMoves();
+        }
+        break;
+      case KNIGHT:
+        this.generateKnightMoves(activeColor, start);
+        break;
+      case BISHOP:
+        this.generateBishopMoves(activeColor, BISHOP, start);
+        break;
+      case ROOK:
+        this.generateRookMoves(activeColor, ROOK, start);
+        break;
+      case QUEEN:
+        if ((start >> 3) == (end >> 3) || (start & 7) == (end & 7)) {
+          this.generateRookMoves(activeColor, QUEEN, start);
+        } else {
+          this.generateBishopMoves(activeColor, QUEEN, start);
+        }
+        break;
+      case KING:
+        if (activeColor == WHITE) {
+          this.generateWhiteKingMoves(start);
+        } else {
+          this.generateBlackKingMoves(start);
+        }
+        break;
+    }
+
+    return this.moves.subarray(0, this.count).includes(move);
+
   }
 
   getGeneratedMoves(): Int32Array {
@@ -682,6 +735,11 @@ export function generateCaptureMoves(board: Board, activeColor: i32): Int32Array
 @inline
 export function mainPieceMoveCount(board: Board, activeColor: i32): i32 {
   return DEFAULT_INSTANCE.mainPieceMoveCount(board, activeColor);
+}
+
+@inline
+export function isValidMove(board: Board, activeColor: i32, move: i32): bool {
+  return DEFAULT_INSTANCE.isValidMove(board, activeColor, move);
 }
 
 @inline
