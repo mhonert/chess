@@ -298,8 +298,8 @@ export class Engine {
     let scoredMove = this.transpositionTable.getScoredMove(ttHash);
 
     // Internal iterative deepening
-    if (scoredMove == 0 && isPV && remainingLevels >= 4) {
-      const reducedLevels = remainingLevels > 12 ? remainingLevels / 3 + 1 : remainingLevels / 2;
+    if (scoredMove == 0 && isPV && remainingLevels >= 5) {
+      const reducedLevels = remainingLevels >= 12 ? remainingLevels / 3 + 1 : remainingLevels / 2;
       const result = this.recFindBestMove(
         alpha,
         beta,
@@ -531,9 +531,7 @@ export class Engine {
       alpha = standPat;
     }
 
-    const moves = this.board.isInCheck(activePlayer)
-      ? this.sortMovesByScore(generateMoves(this.board, activePlayer), activePlayer, depth, 0, 0)
-      : this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer, depth, 0, 0);
+    const moves = this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer, depth, 0, 0);
 
     for (let i = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
