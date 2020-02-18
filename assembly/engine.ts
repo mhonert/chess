@@ -380,11 +380,6 @@ export class Engine {
       }
     }
 
-    // Check extension: increase search depth if in check
-    if (isInCheck) {
-      remainingLevels++;
-    }
-
     const primaryKillerMove = this.killerMoveTable.getPrimaryKiller(depth);
     const secondaryKillerMove = this.killerMoveTable.getSecondaryKiller(depth);
 
