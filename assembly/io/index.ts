@@ -19,8 +19,8 @@
 import {currentMillis as wasiCurrentMillis} from './wasi/clock';
 import {currentMillis as browserCurrentMillis} from './browser/clock';
 
-import {readLine as wasiReadLine, writeLine as wasiWriteLine} from './wasi/stdio';
-import {readLine as browserReadLine, writeLine as browserWriteLine} from './browser/stdio';
+import {readLine as wasiReadLine, writeLine as wasiWriteLine, writeError as wasiWriteError} from './wasi/stdio';
+import {readLine as browserReadLine, writeLine as browserWriteLine, writeError as browserWriteError} from './browser/stdio';
 
 export namespace clock {
   export const currentMillis = (IS_WASI == 1 ? wasiCurrentMillis : browserCurrentMillis);
@@ -29,4 +29,5 @@ export namespace clock {
 export namespace stdio {
   export const readLine = (IS_WASI == 1 ? wasiReadLine : browserReadLine);
   export const writeLine = (IS_WASI == 1 ? wasiWriteLine : browserWriteLine);
+  export const writeError = (IS_WASI == 1 ? wasiWriteError : browserWriteError);
 }

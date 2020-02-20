@@ -35,7 +35,7 @@ export function writeLine(str: string): void {
   write(str, STDOUT);
 }
 
-export function writeErrorMessage(str: string): void {
+export function writeError(str: string): void {
   write(str, STDERR);
 }
 

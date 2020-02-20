@@ -22,8 +22,7 @@
 
 import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
-import { BLACK, WHITE } from './board';
-import { clock_time_get, clockid } from 'bindings/wasi';
+import { BLACK } from './board';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [2, 3, 0, 0],
@@ -46,6 +45,7 @@ const ACTIVE_PLAYER = 64; // 0 - White, 1 - Black
 // Resets the engine state for a new game
 export function newGame(): void {
   EngineControl.reset();
+  EngineControl.resizeTranspositionTable(96);
 }
 
 // Sets the current board to the given position and returns the encoded game state

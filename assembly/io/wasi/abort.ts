@@ -16,13 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { writeErrorMessage } from './stdio';
+import { writeError } from './stdio';
 import { proc_exit } from 'bindings/wasi';
 
 // Custom abort function
 @global
 export function _abort(message: string = "", file: string = "", line: u32 = 0, column: u32 = 0): void {
-  writeErrorMessage("Fatal error occured!");
-  writeErrorMessage(file + ": line " + line.toString() + "@" + column.toString() + " - error: " + message);
+  writeError("Fatal error occured!");
+  writeError(file + ": line " + line.toString() + "@" + column.toString() + " - error: " + message);
   proc_exit(128);
 }

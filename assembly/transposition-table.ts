@@ -16,10 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { encodeScoredMove } from './move-generation';
+import { stdio } from './io';
 
-
-const HASH_BITSIZE = 64;
+export const MAX_HASH_SIZE_MB = 768;
 
 // Transposition table entry
 // Bits 63 - 23: 41 highest bits of the hash
@@ -45,14 +44,31 @@ const SCORE_TYPE_MASK: u64 = 0b11;
 const AGE_MASK: u64 = 0b111111111111111;
 
 
-// Transposition data
-const TRANSPOSITION_INDEX_BITS = 23;
-export const TRANSPOSITION_INDEX_MASK: u64 = (1 << TRANSPOSITION_INDEX_BITS) - 1;
+const DEFAULT_SIZE_MB = 1;
+const perEntryByteSize = 8 + 4;
 
 export class TranspositionTable {
-  private entries: Uint64Array = new Uint64Array(1 << TRANSPOSITION_INDEX_BITS);
-  private moves: Int32Array = new Int32Array(1 << TRANSPOSITION_INDEX_BITS);
+  private indexMask: u64;
+  private entries: Uint64Array;
+  private moves: Int32Array;
   private age: i32;
+
+  constructor() {
+    this.resize(DEFAULT_SIZE_MB, true);
+  }
+
+  resize(sizeMB: u32, initialize: bool = false): void {
+    const byteSize: i64 = sizeMB * 1_048_576;
+    const entryCount: i64 = byteSize / perEntryByteSize;
+    const indexBits: u32 = u32(Math.log2(f64(entryCount)));
+
+    const size = (1 << indexBits);
+    if (initialize || size != this.entries.length) {
+      this.indexMask = size - 1;
+      this.entries = new Uint64Array(size);
+      this.moves = new Int32Array(size);
+    }
+  }
 
   increaseAge(): void {
     this.age = (this.age + 1) & i32(AGE_MASK);
@@ -106,7 +122,7 @@ export class TranspositionTable {
 
   @inline
   private calculateIndex(hash: u64): i32 {
-    return i32(hash & TRANSPOSITION_INDEX_MASK);
+    return i32(hash & this.indexMask);
   }
 
   clear(): void {

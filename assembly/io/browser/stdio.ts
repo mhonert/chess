@@ -20,6 +20,10 @@ export function writeLine(message: string): void {
   trace(message);
 }
 
+export function writeError(message: string): void {
+  trace(message);
+}
+
 export function readLine(maxLength: i32): string {
   throw new Error("readLine not supported in browser");
 }

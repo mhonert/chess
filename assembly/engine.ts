@@ -78,6 +78,10 @@ export class Engine {
     }
   }
 
+  resizeTranspositionTable(sizeInMB: u32): void {
+    this.transpositionTable.resize(sizeInMB);
+  }
+
   reset(): void {
     this.history.clear();
     this.board = fromFEN(STARTPOS);
@@ -734,6 +738,10 @@ class EngineControl {
 
   getBoard(): Board {
     return this.board;
+  }
+
+  resizeTranspositionTable(sizeInMB: u32): void {
+    this.engine.resizeTranspositionTable(sizeInMB);
   }
 }
 
