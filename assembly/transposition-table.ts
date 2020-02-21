@@ -57,12 +57,13 @@ export class TranspositionTable {
     this.resize(DEFAULT_SIZE_MB, true);
   }
 
-  resize(sizeMB: u32, initialize: bool = false): void {
-    const byteSize: i64 = sizeMB * 1_048_576;
-    const entryCount: i64 = byteSize / perEntryByteSize;
-    const indexBits: u32 = u32(Math.log2(f64(entryCount)));
+  resize(sizeInMB: u32, initialize: bool = false): void {
+    // Calculate table size as close to the desired sizeInMB as possible, but never above it
+    const sizeInBytes = sizeInMB * 1_048_576;
+    const entryCount = sizeInBytes / perEntryByteSize;
+    const indexBitCount = 31 - clz(entryCount | 1);
 
-    const size = (1 << indexBits);
+    const size = (1 << indexBitCount);
     if (initialize || size != this.entries.length) {
       this.indexMask = size - 1;
       this.entries = new Uint64Array(size);
