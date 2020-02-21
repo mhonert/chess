@@ -177,7 +177,6 @@ export class Engine {
         const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
         this.moveCount++;
 
-
         const result = this.recFindBestMove(
           -beta,
           -alpha,
@@ -403,6 +402,7 @@ export class Engine {
     let bestScore: i32 = MIN_SCORE;
     let scoreType: ScoreType = ScoreType.ALPHA;
 
+    let evaluatedMoves: i32 = 0;
     do {
 
       const targetPieceId = decodePiece(move);
@@ -420,11 +420,21 @@ export class Engine {
 
       } else {
 
-        const result = this.recFindBestMove(
+        // Late move reduction
+        let reductions: i32 = 0;
+        if (evaluatedMoves > 3 && remainingLevels > 3 && !isPV && !isInCheck
+          && removedPiece == EMPTY  // not a capture move
+          && previousPiece == this.board.getItem(moveEnd)  // not a promotion
+          && !this.board.isInCheck(-playerColor)) {
+
+          reductions = 2;
+        }
+
+        let result = this.recFindBestMove(
           -beta,
           -alpha,
           -playerColor,
-          remainingLevels - 1,
+          remainingLevels - reductions - 1,
           depth + 1,
           false,
           nullMoveVerificationRequired,
@@ -435,13 +445,33 @@ export class Engine {
           return CANCEL_SEARCH;
         }
 
+        if (reductions > 0 && -result > alpha) {
+          // Repeat search without reduction
+          result = this.recFindBestMove(
+            -beta,
+            -alpha,
+            -playerColor,
+            remainingLevels - 1,
+            depth + 1,
+            false,
+            nullMoveVerificationRequired,
+            isPV
+          );
+          if (result == CANCEL_SEARCH) {
+            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+            return CANCEL_SEARCH;
+          }
+
+        }
+
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-        isPV = false;
+        evaluatedMoves++;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
+          isPV = false;
           bestScore = score;
           bestMove = move;
 
