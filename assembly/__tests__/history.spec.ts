@@ -31,4 +31,14 @@ describe("Position History", () => {
     expect(history.isThreefoldRepetion()).toBeTruthy("Threefold repetion not detected");
   });
 
+  it("Detects single repetition", () => {
+    const history = new PositionHistory();
+    history.push(1);
+    expect(history.isSingleRepetition()).toBeFalsy("Position only occured once");
+    history.push(2);
+    expect(history.isSingleRepetition()).toBeFalsy("Position only occured once");
+    history.push(1);
+    expect(history.isSingleRepetition()).toBeTruthy("Single repetition not detected");
+  });
+
 });

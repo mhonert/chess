@@ -1,6 +1,6 @@
 {
   "name": "wasabi-chess",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "private": true,
   "homepage": "https://mhonert.github.io/chess",
   "license": "GPL-3.0-or-later",

@@ -20,16 +20,18 @@ export class PositionHistory {
   private positions: Uint64Array = new Uint64Array(1024);
   private index: i32 = 0;
 
+  @inline
   push(hash: u64): void {
     unchecked(this.positions[this.index++] = hash);
   }
 
+  @inline
   pop(): void {
     this.index--;
   }
 
   isThreefoldRepetion(): bool {
-    if (this.index < 2) {
+    if (this.index <= 2) {
       return false;
     }
 
@@ -42,6 +44,22 @@ export class PositionHistory {
         if (count == 2) {
           return true;
         }
+      }
+    }
+
+    return false;
+  }
+
+  @inline
+  isSingleRepetition(): bool {
+    if (this.index <= 1) {
+      return false;
+    }
+
+    const hash = unchecked(this.positions[this.index - 1]);
+    for (let i = 0; i < this.index - 1; i++) {
+      if (unchecked(this.positions[i]) == hash) {
+        return true;
       }
     }
 

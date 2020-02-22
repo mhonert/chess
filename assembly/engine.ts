@@ -281,7 +281,7 @@ export class Engine {
   // find the best possible move in response to the current board position.
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, remainingLevels: i32, depth: i32, nullMovePerformed: bool, nullMoveVerificationRequired: bool, isPV: bool): i32 {
 
-    if (this.board.isThreefoldRepetion()) {
+    if (this.board.isEngineDraw()) {
       return 0;
     }
 
@@ -542,7 +542,7 @@ export class Engine {
 
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
-    if (this.board.isThreefoldRepetion()) {
+    if (this.board.isEngineDraw()) {
       return 0;
     }
 

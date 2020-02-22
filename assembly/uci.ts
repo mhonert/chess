@@ -84,7 +84,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.4");
+  stdio.writeLine("id name Wasabi 1.0.5");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default 1 min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
@@ -149,7 +149,7 @@ function go(parameters: Array<string>): void {
     ? calculateTimeLimit(movetime, wtime, winc, movesToGo)
     : calculateTimeLimit(movetime, btime, binc, movesToGo);
 
-  const move = EngineControl.findBestMove(2, 5, timeLimitMillis);
+  const move = EngineControl.findBestMove(2, 3, timeLimitMillis);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
@@ -158,15 +158,14 @@ function calculateTimeLimit(movetime: i32, timeLeftMillis: i32, timeIncrementMil
     return movetime;
   }
 
-  const timeForMove = movesToGo == 0
-    ? timeLeftMillis + timeIncrementMillis / 2
-    : timeLeftMillis / movesToGo + timeIncrementMillis / 2;
+  const timeForMove = timeLeftMillis / max(1, movesToGo);
+  const timeBonusFromIncrement = timeIncrementMillis / 2;
 
-  if (timeForMove >= timeLeftMillis) {
-    return max(100, timeLeftMillis - 100);
+  if (timeForMove + timeBonusFromIncrement >= timeLeftMillis) {
+    return max(0, timeForMove);
   }
 
-  return timeForMove;
+  return max(0, timeForMove + timeBonusFromIncrement);
 }
 
 function perft(depthStr: string): void {

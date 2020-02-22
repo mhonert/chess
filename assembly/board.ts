@@ -762,6 +762,13 @@ export class Board {
     return this.getHalfMoveClock() >= 100;
   }
 
+  // Return true, if the engine considers the current position as a draw.
+  // Note: it already considers the first repetition of a position as a draw to stop searching a branch that leads to a draw earlier.
+  @inline
+  isEngineDraw(): bool {
+    return this.positionHistory.isSingleRepetition() || this.isFiftyMoveDraw();
+  }
+
   @inline
   isEndGame(): bool {
     return this.endgame != 0;
