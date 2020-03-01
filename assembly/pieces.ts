@@ -25,9 +25,14 @@ export const ROOK: i32 = 4;
 export const QUEEN: i32 = 5;
 export const KING: i32 = 6;
 
-// Pieces values: PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING
+const KING_VALUE = 1200;
 export const QUEEN_VALUE = 950;
-export const PIECE_VALUES: Int32Array = toInt32Array([100, 320, 330, 500, QUEEN_VALUE, 1200]);
+export const ROOK_VALUE = 500;
+export const BISHOP_VALUE = 330;
+export const KNIGHT_VALUE = 320;
+export const PAWN_VALUE = 100;
+
+export const PIECE_VALUES: Int32Array = toInt32Array([PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
 
 export const pieces: Array<i32> = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
 

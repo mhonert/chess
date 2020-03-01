@@ -27,16 +27,18 @@ import {
   generateCaptureMoves,
   generateFilteredMoves,
   generateMoves,
-  isCheckMate, isValidMove
+  isCheckMate,
+  isValidMove
 } from './move-generation';
 import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { PIECE_VALUES, QUEEN_VALUE } from './pieces';
+import { PAWN_VALUE, PIECE_VALUES, QUEEN_VALUE, ROOK_VALUE } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
+import { toInt32Array } from './util';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -47,6 +49,9 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
 const ASPIRATION_WINDOW_SIZE = 25;
+
+const PRUNE_SAFETY_MARGINS = toInt32Array([0, PAWN_VALUE, ROOK_VALUE, ROOK_VALUE + PAWN_VALUE, QUEEN_VALUE, QUEEN_VALUE + PAWN_VALUE]);
+const PRUNE_MAX_LEVEL: i32 = PRUNE_SAFETY_MARGINS.length;
 
 export class Engine {
 
@@ -223,7 +228,6 @@ export class Engine {
       const remainingTime = timeLimitMillis - (clock.currentMillis() - this.startTime);
 
       if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2) || (remainingLevels + 1) > TRANSPOSITION_MAX_DEPTH)) {
-
         if (repeatSearch) {
           // Previous search is invalid => skip results
           return bestScoredMove;
@@ -285,6 +289,13 @@ export class Engine {
       return 0;
     }
 
+    const isInCheck = this.board.isInCheck(playerColor);
+
+    // Extend search if current player is in check
+    if (remainingLevels <= 0 && isInCheck) {
+      remainingLevels = 1;
+    }
+
     // Quiescence search
     if (remainingLevels <= 0) {
       const score = this.quiescenceSearch(playerColor, alpha, beta, depth);
@@ -295,6 +306,7 @@ export class Engine {
       }
       return score;
     }
+
 
     // Check transposition table
     const ttHash = this.board.getHash();
@@ -342,6 +354,9 @@ export class Engine {
       }
 
       move = decodeMove(scoredMove);
+      if (move == 0) {
+        scoredMove = 0;
+      }
       hashMove = move;
 
       this.moveHits++;
@@ -351,7 +366,6 @@ export class Engine {
       scoredMove = 0;
     }
 
-    const isInCheck = this.board.isInCheck(playerColor);
 
     let failHigh: bool = false;
 
@@ -401,8 +415,9 @@ export class Engine {
     let bestMove: i32 = 0;
     let bestScore: i32 = MIN_SCORE;
     let scoreType: ScoreType = ScoreType.ALPHA;
+    let evaluatedMoveCount: i32 = 0;
+    let hasValidMoves: bool = false;
 
-    let evaluatedMoves: i32 = 0;
     do {
 
       const targetPieceId = decodePiece(move);
@@ -413,22 +428,37 @@ export class Engine {
       const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
       this.moveCount++;
 
+      let skip: bool = this.board.isInCheck(playerColor); // skip if move would put own king in check
 
-      if (this.board.isInCheck(playerColor)) {
-        // skip invalid move
+      let reductions: i32 = 0;
+
+      if (!skip && !isPV && !this.board.isInCheck(-playerColor))  {
+        hasValidMoves = true;
+
+        if (remainingLevels <= PRUNE_MAX_LEVEL)  {
+          const pruneLowScore = this.board.getScore() * playerColor + unchecked(PRUNE_SAFETY_MARGINS[remainingLevels - 1]);
+          // Skip moves which, even with an added safety margin, are unlikely to increase alpha
+          if (pruneLowScore <= alpha) {
+            skip = true;
+            if (pruneLowScore > bestScore) {
+              bestMove = 0;
+              bestScore = pruneLowScore; // remember score with added margin for cases when all moves are pruned
+            }
+          }
+        }
+
+        if (!skip && !isInCheck && evaluatedMoveCount > 3 && (depth + remainingLevels > 5)) {
+          // Reduce search depth for late moves (i.e. after trying the most promising moves)
+          reductions = 2;
+        }
+      }
+
+      if (skip) {
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
       } else {
-
-        // Late move reduction
-        let reductions: i32 = 0;
-        if (evaluatedMoves > 3 && remainingLevels > 3 && !isPV && !isInCheck
-          && removedPiece == EMPTY  // not a capture move
-          && previousPiece == this.board.getItem(moveEnd)  // not a promotion
-          && !this.board.isInCheck(-playerColor)) {
-
-          reductions = 2;
-        }
+        hasValidMoves = true;
+        evaluatedMoveCount++;
 
         let result = this.recFindBestMove(
           -beta,
@@ -467,7 +497,6 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-        evaluatedMoves++;
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -525,7 +554,7 @@ export class Engine {
 
     } while (true);
 
-    if (bestMove == 0) { // no legal move found?
+    if (!hasValidMoves) {
       if (this.board.isInCheck(playerColor)) {
         // Check mate
         return WHITE_MATE_SCORE + depth;
@@ -539,7 +568,6 @@ export class Engine {
 
     return bestScore;
   };
-
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, depth: i32): i32 {
     if (this.board.isEngineDraw()) {
@@ -713,7 +741,6 @@ export class Engine {
     }
   };
 }
-
 
 class EngineControl {
   private board: Board;
