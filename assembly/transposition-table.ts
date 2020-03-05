@@ -16,8 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { stdio } from './io';
-
 export const MAX_HASH_SIZE_MB = 768;
 
 // Transposition table entry
@@ -33,8 +31,8 @@ const DEPTH_MASK: u64 = 0b111111;
 // Bits 16 - 15: Score Type
 export enum ScoreType {
   EXACT = 0,
-  ALPHA,
-  BETA
+  UPPER_BOUND,
+  LOWER_BOUND
 }
 
 const SCORE_TYPE_BITSHIFT = 15;

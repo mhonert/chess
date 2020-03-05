@@ -25,11 +25,11 @@ import { isCheckMate as isCheckMateFn } from './move-generation';
 import { BLACK } from './board';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
-  [2, 3, 0, 0],
-  [2, 3, 200, 400],
-  [2, 5, 250, 500],
-  [2, 5, 500, 1000],
-  [2, 10, 900, 1500]
+  [3, 0, 0],
+  [3, 200, 400],
+  [5, 250, 500],
+  [5, 500, 1000],
+  [10, 900, 1500]
 ]
 
 export const INT32ARRAY_ID = idof<Int32Array>();
@@ -62,8 +62,11 @@ export function setPosition(fen: string, moves: Int32Array): Int32Array {
 // Calculates the best move for the current player using the given difficulty level
 export function calculateMove(difficultyLevel: i32): i32 {
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
-  const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[3] : levelSettings[2];
-  const move = EngineControl.findBestMove(levelSettings[0], levelSettings[1], maxTime);
+
+  const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[2] : levelSettings[1];
+  const minimumSearchDepth = levelSettings[0];
+
+  const move = EngineControl.findBestMove(minimumSearchDepth, maxTime);
 
   return move;
 }

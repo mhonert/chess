@@ -84,7 +84,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.6");
+  stdio.writeLine("id name Wasabi 1.0.7");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default 1 min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
@@ -149,7 +149,7 @@ function go(parameters: Array<string>): void {
     ? calculateTimeLimit(movetime, wtime, winc, movesToGo)
     : calculateTimeLimit(movetime, btime, binc, movesToGo);
 
-  const move = EngineControl.findBestMove(2, 3, timeLimitMillis);
+  const move = EngineControl.findBestMove(3, timeLimitMillis);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
