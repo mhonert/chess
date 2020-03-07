@@ -129,6 +129,7 @@ export class Engine {
     this.cacheHits = 0;
     this.moveHits = 0;
 
+    const isInCheck = this.board.isInCheck(playerColor);
     const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, 0, 0);
 
     if (moves.length == 1) {
@@ -147,10 +148,8 @@ export class Engine {
 
     this.isCancelPossible = false;
 
-    let depth: i32 = 2; // Starting search depth
-
     // Use iterative deepening, i.e. increase the search depth after each iteration
-    do {
+    for (let depth: i32 = 2; depth < TRANSPOSITION_MAX_DEPTH; depth++) {
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
 
@@ -163,6 +162,9 @@ export class Engine {
 
       let a = -beta; // Search principal variation node with full window
 
+      const allowReductions = !isInCheck && depth > 6;
+      let moveCountAfterPVChange = 0;
+
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
 
@@ -173,35 +175,40 @@ export class Engine {
         const moveEnd = decodeEndIndex(move);
         const previousPiece = this.board.getItem(moveStart);
 
-        const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+        const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
         this.moveCount++;
 
+        let reductions: i32 = (allowReductions && removedPieceId == EMPTY && moveCountAfterPVChange > 3 && !isPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
+          ? 2 : 0;
+
         // Use principal variation search
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, 1, false, true);
         if (result == CANCEL_SEARCH) {
-          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
           break;
         }
 
         // Repeat search if it falls outside the window
-        if (-result > alpha && -result < beta) {
+        if (-result > alpha && (-result < beta || reductions > 0)) {
           result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true);
           if (result == CANCEL_SEARCH) {
-            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
             break;
           }
         }
 
         const score = -result;
 
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
 
         if (score > bestScore) {
+          moveCountAfterPVChange = 0;
           bestScore = score;
           bestMove = move;
           alpha = max(alpha, bestScore);
         }
 
+        moveCountAfterPVChange++;
         a = -(alpha + 1); // Search all other moves (after principal variation) with a zero window
 
         unchecked(moves[i] = encodeScoredMove(move, score));
@@ -216,13 +223,14 @@ export class Engine {
       const iterationDuration = clock.currentMillis() - iterationStartTime;
       const remainingTime = timeLimitMillis - (clock.currentMillis() - this.startTime);
 
-      if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2) || (depth + 1) > TRANSPOSITION_MAX_DEPTH)) {
+      if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2))) {
         if (bestMove != 0) {
-          return encodeScoredMove(bestMove, bestScore);
+          bestScoredMove = encodeScoredMove(bestMove, bestScore);
+          break;
 
         } else {
           // Last search is incomplete => use result of previous iteration
-          return bestScoredMove;
+          break;
 
         }
       }
@@ -235,15 +243,12 @@ export class Engine {
 
       this.sortByScoreDescending(moves);
 
-      depth += 1;
-
       alpha = previousAlpha;
       beta = previousBeta;
-      this.isCancelPossible = depth > minimumDepth;
+      this.isCancelPossible = depth >= minimumDepth;
+    };
 
-    } while (true);
-
-    return 0;
+    return bestScoredMove;
   };
 
   // Recursively calls itself with alternating player colors to
@@ -379,6 +384,8 @@ export class Engine {
 
     const allowReductions: bool = ply + depth > 5;
 
+    let moveCountAfterPVChange = 0;
+
     do {
 
       const targetPieceId = decodePiece(move);
@@ -386,14 +393,14 @@ export class Engine {
       const moveEnd = decodeEndIndex(move);
       const previousPiece = this.board.getItem(moveStart);
 
-      const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+      const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
       this.moveCount++;
 
       let skip: bool = this.board.isInCheck(playerColor); // skip if move would put own king in check
 
       let reductions: i32 = 0;
 
-      if (!skip && !isPV && !this.board.isInCheck(-playerColor))  {
+      if (!skip && !this.board.isInCheck(-playerColor))  {
         hasValidMoves = true;
 
         if (depth <= PRUNE_MAX_LEVEL)  {
@@ -408,14 +415,14 @@ export class Engine {
           }
         }
 
-        if (!skip && !isInCheck && evaluatedMoveCount > 3 && allowReductions) {
+        if (!skip && !isInCheck && moveCountAfterPVChange > 3 && allowReductions && removedPieceId == EMPTY && !isPromotion(previousPiece, targetPieceId)) {
           // Reduce search ply for late moves (i.e. after trying the most promising moves)
           reductions = 2;
         }
       }
 
       if (skip) {
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
 
       } else {
         hasValidMoves = true;
@@ -424,7 +431,7 @@ export class Engine {
         let a = evaluatedMoveCount > 1 ? -(alpha + 1) : -beta;
         let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification);
         if (result == CANCEL_SEARCH) {
-          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
           return CANCEL_SEARCH;
         }
 
@@ -432,7 +439,7 @@ export class Engine {
           // Repeat search without reduction
           result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification);
           if (result == CANCEL_SEARCH) {
-            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
             return CANCEL_SEARCH;
           }
 
@@ -440,7 +447,7 @@ export class Engine {
 
         const score = -result;
 
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
@@ -449,20 +456,21 @@ export class Engine {
 
           // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
           if (bestScore > alpha) {
+            moveCountAfterPVChange = 0;
             alpha = bestScore;
             scoreType = ScoreType.EXACT;
           }
           if (alpha >= beta) {
             this.transpositionTable.writeEntry(ttHash, depth, encodeScoredMove(bestMove, bestScore), ScoreType.LOWER_BOUND);
 
-            if (bestMove != hashMove && removedPiece == EMPTY) {
+            if (bestMove != hashMove && removedPieceId == EMPTY) {
               this.killerMoveTable.writeEntry(ply, moveStart, moveEnd, bestMove);
             }
             return alpha;
           }
         }
-
       }
+      moveCountAfterPVChange++;
 
       if (this.isCancelPossible && (this.moveCount & 3) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
@@ -683,6 +691,11 @@ export class Engine {
       return 0;
     }
   };
+}
+
+@inline
+function isPromotion(previousPiece: i32, newPieceId: i32): bool {
+  return abs(previousPiece) != newPieceId;
 }
 
 class EngineControl {
