@@ -157,8 +157,6 @@ export class Engine {
       let previousAlpha = alpha;
       let previousBeta = beta;
 
-      let isPV = true;
-
       const iterationStartTime = clock.currentMillis();
 
       let bestMove: i32 = 0;
@@ -179,7 +177,7 @@ export class Engine {
         this.moveCount++;
 
         // Use principal variation search
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true, isPV);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true);
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
           break;
@@ -187,7 +185,7 @@ export class Engine {
 
         // Repeat search if it falls outside the window
         if (-result > alpha && -result < beta) {
-          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true, isPV);
+          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true);
           if (result == CANCEL_SEARCH) {
             this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
             break;
@@ -197,7 +195,6 @@ export class Engine {
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-        isPV = false;
 
         if (score > bestScore) {
           bestScore = score;
@@ -251,7 +248,9 @@ export class Engine {
 
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
-  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool, isPV: bool): i32 {
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool): i32 {
+
+    const isPV: bool = (alpha + 1) < beta; // in a principal variation search, non-PV nodes are searched with a zero-window
 
     if (this.board.isEngineDraw()) {
       return 0;
@@ -283,7 +282,7 @@ export class Engine {
     // Internal iterative deepening
     if (scoredMove == 0 && isPV && depth >= 5) {
       const reducedDepth = depth >= 12 ? depth / 3 + 1 : depth / 2;
-      const result = this.recFindBestMove(alpha, beta, playerColor, reducedDepth, ply + 1, false, nullMoveVerification, false);
+      const result = this.recFindBestMove(alpha, beta, playerColor, reducedDepth, ply + 1, false, nullMoveVerification);
       if (result == CANCEL_SEARCH) {
         return CANCEL_SEARCH;
       }
@@ -341,7 +340,7 @@ export class Engine {
     // Null move pruning
     if (!isPV && !nullMovePerformed && depth > 2 && !isInCheck) {
       this.board.performNullMove();
-      const result = this.recFindBestMove(-beta, -beta + 1, -playerColor, depth - 4, ply + 1, true, false, isPV);
+      const result = this.recFindBestMove(-beta, -beta + 1, -playerColor, depth - 4, ply + 1, true, false);
       this.board.undoNullMove();
       if (result == CANCEL_SEARCH) {
         return CANCEL_SEARCH;
@@ -378,6 +377,8 @@ export class Engine {
     let evaluatedMoveCount: i32 = 0;
     let hasValidMoves: bool = false;
 
+    const allowReductions: bool = ply + depth > 5;
+
     do {
 
       const targetPieceId = decodePiece(move);
@@ -407,7 +408,7 @@ export class Engine {
           }
         }
 
-        if (!skip && !isInCheck && evaluatedMoveCount > 3 && (ply + depth > 5)) {
+        if (!skip && !isInCheck && evaluatedMoveCount > 3 && allowReductions) {
           // Reduce search ply for late moves (i.e. after trying the most promising moves)
           reductions = 2;
         }
@@ -421,7 +422,7 @@ export class Engine {
         evaluatedMoveCount++;
 
         let a = evaluatedMoveCount > 1 ? -(alpha + 1) : -beta;
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification, isPV);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification);
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
           return CANCEL_SEARCH;
@@ -429,7 +430,7 @@ export class Engine {
 
         if (-result > alpha && (-result < beta || reductions > 0)) {
           // Repeat search without reduction
-          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification, isPV);
+          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification);
           if (result == CANCEL_SEARCH) {
             this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
             return CANCEL_SEARCH;
@@ -443,7 +444,6 @@ export class Engine {
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
-          isPV = false;
           bestScore = score;
           bestMove = move;
 
