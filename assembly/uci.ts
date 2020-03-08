@@ -23,7 +23,7 @@ import EngineControl from './engine';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
-import { MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
+import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import { WHITE } from './board';
 
 export { _abort } from './io/wasi/abort';
@@ -84,9 +84,9 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.7");
+  stdio.writeLine("id name Wasabi 1.0.8");
   stdio.writeLine("id author mhonert");
-  stdio.writeLine("option name Hash type spin default 1 min 1 max " + MAX_HASH_SIZE_MB.toString());
+  stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
   stdio.writeLine("uciok");
 }
@@ -131,7 +131,7 @@ function position(parameters: Array<string>): bool {
   const moves = parameters.slice(movesStart + 1);
   for (let i = 0; i < moves.length; i++) {
     const move = UCIMove.fromUCINotation(moves[i]);
-    EngineControl.performMove(move.toEncodedMove(board));
+    EngineControl.performMove(move.toEncodedMove(board), false);
   }
 
   return true;

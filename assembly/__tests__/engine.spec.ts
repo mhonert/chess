@@ -165,46 +165,6 @@ describe('Evaluate position', () => {
 
     expect(score).toBeGreaterThan(0);
   });
-
-  it('Calculate score if white is check mate', () => {
-    const board: Board = new Board([
-      0,  0,  0,  0, +K,  0,  0, -R,
-      -R,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0, -K,  0,  0,  0,
-      0, 0, 0
-    ]);
-
-    const engine = new Engine();
-    engine.setBoard(board);
-    const score = engine.evaluatePosition(WHITE, 0);
-
-    expect(score).toBe(WHITE_MATE_SCORE);
-  });
-
-  it('Calculate score if black is check mate', () => {
-    const board: Board = new Board([
-      0,  0,  0,  0, -K,  0,  0, +R,
-      +R,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0, +K,  0,  0,  0,
-      0, 0, 0
-    ]);
-
-    const engine = new Engine();
-    engine.setBoard(board);
-    const score = engine.evaluatePosition(BLACK, 0);
-
-    expect(score).toBe(BLACK_MATE_SCORE);
-  });
 });
 
 describe('Finds moves', () => {

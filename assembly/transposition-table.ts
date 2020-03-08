@@ -42,7 +42,7 @@ const SCORE_TYPE_MASK: u64 = 0b11;
 const AGE_MASK: u64 = 0b111111111111111;
 
 
-const DEFAULT_SIZE_MB = 1;
+export const DEFAULT_SIZE_MB = 32;
 const perEntryByteSize = 8 + 4;
 
 export class TranspositionTable {
@@ -73,14 +73,13 @@ export class TranspositionTable {
     this.age = (this.age + 1) & i32(AGE_MASK);
   }
 
+  @inline
   writeEntry(hash: u64, depth: i32, scoredMove: i32, type: ScoreType): void {
     const index = this.calculateIndex(hash);
 
-    const existingEntry = unchecked(this.entries[index]);
-    const existingDepth = i32((existingEntry >> DEPTH_BITSHIFT) & DEPTH_MASK);
-    const existingAge = i32(existingEntry & AGE_MASK);
-    if (existingEntry != 0 && existingAge == this.age && depth < existingDepth) {
-      return; // keep existing entry
+    const entry = unchecked(this.entries[index]);
+    if (entry != 0 && i32(entry & AGE_MASK) == this.age && depth < i32((entry >> DEPTH_BITSHIFT) & DEPTH_MASK)) {
+      return;
     }
 
     let newEntry: u64 = hash & HASHCHECK_MASK;
@@ -92,31 +91,18 @@ export class TranspositionTable {
     unchecked(this.moves[index] = scoredMove);
   }
 
-
-  // Returns 0 if no move was found
-  getScoredMove(hash: u64): i32 {
+  @inline
+  getEntry(hash: u64): u64 {
     const index = this.calculateIndex(hash);
 
     const entry = unchecked(this.entries[index]);
-    const existingAge = i32(entry & AGE_MASK);
-    if (entry == 0 || existingAge > this.age || ((entry & HASHCHECK_MASK) != (hash & HASHCHECK_MASK))) {
+    const ageDiff = this.age - i32(entry & AGE_MASK);
+
+    if (entry == 0 || ageDiff < 0 || ageDiff > 1 || (entry & HASHCHECK_MASK) != (hash & HASHCHECK_MASK)) {
       return 0;
     }
 
-    return unchecked(this.moves[index]);
-  }
-
-
-  @inline
-  getDepth(hash: u64): i32 {
-    const index = this.calculateIndex(hash);
-    return i32((unchecked(this.entries[index]) >> DEPTH_BITSHIFT) & DEPTH_MASK);
-  }
-
-  @inline
-  getScoreType(hash: u64): ScoreType {
-    const index = this.calculateIndex(hash);
-    return i32((unchecked(this.entries[index]) >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
+    return u64(unchecked(this.moves[index])) << 32 | (entry & ~HASHCHECK_MASK);
   }
 
   @inline
@@ -131,3 +117,20 @@ export class TranspositionTable {
   }
 
 }
+
+
+@inline
+export function getScoredMove(entry: u64): i32 {
+  return i32(entry >> 32);
+}
+
+@inline
+export function getDepth(entry: u64): i32 {
+  return i32((entry >> DEPTH_BITSHIFT) & DEPTH_MASK);
+}
+
+@inline
+export function getScoreType(entry: u64): ScoreType {
+  return i32((entry >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
+}
+

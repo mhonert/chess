@@ -215,55 +215,17 @@ class MoveGenerator {
   }
 
   @inline
-  isValidMove(board: Board, activeColor: i32, move: i32): bool {
-    this.board = board;
-    this.count = 0;
-    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
-    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
-    this.emptyBitBoard = ~this.occupiedBitBoard;
-
+  isLikelyValidMove(board: Board, activeColor: i32, move: i32): bool {
     const start = decodeStartIndex(move);
-    const end = decodeStartIndex(move);
-    const piece = this.board.getItem(start);
+    const piece = board.getItem(start);
     if (piece == EMPTY || sign(piece) != activeColor) {
       return false;
     }
 
-    switch (piece * activeColor) {
-      case PAWN:
-        if (activeColor == WHITE) {
-          this.generateWhitePawnMoves();
-        } else {
-          this.generateBlackPawnMoves();
-        }
-        break;
-      case KNIGHT:
-        this.generateKnightMoves(activeColor, start);
-        break;
-      case BISHOP:
-        this.generateBishopMoves(activeColor, BISHOP, start);
-        break;
-      case ROOK:
-        this.generateRookMoves(activeColor, ROOK, start);
-        break;
-      case QUEEN:
-        if ((start >> 3) == (end >> 3) || (start & 7) == (end & 7)) {
-          this.generateRookMoves(activeColor, QUEEN, start);
-        } else {
-          this.generateBishopMoves(activeColor, QUEEN, start);
-        }
-        break;
-      case KING:
-        if (activeColor == WHITE) {
-          this.generateWhiteKingMoves(start);
-        } else {
-          this.generateBlackKingMoves(start);
-        }
-        break;
-    }
+    const end = decodeEndIndex(move);
+    const targetPiece = board.getItem(end);
 
-    return this.moves.subarray(0, this.count).includes(move);
-
+    return (targetPiece == EMPTY || sign(targetPiece) != activeColor);
   }
 
   getGeneratedMoves(): Int32Array {
@@ -738,8 +700,8 @@ export function mainPieceMoveCount(board: Board, activeColor: i32): i32 {
 }
 
 @inline
-export function isValidMove(board: Board, activeColor: i32, move: i32): bool {
-  return DEFAULT_INSTANCE.isValidMove(board, activeColor, move);
+export function isLikelyValidMove(board: Board, activeColor: i32, move: i32): bool {
+  return DEFAULT_INSTANCE.isLikelyValidMove(board, activeColor, move);
 }
 
 @inline

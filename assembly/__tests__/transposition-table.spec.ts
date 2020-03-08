@@ -16,7 +16,13 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from '../transposition-table';
+import {
+  getDepth,
+  getScoredMove, getScoreType,
+  ScoreType,
+  TRANSPOSITION_MAX_DEPTH,
+  TranspositionTable
+} from '../transposition-table';
 import { decodeScore, encodeMove, encodeScoredMove } from '../move-generation';
 import { MAX_SCORE, MIN_SCORE } from '../engine';
 
@@ -32,9 +38,11 @@ describe("Transposition table", () => {
     const tt = new TranspositionTable();
     tt.writeEntry(hash, depth, encodeScoredMove(move, score), type);
 
-    expect(tt.getScoredMove(hash)).toBe(encodeScoredMove(move, score), "move does not match");
-    expect(tt.getDepth(hash)).toBe(depth, "Depth does not match");
-    expect(tt.getScoreType(hash)).toBe(type, "Type does not match");
+    const entry: u64 = tt.getEntry(hash);
+
+    expect(getScoredMove(entry)).toBe(encodeScoredMove(move, score), "move does not match");
+    expect(getDepth(entry)).toBe(depth, "Depth does not match");
+    expect(getScoreType(entry)).toBe(type, "Type does not match");
   });
 
   it("encodes negative score correctly", () => {
@@ -44,7 +52,8 @@ describe("Transposition table", () => {
     const tt = new TranspositionTable();
     tt.writeEntry(hash, 1, encodeScoredMove(0, score), ScoreType.EXACT);
 
-    expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
+    const entry: u64 = tt.getEntry(hash);
+    expect(decodeScore(getScoredMove(entry))).toBe(score, "Score does not match");
   });
 
   it("encodes positive score correctly", () => {
@@ -54,7 +63,8 @@ describe("Transposition table", () => {
     const tt = new TranspositionTable();
     tt.writeEntry(hash, 1, encodeScoredMove(0, score), ScoreType.EXACT);
 
-    expect(decodeScore(tt.getScoredMove(hash))).toBe(score, "Score does not match");
+    const entry: u64 = tt.getEntry(hash);
+    expect(decodeScore(getScoredMove(entry))).toBe(score, "Score does not match");
   });
 
 });

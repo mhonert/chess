@@ -48,7 +48,7 @@ function playAgainstSelf(board: Board, depth: i32, moveLimit: i32): void {
   EngineControl.setBoard(board);
   while (board.getFullMoveCount() <= moveLimit) {
     const move = EngineControl.findBestMove(depth, 0);
-    board.performEncodedMove(move);
+    EngineControl.performMove(move);
     if (isCheckMate(board, board.getActivePlayer())) {
       trace("Player " + board.getActivePlayer().toString() + " is checkmate");
       return;

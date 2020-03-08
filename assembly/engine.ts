@@ -28,9 +28,15 @@ import {
   generateFilteredMoves,
   generateMoves,
   isCheckMate,
-  isValidMove
+  isLikelyValidMove
 } from './move-generation';
-import { ScoreType, TRANSPOSITION_MAX_DEPTH, TranspositionTable } from './transposition-table';
+import {
+  getDepth,
+  getScoredMove, getScoreType,
+  ScoreType,
+  TRANSPOSITION_MAX_DEPTH,
+  TranspositionTable
+} from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
 import { PAWN_VALUE, PIECE_VALUES, QUEEN_VALUE, ROOK_VALUE } from './pieces';
@@ -61,9 +67,7 @@ export class Engine {
   private startTime: i64 = 0;
   private moveCount: i32 = 0;
   private qsMoveCount: i32 = 0;
-  private cacheHits: i32 = 0;
   private timeLimitMillis: i64;
-  private moveHits: i32 = 0;
   private isEndGame: bool = false;
   private isCancelPossible: bool = false;
 
@@ -108,8 +112,10 @@ export class Engine {
     this.isEndGame = board.isEndGame();
   }
 
-  refreshStateAfterMove(): void {
-    this.transpositionTable.increaseAge();
+  refreshStateAfterMove(increaseTTableAge: bool): void {
+    if (increaseTTableAge) {
+      this.transpositionTable.increaseAge();
+    }
     this.killerMoveTable.clear();
     if (this.board.getHalfMoveClock() == 0) {
       this.history.clear();
@@ -126,8 +132,6 @@ export class Engine {
     this.startTime = clock.currentMillis();
     this.moveCount = 0;
     this.qsMoveCount = 0;
-    this.cacheHits = 0;
-    this.moveHits = 0;
 
     const isInCheck = this.board.isInCheck(playerColor);
     const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, 0, 0);
@@ -282,17 +286,20 @@ export class Engine {
 
     // Check transposition table
     const ttHash = this.board.getHash();
-    let scoredMove = this.transpositionTable.getScoredMove(ttHash);
+    let ttEntry = this.transpositionTable.getEntry(ttHash);
 
     // Internal iterative deepening
-    if (scoredMove == 0 && isPV && depth >= 5) {
+    if (ttEntry == 0 && isPV && depth >= 5) {
       const reducedDepth = depth >= 12 ? depth / 3 + 1 : depth / 2;
       const result = this.recFindBestMove(alpha, beta, playerColor, reducedDepth, ply + 1, false, nullMoveVerification);
       if (result == CANCEL_SEARCH) {
         return CANCEL_SEARCH;
       }
-      scoredMove = this.transpositionTable.getScoredMove(ttHash);
+
+      ttEntry = this.transpositionTable.getEntry(ttHash);
     }
+
+    let scoredMove = getScoredMove(ttEntry);
 
     let moves: Int32Array | null = null;
 
@@ -301,18 +308,15 @@ export class Engine {
     let moveIndex: i32 = 0;
 
     if (scoredMove != 0) {
-      if (this.transpositionTable.getDepth(ttHash) >= depth) {
+      if (getDepth(ttEntry) >= depth) {
         const score = decodeScore(scoredMove);
-        const type = this.transpositionTable.getScoreType(ttHash);
 
-        switch (type) {
+        switch (getScoreType(ttEntry)) {
           case ScoreType.EXACT:
-            this.cacheHits++;
             return score;
 
           case ScoreType.UPPER_BOUND:
             if (score <= alpha) {
-              this.cacheHits++;
               return alpha;
             }
 
@@ -320,25 +324,20 @@ export class Engine {
 
           case ScoreType.LOWER_BOUND:
             if (score >= beta) {
-              this.cacheHits++;
               return beta;
             }
         }
       }
 
       move = decodeMove(scoredMove);
-      if (move == 0) {
+
+      // Validate hash move for additional protection against hash collisions
+      if (move == 0 || !isLikelyValidMove(this.board, playerColor, decodeMove(scoredMove))) {
         scoredMove = 0;
       }
+
       hashMove = move;
-
-      this.moveHits++;
     }
-
-    if (scoredMove != 0 && !isValidMove(this.board, playerColor, decodeMove(scoredMove))) {
-      scoredMove = 0;
-    }
-
 
     let failHigh: bool = false;
 
@@ -472,7 +471,7 @@ export class Engine {
       }
       moveCountAfterPVChange++;
 
-      if (this.isCancelPossible && (this.moveCount & 3) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
+      if (this.isCancelPossible && (this.moveCount & 15) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
         return CANCEL_SEARCH;
       }
@@ -669,13 +668,6 @@ export class Engine {
    */
   @inline
   evaluatePosition(activePlayer: i32, ply: i32): i32 {
-    // Check mate is the best possible score for the other player
-    if (activePlayer == BLACK && isCheckMate(this.board, BLACK)) {
-      return BLACK_MATE_SCORE - ply;
-    } else if (activePlayer == WHITE && isCheckMate(this.board, WHITE)) {
-      return WHITE_MATE_SCORE + ply;
-    }
-
     return this.board.getScore();
   };
 
@@ -716,10 +708,10 @@ class EngineControl {
     this.engine.setBoard(board);
   }
 
-  performMove(move: i32): void {
+  performMove(move: i32, increaseTTableAge: bool = true): void {
     this.board.performEncodedMove(move);
     this.board.updateEndGameStatus();
-    this.engine.refreshStateAfterMove();
+    this.engine.refreshStateAfterMove(increaseTTableAge);
   }
 
   perft(depth: i32): u64 {
