@@ -166,7 +166,7 @@ export class Engine {
 
       let a = -beta; // Search principal variation node with full window
 
-      const allowReductions = !isInCheck && depth > 7;
+      const allowReductions = !isInCheck && depth >= 7;
       let moveCountAfterPVChange = 0;
 
       for (let i: i32 = 0; i < moves.length; i++) {
@@ -381,7 +381,7 @@ export class Engine {
     let evaluatedMoveCount: i32 = 0;
     let hasValidMoves: bool = false;
 
-    const allowReductions: bool = ply + depth > 6;
+    const allowReductions: bool = depth > 2;
 
     let moveCountAfterPVChange = 0;
 
