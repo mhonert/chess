@@ -39,7 +39,7 @@ import {
 } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { PAWN_VALUE, PIECE_VALUES, QUEEN_VALUE, ROOK_VALUE } from './pieces';
+import { PAWN, PAWN_VALUE, PIECE_VALUES, QUEEN_VALUE, ROOK_VALUE } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
@@ -182,7 +182,7 @@ export class Engine {
         const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
         this.moveCount++;
 
-        let reductions: i32 = (allowReductions && removedPieceId == EMPTY && moveCountAfterPVChange > 3 && !isPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
+        let reductions: i32 = (allowReductions && removedPieceId == EMPTY && moveCountAfterPVChange > 3 && !isPawnMoveCloseToPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
           ? 2 : 0;
 
         // Use principal variation search
@@ -414,7 +414,7 @@ export class Engine {
           }
         }
 
-        if (!skip && !isInCheck && moveCountAfterPVChange > 3 && allowReductions && removedPieceId == EMPTY && !isPromotion(previousPiece, targetPieceId)) {
+        if (!skip && !isInCheck && moveCountAfterPVChange > 3 && allowReductions && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
           // Reduce search ply for late moves (i.e. after trying the most promising moves)
           reductions = 2;
         }
@@ -686,8 +686,9 @@ export class Engine {
 }
 
 @inline
-function isPromotion(previousPiece: i32, newPieceId: i32): bool {
-  return abs(previousPiece) != newPieceId;
+function isPawnMoveCloseToPromotion(previousPiece: i32, moveEnd: i32): bool {
+  return (previousPiece == PAWN && moveEnd <= 23) || // White moves to last three lines
+         (previousPiece == -PAWN && moveEnd >= 40); // Black moves to last three lines
 }
 
 class EngineControl {
