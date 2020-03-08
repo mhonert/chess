@@ -22,7 +22,7 @@
 
 import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
-import { BLACK } from './board';
+import { BLACK, WHITE } from './board';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [3, 0, 0],
@@ -41,6 +41,8 @@ const THREEFOLD_REPETITION_DRAW = 8;
 const FIFTYMOVE_DRAW = 16;
 const INSUFFICIENT_MATERIAL_DRAW = 32;
 const ACTIVE_PLAYER = 64; // 0 - White, 1 - Black
+const WHITE_IN_CHECK = 128;
+const BLACK_IN_CHECK = 256;
 
 // Resets the engine state for a new game
 export function newGame(): void {
@@ -105,6 +107,8 @@ function encodeChessState(checkThreefoldRepetition: bool): Int32Array {
     | (isFiftyMoveDraw ? FIFTYMOVE_DRAW : 0)
     | (isInsufficientMaterialDraw ? INSUFFICIENT_MATERIAL_DRAW : 0)
     | ((board.getActivePlayer() == BLACK) ? ACTIVE_PLAYER : 0)
+    | (board.isInCheck(WHITE) ? WHITE_IN_CHECK : 0)
+    | (board.isInCheck(BLACK) ? BLACK_IN_CHECK : 0)
 
   for (let i = 0; i < moves.length; i++) {
     stateArray[i + 65] = moves[i];

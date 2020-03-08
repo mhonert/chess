@@ -63,6 +63,7 @@ const Game = () => {
   const updateGame = useCallback(async state => {
     setBoard(state.board);
     setAvailableMoves(state.moves);
+
     if (state.gameEnded) {
       setGameEnded(true);
 
@@ -94,6 +95,10 @@ const Game = () => {
   const calculateAIMove = useCallback(async () => {
     clearAvailableMoves();
     setAiTurn(true);
+
+    if (difficultyLevel < 5) { // add small delay for all, but the highest difficulty level
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
 
     const move = await engine.calculateMove(difficultyLevel);
 

@@ -80,6 +80,8 @@ const THREEFOLD_REPETITION_DRAW = 8;
 const FIFTYMOVE_DRAW = 16;
 const INSUFFICIENT_MATERIAL_DRAW = 32;
 const ACTIVE_PLAYER = 64; // 0 - White, 1 - Black
+const WHITE_IN_CHECK = 128;
+const BLACK_IN_CHECK = 256;
 
 function decodeGameState(gameState) {
   const board = gameState.slice(0, 64);
@@ -92,6 +94,8 @@ function decodeGameState(gameState) {
     gameEnded: (state & GAME_ENDED) !== 0,
     checkMate: (state & CHECK_MATE) !== 0,
     staleMate: (state & STALE_MATE) !== 0,
+    whiteInCheck: (state & WHITE_IN_CHECK) !== 0,
+    blackInCheck: (state & BLACK_IN_CHECK) !== 0,
     threefoldRepetition: (state & THREEFOLD_REPETITION_DRAW) !== 0,
     fiftyMoveDraw: (state & FIFTYMOVE_DRAW) !== 0,
     insufficientMaterial: (state & INSUFFICIENT_MATERIAL_DRAW) !== 0,
