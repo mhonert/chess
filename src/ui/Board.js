@@ -20,7 +20,7 @@ import React from 'react';
 import Field from './Field';
 import Piece from './Piece';
 import styled from 'styled-components/macro';
-import { BLACK, WHITE } from '../engine/constants';
+import { BLACK, K, WHITE } from '../engine/constants';
 
 const BoardGrid = styled.div`
     display: grid;
@@ -39,7 +39,7 @@ const BoardGrid = styled.div`
     box-shadow: 3px 3px 3px #586e75;
 `;
 
-const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
+const Board = ({board, isRotated, inCheck, lastMove, currentPieceMoves, handlePlayerMove, updatePossibleMoves, clearPossibleMoves}) => {
   return (
     <BoardGrid isRotated={isRotated}>
       {board.slice(0, 64).map((_, idx) => {
@@ -55,6 +55,7 @@ const Board = ({board, isRotated, lastMove, currentPieceMoves, handlePlayerMove,
             isStart={rotatedIndex === lastMove.start}
             isEnd={rotatedIndex === lastMove.end}
             isPossibleTarget={currentPieceMoves.has(rotatedIndex)}
+            isInCheck={Math.abs(item) === K && Math.sign(item) === inCheck}
           >
             {item !== 0 && (
               <Piece

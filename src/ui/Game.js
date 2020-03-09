@@ -51,6 +51,7 @@ const Game = () => {
   const [difficultyLevel, setDifficultyLevel] = useState(3);
   const [moveHistory, setMoveHistory] = useState([]);
   const [promotion, setPromotion] = useState(undefined);
+  const [inCheck, setInCheck] = useState(0);
 
   const lastMove = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : { start: -1, end: -1 };
 
@@ -63,6 +64,14 @@ const Game = () => {
   const updateGame = useCallback(async state => {
     setBoard(state.board);
     setAvailableMoves(state.moves);
+
+    if (state.whiteInCheck) {
+      setInCheck(WHITE);
+    } else if (state.blackInCheck) {
+      setInCheck(BLACK);
+    } else {
+      setInCheck(0);
+    }
 
     if (state.gameEnded) {
       setGameEnded(true);
@@ -97,7 +106,7 @@ const Game = () => {
     setAiTurn(true);
 
     if (difficultyLevel < 5) { // add small delay for all, but the highest difficulty level
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise(resolve => setTimeout(resolve, 75));
     }
 
     const move = await engine.calculateMove(difficultyLevel);
@@ -229,6 +238,7 @@ const Game = () => {
             handlePlayerMove={handlePlayerMove}
             updatePossibleMoves={updatePossibleMoves}
             clearPossibleMoves={clearPossibleMoves}
+            inCheck={inCheck}
           />
           <GameMenu
             isAiThinking={isAiTurn}
