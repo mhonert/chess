@@ -221,8 +221,10 @@ export class Engine {
 
       }
 
-      const iterationDuration = clock.currentMillis() - iterationStartTime;
-      const remainingTime = timeLimitMillis - (clock.currentMillis() - this.startTime);
+      const currentTime = clock.currentMillis();
+      const iterationDuration = currentTime - iterationStartTime;
+      const totalDuration = currentTime - this.startTime;
+      const remainingTime = timeLimitMillis - totalDuration;
 
       if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2))) {
         if (bestMove != 0) {
@@ -245,7 +247,7 @@ export class Engine {
       const nodesInfo = " nodes " + this.nodeCount.toString();
       const npsInfo = nodesPerSecond > 0 ? " nps " + nodesPerSecond.toString() : "";
 
-      const timeInfo = " time " + iterationDuration.toString();
+      const timeInfo = " time " + totalDuration.toString();
 
       stdio.writeLine("info " + depthInfo + scoreInfo + nodesInfo + npsInfo + timeInfo + pvInfo);
 
