@@ -65,8 +65,7 @@ export class Engine {
   private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
-  private moveCount: i32 = 0;
-  private qsMoveCount: i32 = 0;
+  private nodeCount: u64 = 0;
   private timeLimitMillis: i64;
   private isEndGame: bool = false;
   private isCancelPossible: bool = false;
@@ -130,8 +129,6 @@ export class Engine {
 
     this.timeLimitMillis = timeLimitMillis;
     this.startTime = clock.currentMillis();
-    this.moveCount = 0;
-    this.qsMoveCount = 0;
 
     const isInCheck = this.board.isInCheck(playerColor);
     const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, 0, 0);
@@ -154,6 +151,7 @@ export class Engine {
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
     for (let depth: i32 = 2; depth < TRANSPOSITION_MAX_DEPTH; depth++) {
+      this.nodeCount = 0;
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
 
@@ -180,7 +178,6 @@ export class Engine {
         const previousPiece = this.board.getItem(moveStart);
 
         const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
-        this.moveCount++;
 
         let reductions: i32 = (allowReductions && removedPieceId == EMPTY && moveCountAfterPVChange > 3 && !isPawnMoveCloseToPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
           ? 2 : 0;
@@ -241,9 +238,16 @@ export class Engine {
 
       bestScoredMove = encodeScoredMove(bestMove, bestScore);
       const depthInfo = "depth " + depth.toString();
-      const scoreInfo = "score cp " + (bestScore * playerColor).toString();
-      const pvInfo = "pv " + UCIMove.fromEncodedMove(this.board, bestMove).toUCINotation();
-      stdio.writeLine("info " + depthInfo + " " + scoreInfo + " " + pvInfo);
+      const scoreInfo = " score cp " + (bestScore * playerColor).toString();
+      const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
+      const nodesPerSecond = iterationDuration > 0 ? this.nodeCount * 1000 / iterationDuration : 0;
+
+      const nodesInfo = " nodes " + this.nodeCount.toString();
+      const npsInfo = nodesPerSecond > 0 ? " nps " + nodesPerSecond.toString() : "";
+
+      const timeInfo = " time " + iterationDuration.toString();
+
+      stdio.writeLine("info " + depthInfo + scoreInfo + nodesInfo + npsInfo + timeInfo + pvInfo);
 
       this.sortByScoreDescending(moves);
 
@@ -255,9 +259,35 @@ export class Engine {
     return bestScoredMove;
   };
 
+  private extractPV(move: i32, depth: i32): string {
+    const uciMove = UCIMove.fromEncodedMove(this.board, move).toUCINotation();
+    if (depth == 0) {
+      return uciMove;
+    }
+
+    const targetPieceId = decodePiece(move);
+    const moveStart = decodeStartIndex(move);
+    const moveEnd = decodeEndIndex(move);
+    const previousPiece = this.board.getItem(moveStart);
+    const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
+
+    const entry = this.transpositionTable.getEntry(this.board.getHash());
+    const nextMove = entry != 0 ? decodeMove(getScoredMove(entry)) : 0;
+
+    const followUpUciMoves = nextMove != 0 && isLikelyValidMove(this.board, this.board.getActivePlayer(), nextMove)
+      ? " " + this.extractPV(nextMove, depth - 1)
+      : "";
+
+    this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+
+    return uciMove + followUpUciMoves;
+  }
+
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool): i32 {
+
+    this.nodeCount++;
 
     const isPV: bool = (alpha + 1) < beta; // in a principal variation search, non-PV nodes are searched with a zero-window
 
@@ -393,7 +423,6 @@ export class Engine {
       const previousPiece = this.board.getItem(moveStart);
 
       const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
-      this.moveCount++;
 
       let skip: bool = this.board.isInCheck(playerColor); // skip if move would put own king in check
 
@@ -471,7 +500,7 @@ export class Engine {
       }
       moveCountAfterPVChange++;
 
-      if (this.isCancelPossible && (this.moveCount & 15) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
+      if (this.isCancelPossible && (this.nodeCount & 15) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
         return CANCEL_SEARCH;
       }
@@ -520,6 +549,8 @@ export class Engine {
   };
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, ply: i32): i32 {
+    this.nodeCount++;
+
     if (this.board.isEngineDraw()) {
       return 0;
     }
@@ -553,7 +584,6 @@ export class Engine {
       const previousPiece = this.board.getItem(moveStart);
 
       const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
-      this.qsMoveCount++;
 
       if (this.board.isInCheck(activePlayer)) {
         // Invalid move
