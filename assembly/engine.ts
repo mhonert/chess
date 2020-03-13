@@ -445,10 +445,16 @@ export class Engine {
           }
         }
 
-        if (!skip && !isInCheck && moveCountAfterPVChange > 3 && allowReductions && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
-          // Reduce search ply for late moves (i.e. after trying the most promising moves)
-          reductions = 2;
+        if (!skip && !isInCheck && allowReductions) {
+          if (moveCountAfterPVChange > 3 && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
+            // Reduce search depth for late moves (i.e. after trying the most promising moves)
+            reductions = 2;
+          } else if (removedPieceId <= abs(previousPiece) && this.board.isAttacked(-playerColor, moveEnd) && !this.board.isAttacked(playerColor, moveEnd)) {
+            // Reduce search depth if the target square is empty or has a lower/equal value, is defended and not defended by an own piece
+            reductions = 2;
+          }
         }
+
       }
 
       if (skip) {
@@ -585,6 +591,17 @@ export class Engine {
       const moveEnd = decodeEndIndex(move);
       const previousPiece = this.board.getItem(moveStart);
 
+      if (abs(this.board.getItem(moveEnd)) <= abs(previousPiece) && this.board.isAttacked(-activePlayer, moveEnd)) {
+        const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
+        const isAttackerDefended = this.board.isAttacked(activePlayer, moveEnd);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
+
+        if (!isAttackerDefended) {
+          // skip move if the attacked piece has lower or equal value, is defended and not defended by an own piece
+          continue;
+        }
+      }
+
       const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
 
       if (this.board.isInCheck(activePlayer)) {
@@ -606,7 +623,6 @@ export class Engine {
     }
     return alpha;
   }
-
 
   // Move evaluation heuristic for initial move ordering
   // (low values are better for black and high values are better for white)

@@ -84,7 +84,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.8");
+  stdio.writeLine("id name Wasabi 1.0.9");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
