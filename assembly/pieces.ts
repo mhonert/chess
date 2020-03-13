@@ -16,8 +16,6 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { toInt32Array } from './util';
-
 export const PAWN: i32 = 1;
 export const KNIGHT: i32 = 2;
 export const BISHOP: i32 = 3;
@@ -32,9 +30,7 @@ export const BISHOP_VALUE = 330;
 export const KNIGHT_VALUE = 320;
 export const PAWN_VALUE = 100;
 
-export const PIECE_VALUES: Int32Array = toInt32Array([PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
-
-export const pieces: Array<i32> = [PAWN, KNIGHT, BISHOP, ROOK, QUEEN, KING];
+export const PIECE_VALUES: StaticArray<i32> = StaticArray.fromArray([PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
 
 export const P = PAWN;
 export const N = KNIGHT;
@@ -43,11 +39,11 @@ export const R = ROOK;
 export const Q = QUEEN;
 export const K = KING;
 
-export const KNIGHT_DIRECTIONS: Int32Array = toInt32Array([17, 15, 10, 6, -10, -6, -15, -17]);
-export const KING_DIRECTIONS: Int32Array = toInt32Array([1, 8, -1, -8, 7, 9, -7, -9]);
+export const KNIGHT_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([17, 15, 10, 6, -10, -6, -15, -17]);
+export const KING_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([1, 8, -1, -8, 7, 9, -7, -9]);
 
-export const BISHOP_DIRECTIONS: Int32Array = toInt32Array([-7, -9, 7, 9]);
-export const ROOK_DIRECTIONS: Int32Array = toInt32Array([-1, -8, 1, 8]);
+export const BISHOP_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([-7, -9, 7, 9]);
+export const ROOK_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([-1, -8, 1, 8]);
 
 export const WHITE_LEFT_ROOK_START = 56;
 export const WHITE_RIGHT_ROOK_START = 63;

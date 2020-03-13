@@ -68,9 +68,7 @@ export function calculateMove(difficultyLevel: i32): i32 {
   const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[2] : levelSettings[1];
   const minimumSearchDepth = levelSettings[0];
 
-  const move = EngineControl.findBestMove(minimumSearchDepth, maxTime);
-
-  return move;
+  return EngineControl.findBestMove(minimumSearchDepth, maxTime);
 }
 
 // Applies the given move to the current board and returns the encoded game state

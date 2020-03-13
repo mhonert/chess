@@ -44,7 +44,6 @@ import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
-import { toInt32Array } from './util';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -54,14 +53,13 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-const PRUNE_SAFETY_MARGINS = toInt32Array([0, PAWN_VALUE, ROOK_VALUE, ROOK_VALUE + PAWN_VALUE, QUEEN_VALUE, QUEEN_VALUE + PAWN_VALUE]);
+const PRUNE_SAFETY_MARGINS = StaticArray.fromArray<i32>([0, PAWN_VALUE, ROOK_VALUE, ROOK_VALUE + PAWN_VALUE, QUEEN_VALUE, QUEEN_VALUE + PAWN_VALUE]);
 const PRUNE_MAX_LEVEL: i32 = PRUNE_SAFETY_MARGINS.length;
 
 export class Engine {
 
-  private tablesInitialized: bool = false;
-  private transpositionTable: TranspositionTable;
-  private killerMoveTable: KillerMoveTable;
+  private transpositionTable: TranspositionTable = new TranspositionTable();
+  private killerMoveTable: KillerMoveTable = new KillerMoveTable();
   private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
@@ -71,15 +69,8 @@ export class Engine {
   private isCancelPossible: bool = false;
 
   constructor() {
-    this.reset();
-  }
-
-  init(): void {
-    if (!this.tablesInitialized) {
-      this.tablesInitialized = true;
-      this.transpositionTable = new TranspositionTable();
-      this.killerMoveTable = new KillerMoveTable();
-    }
+    this.board = fromFEN(STARTPOS);
+    this.board.setHistory(this.history);
   }
 
   resizeTranspositionTable(sizeInMB: u32): void {
@@ -87,21 +78,16 @@ export class Engine {
   }
 
   reset(): void {
+    this.transpositionTable.clear();
     this.history.clear();
     this.board = fromFEN(STARTPOS);
     this.board.setHistory(this.history);
-    if (this.transpositionTable != null) {
-      this.transpositionTable.clear();
-    }
   }
 
   setBoard(board: Board): void {
-    if (!this.tablesInitialized) {
-      this.init();
-    } else {
-      this.killerMoveTable.clear();
-      this.transpositionTable.increaseAge();
-    }
+    this.killerMoveTable.clear();
+    this.transpositionTable.increaseAge();
+
     this.board = board;
 
     this.history.clear();
@@ -333,7 +319,7 @@ export class Engine {
 
     let scoredMove = getScoredMove(ttEntry);
 
-    let moves: Int32Array | null = null;
+    let moves: StaticArray<i32> | null = null;
 
     let move: i32 = 0;
     let hashMove: i32 = 0;
@@ -647,7 +633,7 @@ export class Engine {
   // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
   // the moves array can be modified and sorted in-place.
   @inline
-  sortMovesByScore(moves: Int32Array, playerColor: i32, primaryKillerMove: i32, secondaryKillerMove: i32): Int32Array {
+  sortMovesByScore(moves: StaticArray<i32>, playerColor: i32, primaryKillerMove: i32, secondaryKillerMove: i32): StaticArray<i32> {
     const killerScore = 256 * playerColor;
 
     for (let i: i32 = 0; i < moves.length; i++) {
@@ -673,7 +659,7 @@ export class Engine {
   };
 
   @inline
-  sortByScoreDescending(moves: Int32Array): void {
+  sortByScoreDescending(moves: StaticArray<i32>): void {
     // Basic insertion sort
     for (let i = 1; i < moves.length; i++) {
       const x = unchecked(moves[i]);
@@ -692,7 +678,7 @@ export class Engine {
   }
 
   @inline
-  sortByScoreAscending(moves: Int32Array): void {
+  sortByScoreAscending(moves: StaticArray<i32>): void {
     // Basic insertion sort
     for (let i = 1; i < moves.length; i++) {
       const x = unchecked(moves[i]);
@@ -743,10 +729,6 @@ class EngineControl {
   private board: Board;
   private engine: Engine = new Engine();
 
-  init(): void {
-    this.engine.init();
-  }
-
   setPosition(fen: string): void {
     this.setBoard(fromFEN(fen));
   }
@@ -782,7 +764,7 @@ class EngineControl {
     this.engine.reset();
   }
 
-  generateAvailableMoves(): Int32Array {
+  generateAvailableMoves(): StaticArray<i32> {
     return generateFilteredMoves(this.board, this.board.getActivePlayer());
   }
 

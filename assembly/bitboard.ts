@@ -18,7 +18,6 @@
 
 
 import { BLACK, indexFromColor, MAX_FIELD_DISTANCE, WHITE } from './board';
-import { toInt32Array } from './util';
 
 
 // Patterns to check, whether the fields between king and rook are empty
@@ -38,8 +37,8 @@ function isBorder(boardPos: i32): bool {
 }
 
 
-function calculateSingleMovePatterns(directions: Int32Array): Uint64Array {
-  const patterns = new Uint64Array(64);
+function calculateSingleMovePatterns(directions: StaticArray<i32>): StaticArray<u64> {
+  const patterns = new StaticArray<u64>(64);
   let index = 0;
   for (let boardPos = 21; boardPos <= 98; boardPos++) {
     if (isBorder(boardPos)) {
@@ -65,17 +64,17 @@ function calculateSingleMovePatterns(directions: Int32Array): Uint64Array {
 }
 
 // Use letterbox board (10 columns * 12 rows) for simpler border detection during pattern calculation:
-const LETTERBOX_KNIGHT_DIRECTIONS: Int32Array = toInt32Array([21, 19, 12, 8, -12, -21, -19, -8]);
-export const KNIGHT_PATTERNS: Uint64Array = calculateSingleMovePatterns(LETTERBOX_KNIGHT_DIRECTIONS);
+const LETTERBOX_KNIGHT_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([21, 19, 12, 8, -12, -21, -19, -8]);
+export const KNIGHT_PATTERNS: StaticArray<u64> = calculateSingleMovePatterns(LETTERBOX_KNIGHT_DIRECTIONS);
 
-const LETTERBOX_KING_DIRECTIONS: Int32Array = toInt32Array([1, 10, -1, -10, 9, 11, -9, -11]);
-export const KING_PATTERNS: Uint64Array = calculateSingleMovePatterns(LETTERBOX_KING_DIRECTIONS);
+const LETTERBOX_KING_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([1, 10, -1, -10, 9, 11, -9, -11]);
+export const KING_PATTERNS: StaticArray<u64> = calculateSingleMovePatterns(LETTERBOX_KING_DIRECTIONS);
 
 
-export const PAWN_DOUBLE_MOVE_LINE: Uint64Array = createDoubleMoveLine();
+export const PAWN_DOUBLE_MOVE_LINE: StaticArray<u64> = createDoubleMoveLine();
 
-function createDoubleMoveLine(): Uint64Array {
-  const lines = new Uint64Array(2);
+function createDoubleMoveLine(): StaticArray<u64> {
+  const lines = new StaticArray<u64>(2);
   lines[indexFromColor(BLACK)] = 0b0000000000000000000000000000000000000000111111110000000000000000;
   lines[indexFromColor(WHITE)] = 0b0000000000000000111111110000000000000000000000000000000000000000;
 
@@ -93,8 +92,8 @@ enum Direction {
 const DIRECTION_COL_OFFSET: Array<i32> = [-1,  0, +1, +1, +1,  0, -1, -1];
 const DIRECTION_ROW_OFFSET: Array<i32> = [-1, -1, -1,  0, +1, +1, +1,  0];
 
-function computeRayAttackBitboards(): Uint64Array {
-  const rayAttacks = new Uint64Array(65 * 8); // (64 squares + 1 for empty attack bitboard) * 8 directions
+function computeRayAttackBitboards(): StaticArray<u64> {
+  const rayAttacks = new StaticArray<u64>(65 * 8); // (64 squares + 1 for empty attack bitboard) * 8 directions
   let index = 0;
   for (let dir = Direction.NORTH_WEST; dir <= Direction.WEST; dir++) {
     for (let pos = 0; pos < 64; pos++) {
@@ -121,7 +120,7 @@ function computeRayAttackBitboards(): Uint64Array {
   return rayAttacks;
 }
 
-const RAY_ATTACKS: Uint64Array = computeRayAttackBitboards();
+const RAY_ATTACKS: StaticArray<u64> = computeRayAttackBitboards();
 
 @inline
 function getPositiveRayAttacks(occupied: u64, dir: Direction, pos: i32): u64 {

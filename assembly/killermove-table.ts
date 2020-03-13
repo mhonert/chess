@@ -20,12 +20,14 @@
 import { TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 
 export class KillerMoveTable {
-  private primaryMoves: Int32Array = new Int32Array(TRANSPOSITION_MAX_DEPTH);
-  private secondaryMoves: Int32Array = new Int32Array(TRANSPOSITION_MAX_DEPTH);
+  private primaryMoves: StaticArray<i32> = new StaticArray<i32>(TRANSPOSITION_MAX_DEPTH);
+  private secondaryMoves: StaticArray<i32> = new StaticArray<i32>(TRANSPOSITION_MAX_DEPTH);
 
   clear(): void {
-    this.primaryMoves.fill(0, 0, this.primaryMoves.length);
-    this.secondaryMoves.fill(0, 0, this.secondaryMoves.length);
+    for (let i = 0; i < this.primaryMoves.length; i++) {
+      unchecked(this.primaryMoves[i] = 0);
+      unchecked(this.secondaryMoves[i] = 0);
+    }
   }
 
   @inline

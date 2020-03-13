@@ -47,8 +47,8 @@ const perEntryByteSize = 8 + 4;
 
 export class TranspositionTable {
   private indexMask: u64;
-  private entries: Uint64Array;
-  private moves: Int32Array;
+  private entries: StaticArray<u64>;
+  private moves: StaticArray<i32>;
   private age: i32;
 
   constructor() {
@@ -64,8 +64,8 @@ export class TranspositionTable {
     const size = (1 << indexBitCount);
     if (initialize || size != this.entries.length) {
       this.indexMask = size - 1;
-      this.entries = new Uint64Array(size);
-      this.moves = new Int32Array(size);
+      this.entries = new StaticArray<u64>(size);
+      this.moves = new StaticArray<i32>(size);
     }
   }
 
@@ -111,8 +111,10 @@ export class TranspositionTable {
   }
 
   clear(): void {
-    this.entries.fill(0, 0, this.entries.length);
-    this.moves.fill(0, 0, this.moves.length);
+    for (let i = 0; i < this.entries.length; i++) {
+      unchecked(this.entries[i] = 0);
+      unchecked(this.moves[i] = 0);
+    }
     this.age = 0;
   }
 

@@ -92,7 +92,6 @@ function uci(): void {
 }
 
 function isReady(): void {
-  EngineControl.init();
   if (transpositionTableSizeChanged) {
     EngineControl.resizeTranspositionTable(transpositionTableSizeInMB);
     transpositionTableSizeChanged = false;

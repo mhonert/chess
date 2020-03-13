@@ -27,7 +27,7 @@ import {
   WHITE_LEFT_ROOK_START, WHITE_PAWNS_BASELINE_START,
   WHITE_RIGHT_ROOK_START
 } from './pieces';
-import { sign, toBitBoardString, toInt32Array } from './util';
+import { sign, toBitBoardString } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
@@ -54,19 +54,19 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 export const EN_PASSANT_BIT = 1 << 31;
 
 export class Board {
-  private items: Int32Array;
+  private items: StaticArray<i32>;
   private whiteKingIndex: i32;
   private blackKingIndex: i32;
   private score: i32 = 0;
-  private bitBoardPieces: Uint64Array = new Uint64Array(13);
-  private bitBoardAllPieces: Uint64Array = new Uint64Array(2);
+  private bitBoardPieces: StaticArray<u64> = new StaticArray<u64>(13);
+  private bitBoardAllPieces: StaticArray<u64> = new StaticArray<u64>(2);
   private hashCode: u64 = 0; // Hash code for the current position
 
   private historyCounter: i32 = 0;
-  private stateHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
-  private hashCodeHistory: Uint64Array = new Uint64Array(MAX_GAME_HALFMOVES);
-  private scoreHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
-  private halfMoveClockHistory: Int32Array = new Int32Array(MAX_GAME_HALFMOVES);
+  private stateHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
+  private hashCodeHistory: StaticArray<u64> = new StaticArray<u64>(MAX_GAME_HALFMOVES);
+  private scoreHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
+  private halfMoveClockHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
 
   private positionHistory: PositionHistory = new PositionHistory();
 
@@ -82,7 +82,7 @@ export class Board {
     if (items.length < (STATE_INDEX + 1)) {
       throw new Error("Invalid board item length: " + items.length.toString());
     }
-    this.items = new Int32Array(items.length);
+    this.items = new StaticArray<i32>(items.length);
     this.whiteKingIndex = items.findIndex(isWhiteKing)
     this.blackKingIndex = items.findIndex(isBlackKing);
 
@@ -825,13 +825,13 @@ const CASTLING_BITSTART = 7;
 
 const BITS: Array<i32> = [13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28];
 const EN_PASSANT_BITSTART = 13;
-const EN_PASSANT_BITMASKS: Int32Array = toInt32Array(BITS.map<i32>(calculateEnPassantBitMask));
+const EN_PASSANT_BITMASKS: StaticArray<i32> = StaticArray.fromArray(BITS.map<i32>(calculateEnPassantBitMask));
 
 function calculateEnPassantBitMask(bit: i32, index: i32, array: Array<i32>): i32 {
   return 1 << bit;
 }
 
-export const PAWN_POSITION_SCORES: Int32Array = toInt32Array([
+export const PAWN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   0,  0,  0,  0,  0,  0,  0,  0,
   10, 10, 10, 10, 10, 10, 10, 10,
   6,  6,  7,  8,  8,  7,  6,  6,
@@ -842,7 +842,7 @@ export const PAWN_POSITION_SCORES: Int32Array = toInt32Array([
   0,  0,  0,  0,  0,  0,  0,  0,
 ]);
 
-const KNIGHT_POSITION_SCORES: Int32Array = toInt32Array([
+const KNIGHT_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -10, -8, -6, -6, -6, -6, -8,-10,
   -8, -4,  0,  0,  0,  0, -4, -8,
   -6,  0,  2,  3,  3,  2,  0, -6,
@@ -853,7 +853,7 @@ const KNIGHT_POSITION_SCORES: Int32Array = toInt32Array([
   -10, -8, -6, -6, -6, -6, -8,-10,
 ]);
 
-const BISHOP_POSITION_SCORES: Int32Array = toInt32Array([
+const BISHOP_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -4, -2, -2, -2, -2, -2, -2, -4,
   -2,  0,  0,  0,  0,  0,  0, -2,
   -2,  0,  1,  2,  2,  1,  0, -2,
@@ -864,7 +864,7 @@ const BISHOP_POSITION_SCORES: Int32Array = toInt32Array([
   -4, -2, -2, -2, -2, -2, -2, -4
 ]);
 
-const ROOK_POSITION_SCORES: Int32Array = toInt32Array([
+const ROOK_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
    0,  0,  0,  0,  0,  0,  0,  0,
    1,  2,  2,  2,  2,  2,  2,  1,
   -1,  0,  0,  0,  0,  0,  0, -1,
@@ -875,7 +875,7 @@ const ROOK_POSITION_SCORES: Int32Array = toInt32Array([
    0,  0,  0,  1,  1,  0,  0,  0
 ]);
 
-const QUEEN_POSITION_SCORES: Int32Array = toInt32Array([
+const QUEEN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -4, -2, -2, -1, -1, -2, -2, -4,
   -2,  0,  0,  0,  0,  0,  0, -2,
   -2,  0,  1,  1,  1,  1,  0, -2,
@@ -886,7 +886,7 @@ const QUEEN_POSITION_SCORES: Int32Array = toInt32Array([
   -4, -2, -2, -1, -1, -2, -2, -4
 ]);
 
-const KING_POSITION_SCORES: Int32Array = toInt32Array([
+const KING_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -6, -8, -8, -10, -10, -8, -8, -6,
   -6, -8, -8, -10, -10, -8, -8, -6,
   -6, -8, -8, -10, -10, -8, -8, -6,
@@ -897,7 +897,7 @@ const KING_POSITION_SCORES: Int32Array = toInt32Array([
    4,  6,  2,   0,   0,  2,  6,  4
 ]);
 
-const KING_ENDGAME_POSITION_SCORES: Int32Array = toInt32Array([
+const KING_ENDGAME_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -10, -8, -6, -4, -4, -6, -8, -10,
   -6, -4, -2,  0,  0, -2, -4, -6,
   -6, -2,  4,  6,  6,  4, -2, -6,
@@ -908,13 +908,13 @@ const KING_ENDGAME_POSITION_SCORES: Int32Array = toInt32Array([
   -10, -6, -6, -6, -6, -6, -6, -10
 ]);
 
-function combineScores(color: i32, arrays: Int32Array[]): Int32Array {
+function combineScores(color: i32, arrays: StaticArray<i32>[]): StaticArray<i32> {
   let size = 0;
   for (let i = 0; i < arrays.length; i++) {
     size += arrays[i].length;
   }
 
-  const result = new Int32Array(64 * 14);
+  const result = new StaticArray<i32>(64 * 14);
   let index = 0;
   for (let i = 0; i < arrays.length; i++) {
     if (i == 6) {
@@ -931,17 +931,17 @@ function combineScores(color: i32, arrays: Int32Array[]): Int32Array {
   return result;
 }
 
-const WHITE_POSITION_SCORES: Int32Array = combineScores(WHITE, [
+const WHITE_POSITION_SCORES: StaticArray<i32> = combineScores(WHITE, [
   PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES,
   PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES
 ]);
 
-const BLACK_POSITION_SCORES: Int32Array = combineScores(BLACK, [
+const BLACK_POSITION_SCORES: StaticArray<i32> = combineScores(BLACK, [
   mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES),
   mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
 
-export function mirrored(input: Int32Array): Int32Array {
-  let output = input.slice(0);
+export function mirrored(input: StaticArray<i32>): StaticArray<i32> {
+  let output = StaticArray.slice(input);
   for (let column: i32 = 0; column < 8; column++) {
     for (let row: i32 = 0; row < 4; row++) {
       const oppositeRow = 7 - row;

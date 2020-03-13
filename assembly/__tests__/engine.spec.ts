@@ -18,8 +18,8 @@
 
 
 import { B, K, N, P, Q, QUEEN, R } from '../pieces';
-import { BLACK_MATE_SCORE, Engine, WHITE_MATE_SCORE } from '../engine';
 import EngineControl from '../engine';
+import {Engine} from '../engine';
 import {
   BLACK,
   BLACK_KING_MOVED,
@@ -31,7 +31,6 @@ import {
   WHITE_RIGHT_ROOK_MOVED
 } from '../board';
 import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
-import { toInt32Array } from '../util';
 
 
 describe('Encode and decode scored moves', () => {
@@ -352,7 +351,7 @@ describe('Finds moves', () => {
 describe("Move list sorting", () => {
 
   it("sorts moves descending by score", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
 
     const engine = new Engine();
     engine.sortByScoreDescending(moves);
@@ -365,11 +364,11 @@ describe("Move list sorting", () => {
 
   it("sorts empty move list descending", () => {
     const engine = new Engine();
-    engine.sortByScoreDescending(new Int32Array(0));
+    engine.sortByScoreDescending(new StaticArray<i32>(0));
   });
 
   it("sorts moves with 1 element descending", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12)]);
     const engine = new Engine();
     engine.sortByScoreDescending(moves);
 
@@ -377,7 +376,7 @@ describe("Move list sorting", () => {
   });
 
   it("sorts moves with 2 elements descending", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 5), encodeScoredMove(1, 12)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 5), encodeScoredMove(1, 12)]);
     const engine = new Engine();
     engine.sortByScoreDescending(moves);
 
@@ -386,7 +385,7 @@ describe("Move list sorting", () => {
   });
 
   it("sorts moves ascending by score for black player", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
 
     const engine = new Engine();
     engine.sortByScoreAscending(moves);
@@ -399,11 +398,11 @@ describe("Move list sorting", () => {
 
   it("sorts empty move list ascending", () => {
     const engine = new Engine();
-    engine.sortByScoreAscending(new Int32Array(0));
+    engine.sortByScoreAscending(new StaticArray<i32>(0));
   });
 
   it("sorts moves with 1 element ascending", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12)]);
     const engine = new Engine();
     engine.sortByScoreAscending(moves);
 
@@ -411,7 +410,7 @@ describe("Move list sorting", () => {
   });
 
   it("sorts moves with 2 elements ascending", () => {
-    const moves: Int32Array = toInt32Array([encodeScoredMove(0, 12), encodeScoredMove(1, 5)]);
+    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5)]);
     const engine = new Engine();
     engine.sortByScoreAscending(moves);
 

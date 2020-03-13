@@ -44,7 +44,7 @@ import { sign } from './util';
 const MAX_MOVES = 218;
 
 class MoveGenerator {
-  private moves: Int32Array = new Int32Array(MAX_MOVES);
+  private moves: StaticArray<i32> = new StaticArray<i32>(MAX_MOVES);
   private count: i32;
   private board: Board;
   private occupiedBitBoard: u64;
@@ -228,14 +228,14 @@ class MoveGenerator {
     return (targetPiece == EMPTY || sign(targetPiece) != activeColor);
   }
 
-  getGeneratedMoves(): Int32Array {
-    return this.moves.slice(0, this.count);
+  getGeneratedMoves(): StaticArray<i32> {
+    return StaticArray.slice(this.moves, 0, this.count);
   }
 
 
   // Filters out any moves that would leave the own king in check.
-  getFilteredGeneratedMoves(activeColor: i32): Int32Array {
-    const filteredMoves: Int32Array = new Int32Array(this.moves.length);
+  getFilteredGeneratedMoves(activeColor: i32): StaticArray<i32> {
+    const filteredMoves: StaticArray<i32> = new StaticArray<i32>(this.moves.length);
 
     let index = 0;
     for (let i = 0; i < this.count; i++) {
@@ -247,7 +247,7 @@ class MoveGenerator {
       unchecked(filteredMoves[index++] = this.moves[i]);
     }
 
-    return filteredMoves.subarray(0, index);
+    return StaticArray.slice(filteredMoves, 0, index);
   }
 
 
@@ -677,19 +677,19 @@ const DEFAULT_INSTANCE = new MoveGenerator();
 const MATE_CHECK_INSTANCE = new MoveGenerator();
 
 @inline
-export function generateMoves(board: Board, activeColor: i32): Int32Array {
+export function generateMoves(board: Board, activeColor: i32): StaticArray<i32> {
   DEFAULT_INSTANCE.generateMoves(board, activeColor);
   return DEFAULT_INSTANCE.getGeneratedMoves();
 }
 
 // Generates and filters out any moves that would leave the own king in check.
-export function generateFilteredMoves(board: Board, activeColor: i32): Int32Array {
+export function generateFilteredMoves(board: Board, activeColor: i32): StaticArray<i32> {
   DEFAULT_INSTANCE.generateMoves(board, activeColor);
   return DEFAULT_INSTANCE.getFilteredGeneratedMoves(activeColor);
 }
 
 @inline
-export function generateCaptureMoves(board: Board, activeColor: i32): Int32Array {
+export function generateCaptureMoves(board: Board, activeColor: i32): StaticArray<i32> {
   DEFAULT_INSTANCE.generateCaptureMoves(board, activeColor);
   return DEFAULT_INSTANCE.getGeneratedMoves();
 }
