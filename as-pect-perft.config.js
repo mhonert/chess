@@ -6,7 +6,6 @@ module.exports = {
     "--use": ["IS_WASI=0"],
     "--optimizeLevel": "3",
     "--shrinkLevel": "0",
-    "--converge": [],
   },
 
   disclude: [/node_modules/],

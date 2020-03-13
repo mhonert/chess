@@ -7,18 +7,18 @@
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.27",
     "@fortawesome/free-solid-svg-icons": "^5.12.1",
-    "@fortawesome/react-fontawesome": "^0.1.8",
-    "react": "^16.12.0",
+    "@fortawesome/react-fontawesome": "^0.1.9",
+    "react": "^16.13.0",
     "react-dnd": "^9.5.1",
     "react-dnd-html5-backend": "^9.5.1",
     "react-dnd-touch-backend": "^9.5.1",
-    "react-dom": "^16.12.0",
-    "react-scripts": "^3.3.1",
+    "react-dom": "^16.13.0",
+    "react-scripts": "^3.4.0",
     "styled-components": "^4.4.1"
   },
   "scripts": {
-    "asbuild": "asc assembly/index.ts --validate --noAssert --optimizeLevel 3 --shrinkLevel 0 --converge --use IS_WASI=0 -b public/as-api.wasm",
-    "build:engine": "asc assembly/uci.ts --sourceMap --runtime half --validate --optimizeLevel 3 --shrinkLevel 0 --converge --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
+    "asbuild": "asc assembly/index.ts --validate --noAssert --optimizeLevel 3 --shrinkLevel 0  --use IS_WASI=0 -b public/as-api.wasm",
+    "build:engine": "asc assembly/uci.ts --sourceMap --runtime half --validate --optimizeLevel 3 --shrinkLevel 0  --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
     "asbuild:debug": "asc assembly/index.ts --debug --use IS_WASI=0 -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",
     "jsbuild": "react-scripts build",
@@ -53,7 +53,7 @@
     "@as-pect/assembly": "^2.8.1",
     "@as-pect/cli": "^2.8.1",
     "@as-pect/core": "^2.8.1",
-    "assemblyscript": "0.9.2",
+    "assemblyscript": "0.9.4",
     "babel-plugin-macros": "^2.8.0",
     "gh-pages": "^2.2.0",
     "workerize-loader": "^1.1.0"
