@@ -24,13 +24,13 @@ export const QUEEN: i32 = 5;
 export const KING: i32 = 6;
 
 const KING_VALUE = 1200;
-export const QUEEN_VALUE = 950;
-export const ROOK_VALUE = 500;
-export const BISHOP_VALUE = 330;
-export const KNIGHT_VALUE = 320;
-export const PAWN_VALUE = 100;
+const QUEEN_VALUE = 950;
+const ROOK_VALUE = 500;
+const BISHOP_VALUE = 330;
+const KNIGHT_VALUE = 320;
+const PAWN_VALUE = 100;
 
-export const PIECE_VALUES: StaticArray<i32> = StaticArray.fromArray([PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
+export const PIECE_VALUES: StaticArray<i32> = StaticArray.fromArray([0, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
 
 export const P = PAWN;
 export const N = KNIGHT;

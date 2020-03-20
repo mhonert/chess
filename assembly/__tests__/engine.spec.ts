@@ -28,7 +28,6 @@ import {
   Board,
   WHITE,
   WHITE_KING_MOVED,
-  WHITE_RIGHT_ROOK_MOVED
 } from '../board';
 import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
 
@@ -64,106 +63,6 @@ describe('Encode and decode scored moves', () => {
     expect(decodeScore(scoredMove)).toBe(score, "Correctly extracted score");
   });
 
-});
-
-describe('Evaluate position', () => {
-  it('Calculates even score for starting position', () => {
-    const board: Array<i32> = [
-      -R, -N, -B, -Q, -K, -B, -N, -R,
-      -P, -P, -P, -P, -P, -P, -P, -P,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      +P, +P, +P, +P, +P, +P, +P, +P,
-      +R, +N, +B, +Q, +K, +B, +N, +R,
-      0, 0, 0
-    ];
-
-    const engine = new Engine();
-    engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition(WHITE, 0);
-
-    expect(score).toBe(0);
-  });
-
-  // TODO: Store pawn bitboard in Board class and take them into account for the scoring function
-  // it('Calculates lower score for doubled pawns', () => {
-  //   const board: Array<i32> = [
-  //     -R, -N, -B, -Q, -K, -B, -N, -R,
-  //     -P, -P, -P, -P, -P, -P, -P, -P,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0, +P,  0,  0,  0,
-  //     +P, +P, +P,  0, +P, +P, +P, +P,
-  //     +R, +N, +B, +Q, +K, +B, +N, +R,
-  //     0, 0, 0
-  //   ];
-  //
-  //   const score = evaluatePosition(WHITE, 0);
-  //   expect(score).toBeLessThan(0);
-  // });
-
-  it('Calculates higher score for pieces outside starting position', () => {
-    const board: Array<i32> = [
-     -R, -N, -B, -Q, -K, -B, -N, -R,
-     -P, -P, -P, -P, -P, -P, -P, -P,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0, +P,  0,  0,  0,
-      0,  0, +N,  0,  0,  0,  0,  0,
-     +P, +P, +P, +P,  0, +P, +P, +P,
-     +R,  0, +B, +Q, +K, +B, +N, +R,
-      0, 0, 0
-    ];
-
-    const engine = new Engine();
-    engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition(WHITE, 0);
-
-    expect(score).toBeGreaterThan(0);
-  });
-
-  it('Calculates higher score for material advantage', () => {
-    const board: Array<i32> = [
-      -R, -N, -B, -Q, -K, -B, -N, -R,
-      -P, -P, -P, -P,  0, -P, -P, -P,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      +P, +P, +P, +P, +P, +P, +P, +P,
-      +R, +N, +B, +Q, +K, +B, +N, +R,
-      0, 0, 0
-    ];
-
-    const engine = new Engine();
-    engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition(WHITE, 0);
-
-    expect(score).toBeGreaterThan(0);
-  });
-
-  it('Calculates higher score for castled king position', () => {
-    const board: Array<i32> = [
-      0,  0,  0,  0, -K,  0,  0, -R,
-      0,  0,  0,  0, -P, -P, -P, -P,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0, +P, +P, +P, +P,
-      0,  0,  0,  0,  0, +R, +K,  0,
-      0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
-    ];
-
-    const engine = new Engine();
-    engine.setBoard(new Board(board));
-    const score = engine.evaluatePosition(WHITE, 0);
-
-    expect(score).toBeGreaterThan(0);
-  });
 });
 
 describe('Finds moves', () => {

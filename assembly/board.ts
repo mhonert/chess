@@ -17,14 +17,22 @@
  */
 
 import {
-  BISHOP, BLACK_ENPASSANT_LINE_END, BLACK_ENPASSANT_LINE_START,
-  BLACK_LEFT_ROOK_START, BLACK_PAWNS_BASELINE_START, BLACK_RIGHT_ROOK_START,
+  BISHOP,
+  BLACK_ENPASSANT_LINE_END,
+  BLACK_ENPASSANT_LINE_START,
+  BLACK_LEFT_ROOK_START,
+  BLACK_PAWNS_BASELINE_START,
+  BLACK_RIGHT_ROOK_START,
   KING,
   KNIGHT,
-  PAWN, PIECE_VALUES,
+  PAWN,
+  PIECE_VALUES,
   QUEEN,
-  ROOK, WHITE_ENPASSANT_LINE_END, WHITE_ENPASSANT_LINE_START,
-  WHITE_LEFT_ROOK_START, WHITE_PAWNS_BASELINE_START,
+  ROOK,
+  WHITE_ENPASSANT_LINE_END,
+  WHITE_ENPASSANT_LINE_START,
+  WHITE_LEFT_ROOK_START,
+  WHITE_PAWNS_BASELINE_START,
   WHITE_RIGHT_ROOK_START
 } from './pieces';
 import { sign, toBitBoardString } from './util';
@@ -32,11 +40,14 @@ import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
-  antiDiagonalAttacks, blackPawnAttacks,
+  antiDiagonalAttacks,
+  blackPawnAttacks,
   diagonalAttacks,
-  horizontalAttacks, KING_PATTERNS,
+  horizontalAttacks,
+  KING_PATTERNS,
   KNIGHT_PATTERNS,
-  verticalAttacks, whitePawnAttacks
+  verticalAttacks,
+  whitePawnAttacks
 } from './bitboard';
 
 export const WHITE_KING_START = 60;
@@ -923,7 +934,7 @@ function combineScores(color: i32, arrays: StaticArray<i32>[]): StaticArray<i32>
         result[index++] = 0;
       }
     }
-    const pieceValue = PIECE_VALUES[i % 6] * color;
+    const pieceValue = PIECE_VALUES[i % 6 + 1] * color;
     for (let j = 0; j < arrays[i].length; j++) {
       result[index++] = arrays[i][j] * 5 * color + pieceValue;
     }

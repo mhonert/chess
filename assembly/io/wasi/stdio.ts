@@ -22,7 +22,7 @@ const STDIN = 0;
 const STDOUT = 1;
 const STDERR = 2;
 
-const PTR_SIZE = sizeof<usize>();
+const PTR_SIZE: i32 = sizeof<usize>();
 
 type ptr = usize;
 

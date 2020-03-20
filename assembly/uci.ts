@@ -19,6 +19,7 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
+import { PRUNE_SAFETY_MARGINS } from './engine';
 import EngineControl from './engine';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
@@ -71,6 +72,10 @@ export function _start(): void {
 
       } else if (command == "setoption" && (i + 1) < tokens.length) {
         setOption(tokens.slice(i + 1));
+        break;
+
+      } else if (command == "setvalue" && (i + 1) < tokens.length) {
+        setValue(tokens.slice(i + 1));
         break;
 
       } else if (command == 'quit') {
@@ -215,6 +220,22 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeInMB = min(sizeInMB, MAX_HASH_SIZE_MB);
       transpositionTableSizeChanged = true;
     }
+  }
+}
+
+function setValue(params: Array<string>): void {
+  if (params.length < 2) {
+    stdio.writeLine("Missing parameters for setvalue");
+    return;
+  }
+
+  const name = params[0];
+  const value = I32.parseInt(params[1]);
+
+  if (name.startsWith("PRUNE")) {
+    const pruneIndex = I32.parseInt(name.substring(5)) - 1;
+    PRUNE_SAFETY_MARGINS[pruneIndex] = value;
+
   }
 }
 

@@ -46,7 +46,7 @@ function measureEnginePerformance(fen: string, depth: i32, moveLimit: i32): void
 
 function playAgainstSelf(board: Board, depth: i32, moveLimit: i32): void {
   EngineControl.setBoard(board);
-  while (board.getFullMoveCount() <= moveLimit) {
+  while (board.getHalfMoveCount() < moveLimit) {
     const move = EngineControl.findBestMove(depth, 0);
     EngineControl.performMove(move);
     if (isCheckMate(board, board.getActivePlayer())) {

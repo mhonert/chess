@@ -16,8 +16,17 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BLACK, BLACK_KING_MOVED, Board, mirrored, PAWN_POSITION_SCORES, WHITE, WHITE_KING_MOVED } from '../board';
-import { BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, R, ROOK } from '../pieces';
+import {
+  BLACK,
+  BLACK_KING_MOVED,
+  Board,
+  mirrored,
+  PAWN_POSITION_SCORES,
+  WHITE,
+  WHITE_KING_MOVED,
+  WHITE_RIGHT_ROOK_MOVED
+} from '../board';
+import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {
@@ -454,6 +463,89 @@ describe('All piece bitboards', () => {
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
 
+  });
+});
+
+describe('Evaluate position', () => {
+  it('Calculates even score for starting position', () => {
+    const items: Array<i32> = [
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P, +P, +P, +P, +P,
+      +R, +N, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
+    ];
+
+    expect(new Board(items).getScore()).toBe(0);
+  });
+
+  // TODO: Store pawn bitboard in Board class and take them into account for the scoring function
+  // it('Calculates lower score for doubled pawns', () => {
+  //   const board: Array<i32> = [
+  //     -R, -N, -B, -Q, -K, -B, -N, -R,
+  //     -P, -P, -P, -P, -P, -P, -P, -P,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0,  0,  0,  0,  0,
+  //      0,  0,  0,  0, +P,  0,  0,  0,
+  //     +P, +P, +P,  0, +P, +P, +P, +P,
+  //     +R, +N, +B, +Q, +K, +B, +N, +R,
+  //     0, 0, 0
+  //   ];
+  //
+  //   expect(new Board(board).getScore()).toBeLessThan(0);
+  // });
+
+  it('Calculates higher score for pieces outside starting position', () => {
+    const board: Array<i32> = [
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, +P,  0,  0,  0,
+      0,  0, +N,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P,  0, +P, +P, +P,
+      +R,  0, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
+    ];
+
+    expect(new Board(board).getScore()).toBeGreaterThan(0);
+  });
+
+  it('Calculates higher score for material advantage', () => {
+    const board: Array<i32> = [
+      -R, -N, -B, -Q, -K, -B, -N, -R,
+      -P, -P, -P, -P,  0, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +P, +P, +P, +P, +P, +P, +P, +P,
+      +R, +N, +B, +Q, +K, +B, +N, +R,
+      0, 0, 0
+    ];
+
+    expect(new Board(board).getScore()).toBeGreaterThan(0);
+  });
+
+  it('Calculates higher score for castled king position', () => {
+    const board: Array<i32> = [
+      -R, -N, -B,  0, -K,  0,  0, -R,
+      0,  0,  0,  0, -P, -P, -P, -P,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, +P, +P, +P, +P,
+      R,  N,  B,  0,  0, +R, +K,  0,
+      0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
+    ];
+
+    expect(new Board(board).getScore()).toBeGreaterThan(0);
   });
 });
 

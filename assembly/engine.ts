@@ -39,7 +39,7 @@ import {
 } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { PAWN, PAWN_VALUE, PIECE_VALUES, QUEEN_VALUE, ROOK_VALUE } from './pieces';
+import { PAWN, PIECE_VALUES } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
@@ -53,8 +53,17 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-const PRUNE_SAFETY_MARGINS = StaticArray.fromArray<i32>([0, PAWN_VALUE, ROOK_VALUE, ROOK_VALUE + PAWN_VALUE, QUEEN_VALUE, QUEEN_VALUE + PAWN_VALUE]);
+export const PRUNE_SAFETY_MARGINS = StaticArray.fromArray<i32>([0, 100, 500, 600, 950, 1050]);
+
 const PRUNE_MAX_LEVEL: i32 = PRUNE_SAFETY_MARGINS.length;
+
+const LMR_THRESHOLD: i32 = 3;
+const LMR_REDUCTIONS: i32 = 2;
+const LMR_START_DEPTH: i32 = 7;
+
+const FUTILE_MOVE_REDUCTIONS: i32 = 2;
+
+const DELTA_PRUNE_MARGIN: i32 = 950;
 
 export class Engine {
 
@@ -150,8 +159,8 @@ export class Engine {
 
       let a = -beta; // Search principal variation node with full window
 
-      const allowReductions = !isInCheck && depth >= 7;
-      let moveCountAfterPVChange = 0;
+      const allowReductions = !isInCheck && depth >= LMR_START_DEPTH;
+      let evaluatedMoveCount = 0;
 
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
@@ -165,8 +174,9 @@ export class Engine {
 
         const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
 
-        let reductions: i32 = (allowReductions && removedPieceId == EMPTY && moveCountAfterPVChange > 3 && !isPawnMoveCloseToPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
-          ? 2 : 0;
+        const reductions: i32 = (allowReductions && removedPieceId == EMPTY && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
+          ? LMR_REDUCTIONS
+          : 0;
 
         // Use principal variation search
         let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, 1, false, true);
@@ -189,13 +199,12 @@ export class Engine {
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
 
         if (score > bestScore) {
-          moveCountAfterPVChange = 0;
           bestScore = score;
           bestMove = move;
           alpha = max(alpha, bestScore);
         }
 
-        moveCountAfterPVChange++;
+        evaluatedMoveCount++;
         a = -(alpha + 1); // Search all other moves (after principal variation) with a zero window
 
         unchecked(moves[i] = encodeScoredMove(move, score));
@@ -285,8 +294,8 @@ export class Engine {
 
     const isInCheck = this.board.isInCheck(playerColor);
 
-    // Extend search if current player is in check
-    if (depth <= 0 && isInCheck) {
+    // Extend search if any player is in check
+    if (depth <= 0 && (isInCheck || this.board.isInCheck(-playerColor))) {
       depth = 1;
     }
 
@@ -301,21 +310,13 @@ export class Engine {
       return score;
     }
 
+    if (depth > 4 && (ply & 3) == 3) {
+      this.board.updateEndGameStatus();
+    }
 
     // Check transposition table
     const ttHash = this.board.getHash();
     let ttEntry = this.transpositionTable.getEntry(ttHash);
-
-    // Internal iterative deepening
-    if (ttEntry == 0 && isPV && depth >= 5) {
-      const reducedDepth = depth >= 12 ? depth / 3 + 1 : depth / 2;
-      const result = this.recFindBestMove(alpha, beta, playerColor, reducedDepth, ply + 1, false, nullMoveVerification);
-      if (result == CANCEL_SEARCH) {
-        return CANCEL_SEARCH;
-      }
-
-      ttEntry = this.transpositionTable.getEntry(ttHash);
-    }
 
     let scoredMove = getScoredMove(ttEntry);
 
@@ -399,9 +400,7 @@ export class Engine {
     let evaluatedMoveCount: i32 = 0;
     let hasValidMoves: bool = false;
 
-    const allowReductions: bool = depth > 2;
-
-    let moveCountAfterPVChange = 0;
+    const allowReductions: bool = depth > 2 && !isInCheck;
 
     do {
 
@@ -431,13 +430,13 @@ export class Engine {
           }
         }
 
-        if (!skip && !isInCheck && allowReductions) {
-          if (moveCountAfterPVChange > 3 && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
+        if (!skip && allowReductions) {
+          if (evaluatedMoveCount > LMR_THRESHOLD && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
-            reductions = 2;
+            reductions = LMR_REDUCTIONS;
           } else if (removedPieceId <= abs(previousPiece) && this.board.isAttacked(-playerColor, moveEnd) && !this.board.isAttacked(playerColor, moveEnd)) {
             // Reduce search depth if the target square is empty or has a lower/equal value, is defended and not defended by an own piece
-            reductions = 2;
+            reductions = FUTILE_MOVE_REDUCTIONS;
           }
         }
 
@@ -476,9 +475,8 @@ export class Engine {
           bestScore = score;
           bestMove = move;
 
-          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree:
+          // ... with alpha-beta-pruning to eliminate unnecessary branches of the search tree
           if (bestScore > alpha) {
-            moveCountAfterPVChange = 0;
             alpha = bestScore;
             scoreType = ScoreType.EXACT;
           }
@@ -492,7 +490,6 @@ export class Engine {
           }
         }
       }
-      moveCountAfterPVChange++;
 
       if (this.isCancelPossible && (this.nodeCount & 15) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
         // Cancel search
@@ -528,7 +525,7 @@ export class Engine {
     } while (true);
 
     if (!hasValidMoves) {
-      if (this.board.isInCheck(playerColor)) {
+      if (isInCheck) {
         // Check mate
         return WHITE_MATE_SCORE + ply;
       }
@@ -549,7 +546,7 @@ export class Engine {
       return 0;
     }
 
-    const standPat = this.evaluatePosition(activePlayer, ply) * activePlayer;
+    const standPat = this.board.getScore() * activePlayer;
 
     if (ply >= TRANSPOSITION_MAX_DEPTH) {
       return standPat;
@@ -560,7 +557,7 @@ export class Engine {
     }
 
     // Delta pruning
-    if (!this.isEndGame && standPat < alpha - QUEEN_VALUE) {
+    if (!this.isEndGame && standPat < alpha - DELTA_PRUNE_MARGIN) {
       return alpha;
     }
 
@@ -596,7 +593,7 @@ export class Engine {
         continue;
       }
 
-      const score = -this.quiescenceSearch(-activePlayer, -beta, -alpha, ply++);
+      const score = -this.quiescenceSearch(-activePlayer, -beta, -alpha, ply + 1);
       this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
 
       if (score >= beta) {
@@ -622,7 +619,7 @@ export class Engine {
     const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
     const capturedPieceId = this.board.getItem(moveEnd);
 
-    const captureScore = capturedPieceId == EMPTY ? -activePlayer * 4096 : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId - 1]) - unchecked(PIECE_VALUES[ownOriginalPieceId - 1]));
+    const captureScore = capturedPieceId == EMPTY ? -activePlayer * 4096 : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId]) - unchecked(PIECE_VALUES[ownOriginalPieceId]));
     return captureScore + posScore;
   };
 
@@ -696,14 +693,6 @@ export class Engine {
     }
   }
 
-
-  /** Evaluates the current position and generates a score.
-   *  Scores below 0 are better for the black and above 0 better for the white player.
-   */
-  @inline
-  evaluatePosition(activePlayer: i32, ply: i32): i32 {
-    return this.board.getScore();
-  };
 
   // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
   // to prevent unnecessary delays.
