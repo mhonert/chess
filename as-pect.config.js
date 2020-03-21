@@ -14,8 +14,8 @@ module.exports = {
     /** To output a wat file, uncomment the following line. */
     // "--textFile": ["output.wat"],
     /** A runtime must be provided here. */
-    "--use": ["IS_WASI=0"],
-    "--runtime": ["full"] // Acceptable values are: full, half, stub (arena), and none
+    "--runtime": ["full"], // Acceptable values are: full, half, stub (arena), and none
+    "--use": ["IS_WASI=0", "ASC_RTRACE=1"]
   },
   /**
    * A set of regexp that will disclude source files from testing.

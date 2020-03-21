@@ -22,7 +22,7 @@ import EngineControl from '../engine';
 import { isCheckMate } from '../move-generation';
 
 describe('Engine performance', () => {
-  it('plays against itself #engine', () => {
+  it('plays against itself', () => {
     const start = Date.now();
 
     measureEnginePerformance("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 10, 1);

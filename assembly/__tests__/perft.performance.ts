@@ -22,26 +22,29 @@ import { perft } from '../perft';
 
 describe('Perft - Performance Test', () => {
   it('calculates correct moves for #full performance test', () => {
-    measurePerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6, 119_060_324);
-    measurePerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5, 193_690_690);
+    expect(measurePerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 6)).toBe(119_060_324);
+    expect(measurePerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 5)).toBe(193_690_690);
   });
 
   it('calculates correct moves for #quick performance test', () => {
-    measurePerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5, 4_865_609);
-    measurePerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4, 4_085_603);
+    expect(measurePerft("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", 5)).toBe(4_865_609);
+    expect(measurePerft("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1", 4)).toBe(4_085_603);
   });
 });
 
-function measurePerft(fen: string, depth: i32, expectedResult: u64): void {
+function measurePerft(fen: string, depth: i32): u64 {
   const board = fromFEN(fen);
 
   const start = Date.now();
-  expect(perft(board, depth)).toBe(expectedResult, "Depth: " + depth.toString());
+  const result = perft(board, depth);
+
   const duration = Date.now() - start;
-  const nodesPerSecond = expectedResult * 1000 / duration;
+  const nodesPerSecond = result * 1000 / duration;
 
   trace(fen + ": Duration (ms)   : " + duration.toString());
   trace(fen + ": Nodes per second: " + nodesPerSecond.toString());
+
+  return result;
 }
 
 
