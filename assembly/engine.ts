@@ -53,17 +53,14 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-export const PRUNE_SAFETY_MARGINS = StaticArray.fromArray<i32>([0, 100, 500, 600, 950, 1050]);
-
-const PRUNE_MAX_LEVEL: i32 = PRUNE_SAFETY_MARGINS.length;
-
 const LMR_THRESHOLD: i32 = 3;
 const LMR_REDUCTIONS: i32 = 2;
 const LMR_START_DEPTH: i32 = 7;
 
 const FUTILE_MOVE_REDUCTIONS: i32 = 2;
+const LOSING_MOVE_REDUCTIONS: i32 = 2;
 
-const DELTA_PRUNE_MARGIN: i32 = 950;
+const QS_PRUNE_MARGIN: i32 = 950;
 
 export class Engine {
 
@@ -295,7 +292,7 @@ export class Engine {
     const isInCheck = this.board.isInCheck(playerColor);
 
     // Extend search if any player is in check
-    if (depth <= 0 && (isInCheck || this.board.isInCheck(-playerColor))) {
+    if (depth <= 0 && isInCheck) {
       depth = 1;
     }
 
@@ -402,6 +399,15 @@ export class Engine {
 
     const allowReductions: bool = depth > 2 && !isInCheck;
 
+    // Futile move pruning
+    let allowFutileMovePruning: bool = false;
+    let pruneLowScore: i32 = 0;
+    const ownMovesLeft = (depth + 1) / 2;
+    if (!isPV && ownMovesLeft <= 2) {
+      pruneLowScore = this.board.getScore() * playerColor + ownMovesLeft * 60 + (ownMovesLeft - 1) * 40;
+      allowFutileMovePruning = pruneLowScore <= alpha;
+    }
+
     do {
 
       const targetPieceId = decodePiece(move);
@@ -418,28 +424,26 @@ export class Engine {
       if (!skip && !this.board.isInCheck(-playerColor))  {
         hasValidMoves = true;
 
-        if (depth <= PRUNE_MAX_LEVEL)  {
-          const pruneLowScore = this.board.getScore() * playerColor + unchecked(PRUNE_SAFETY_MARGINS[depth - 1]);
-          // Skip moves which, even with an added safety margin, are unlikely to increase alpha
-          if (pruneLowScore <= alpha) {
+        if (allowReductions && evaluatedMoveCount > LMR_THRESHOLD && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
+          // Reduce search depth for late moves (i.e. after trying the most promising moves)
+          reductions = LMR_REDUCTIONS;
+
+        } else if (allowFutileMovePruning && removedPieceId == EMPTY && targetPieceId == abs(previousPiece)) {
+          if (ownMovesLeft <= 1) {
+            // Prune futile move
             skip = true;
             if (pruneLowScore > bestScore) {
               bestMove = 0;
               bestScore = pruneLowScore; // remember score with added margin for cases when all moves are pruned
             }
-          }
-        }
-
-        if (!skip && allowReductions) {
-          if (evaluatedMoveCount > LMR_THRESHOLD && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
-            // Reduce search depth for late moves (i.e. after trying the most promising moves)
-            reductions = LMR_REDUCTIONS;
-          } else if (removedPieceId <= abs(previousPiece) && this.board.isAttacked(-playerColor, moveEnd) && !this.board.isAttacked(playerColor, moveEnd)) {
-            // Reduce search depth if the target square is empty or has a lower/equal value, is defended and not defended by an own piece
+          } else {
+            // Reduce futile move
             reductions = FUTILE_MOVE_REDUCTIONS;
           }
+        } else if (removedPieceId <= abs(previousPiece) && this.board.isAttacked(-playerColor, moveEnd) && !this.board.isAttacked(playerColor, moveEnd)) {
+          // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
+          reductions = LOSING_MOVE_REDUCTIONS;
         }
-
       }
 
       if (skip) {
@@ -557,7 +561,7 @@ export class Engine {
     }
 
     // Delta pruning
-    if (!this.isEndGame && standPat < alpha - DELTA_PRUNE_MARGIN) {
+    if (!this.isEndGame && standPat < alpha - QS_PRUNE_MARGIN) {
       return alpha;
     }
 

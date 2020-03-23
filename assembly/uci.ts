@@ -19,7 +19,6 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
-import { PRUNE_SAFETY_MARGINS } from './engine';
 import EngineControl from './engine';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
@@ -29,10 +28,14 @@ import { WHITE } from './board';
 
 export { _abort } from './io/wasi/abort';
 
+// Option names
+const HASH_OPTION = "Hash";
+const FUTILITY_PRUNE_MARGIN_OPTION = "FutilityPruneMargin";
 
 // Options
 let transpositionTableSizeChanged: bool = false;
 let transpositionTableSizeInMB: u32 = 1;
+
 
 // Entry point for the standalone engine
 export function _start(): void {
@@ -74,10 +77,6 @@ export function _start(): void {
         setOption(tokens.slice(i + 1));
         break;
 
-      } else if (command == "setvalue" && (i + 1) < tokens.length) {
-        setValue(tokens.slice(i + 1));
-        break;
-
       } else if (command == 'quit') {
         isRunning = false;
         break;
@@ -93,6 +92,7 @@ function uci(): void {
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
+
   stdio.writeLine("uciok");
 }
 
@@ -214,28 +214,12 @@ function setOption(params: Array<string>): void {
     return;
   }
 
-  if (name == "Hash") {
+  if (name == HASH_OPTION) {
     const sizeInMB = I32.parseInt(params[3]);
     if (sizeInMB >= 1 && sizeInMB != transpositionTableSizeInMB) {
       transpositionTableSizeInMB = min(sizeInMB, MAX_HASH_SIZE_MB);
       transpositionTableSizeChanged = true;
     }
-  }
-}
-
-function setValue(params: Array<string>): void {
-  if (params.length < 2) {
-    stdio.writeLine("Missing parameters for setvalue");
-    return;
-  }
-
-  const name = params[0];
-  const value = I32.parseInt(params[1]);
-
-  if (name.startsWith("PRUNE")) {
-    const pruneIndex = I32.parseInt(name.substring(5)) - 1;
-    PRUNE_SAFETY_MARGINS[pruneIndex] = value;
-
   }
 }
 
