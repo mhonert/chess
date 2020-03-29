@@ -31,22 +31,22 @@ export class KillerMoveTable {
   }
 
   @inline
-  writeEntry(depth: i32, moveStart: i32, moveEnd: i32, move: i32): void {
-    const currentPrimary = unchecked(this.primaryMoves[depth]);
+  writeEntry(ply: i32, moveStart: i32, moveEnd: i32, move: i32): void {
+    const currentPrimary = unchecked(this.primaryMoves[ply]);
     if (currentPrimary != move) {
-      unchecked(this.primaryMoves[depth] = move);
-      unchecked(this.secondaryMoves[depth] = currentPrimary);
+      unchecked(this.primaryMoves[ply] = move);
+      unchecked(this.secondaryMoves[ply] = currentPrimary);
     }
   }
 
   @inline
-  getPrimaryKiller(depth: i32): i32 {
-    return unchecked(this.primaryMoves[depth]);
+  getPrimaryKiller(ply: i32): i32 {
+    return unchecked(this.primaryMoves[ply]);
   }
 
   @inline
-  getSecondaryKiller(depth: i32): i32 {
-    return unchecked(this.secondaryMoves[depth]);
+  getSecondaryKiller(ply: i32): i32 {
+    return unchecked(this.secondaryMoves[ply]);
   }
 
 }

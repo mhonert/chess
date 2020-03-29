@@ -39,7 +39,7 @@ import {
 } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { PAWN, PIECE_VALUES } from './pieces';
+import { PAWN } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
@@ -61,6 +61,11 @@ const FUTILE_MOVE_REDUCTIONS: i32 = 2;
 const LOSING_MOVE_REDUCTIONS: i32 = 2;
 
 const QS_PRUNE_MARGIN: i32 = 950;
+
+const PRIMARY_KILLER_SCORE_BONUS: i32 = 2048;
+const SECONDARY_KILLER_SCORE_BONUS: i32 = 1024;
+
+const CAPTURE_ORDER_SCORES = createCaptureOrderScores();
 
 export class Engine {
 
@@ -350,6 +355,7 @@ export class Engine {
       // Validate hash move for additional protection against hash collisions
       if (move == 0 || !isLikelyValidMove(this.board, playerColor, decodeMove(scoredMove))) {
         scoredMove = 0;
+        move = 0;
       }
 
       hashMove = move;
@@ -380,13 +386,13 @@ export class Engine {
     const secondaryKillerMove = this.killerMoveTable.getSecondaryKiller(ply);
 
     if (scoredMove == 0) {
-      // Generate moves, if no valid moves were found in the transposition or killer move tables
+      // Generate moves, if no valid moves were found in the transposition table
       moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor, primaryKillerMove, secondaryKillerMove);
       if (moves.length == 0) {
         // no more moves possible (i.e. check mate or stale mate)
         return this.terminalScore(playerColor, ply) * playerColor;
       }
-      scoredMove = moves[0];
+      scoredMove = unchecked(moves[0]);
       move = decodeMove(scoredMove);
       moveIndex++;
     }
@@ -509,12 +515,15 @@ export class Engine {
         }
 
       } else if (moveIndex == moves.length) {
-        if (failHigh && bestScore < beta) {
+        if (failHigh && hasValidMoves) {
           // research required, because a Zugzwang position was detected (fail-high report by null search, but no found cutoff)
           depth++;
           nullMoveVerification = true;
           failHigh = false;
           moveIndex = 0;
+          move = bestMove;
+          continue;
+
         } else {
           // Last move has been evaluated
           break;
@@ -525,6 +534,9 @@ export class Engine {
       move = decodeMove(scoredMove);
 
       moveIndex++;
+      while (decodeMove(unchecked(moves[moveIndex])) == hashMove && moveIndex < moves.length) {
+        moveIndex++;
+      }
 
     } while (true);
 
@@ -623,8 +635,13 @@ export class Engine {
     const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
     const capturedPieceId = this.board.getItem(moveEnd);
 
-    const captureScore = capturedPieceId == EMPTY ? -activePlayer * 4096 : activePlayer * (unchecked(PIECE_VALUES[capturedPieceId]) - unchecked(PIECE_VALUES[ownOriginalPieceId]));
-    return captureScore + posScore;
+    if (capturedPieceId == EMPTY) {
+      return (posScore * 16) - activePlayer * ownOriginalPieceId - activePlayer * 4096;
+
+    } else {
+      return posScore + activePlayer * unchecked(CAPTURE_ORDER_SCORES[capturedPieceId + ownOriginalPieceId * 8]);
+
+    }
   };
 
 
@@ -635,16 +652,14 @@ export class Engine {
   // the moves array can be modified and sorted in-place.
   @inline
   sortMovesByScore(moves: StaticArray<i32>, playerColor: i32, primaryKillerMove: i32, secondaryKillerMove: i32): StaticArray<i32> {
-    const killerScore = 256 * playerColor;
-
     for (let i: i32 = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
       let score: i32 = this.evaluateMoveScore(playerColor, move);
 
       if (move == primaryKillerMove) {
-        score += killerScore;
+        score += PRIMARY_KILLER_SCORE_BONUS * playerColor;
       } else if (move == secondaryKillerMove) {
-        score += killerScore / 2;
+        score += SECONDARY_KILLER_SCORE_BONUS * playerColor;
       }
 
       unchecked(moves[i] = encodeScoredMove(move, score));
@@ -717,6 +732,22 @@ function isPawnMoveCloseToPromotion(previousPiece: i32, moveEnd: i32): bool {
   return (previousPiece == PAWN && moveEnd <= 23) || // White moves to last three lines
          (previousPiece == -PAWN && moveEnd >= 40); // Black moves to last three lines
 }
+
+// Order capture moves first by most valuable victim and then by least valuable attacker (MVV-LVA)
+function createCaptureOrderScores(): StaticArray<i32> {
+  const scores = new StaticArray<i32>(6 * 8);
+
+  let orderScore: i32 = 0;
+  for (let victim = 0; victim <= 5; victim++) {
+    for (let captor = 5; captor >= 0; captor--) {
+      scores[victim + captor * 8] = orderScore * 64;
+      orderScore++;
+    }
+  }
+
+  return scores;
+}
+
 
 class EngineControl {
   private board: Board;
