@@ -27,16 +27,16 @@ import {
 import { BISHOP, KING, KNIGHT, PAWN, QUEEN, ROOK } from './pieces';
 import {
   antiDiagonalAttacks,
-  BLACK_BIG_CASTLING_BIT_PATTERN,
-  BLACK_SMALL_CASTLING_BIT_PATTERN,
+  BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN,
+  BLACK_KING_SIDE_CASTLING_BIT_PATTERN,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
   KNIGHT_PATTERNS,
   PAWN_DOUBLE_MOVE_LINE,
   verticalAttacks,
-  WHITE_BIG_CASTLING_BIT_PATTERN,
-  WHITE_SMALL_CASTLING_BIT_PATTERN
+  WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN,
+  WHITE_KING_SIDE_CASTLING_BIT_PATTERN
 } from './bitboard';
 import { sign } from './util';
 
@@ -487,32 +487,32 @@ class MoveGenerator {
   };
 
   @inline
-  isValidWhiteSmallCastlingMove(): bool {
-    return ((this.emptyBitBoard & WHITE_SMALL_CASTLING_BIT_PATTERN) == WHITE_SMALL_CASTLING_BIT_PATTERN) &&
+  isValidWhiteKingSideCastlingMove(): bool {
+    return ((this.emptyBitBoard & WHITE_KING_SIDE_CASTLING_BIT_PATTERN) == WHITE_KING_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START + 1) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START + 2);
   }
 
   @inline
-  isValidWhiteBigCastlingMove(): bool {
-    return ((this.emptyBitBoard & WHITE_BIG_CASTLING_BIT_PATTERN) == WHITE_BIG_CASTLING_BIT_PATTERN) &&
+  isValidWhiteQueenSideCastlingMove(): bool {
+    return ((this.emptyBitBoard & WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN) == WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START - 1) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START - 2);
   }
 
   @inline
-  isValidBlackSmallCastlingMove(): bool {
-    return ((this.emptyBitBoard & BLACK_SMALL_CASTLING_BIT_PATTERN) == BLACK_SMALL_CASTLING_BIT_PATTERN) &&
+  isValidBlackKingSideCastlingMove(): bool {
+    return ((this.emptyBitBoard & BLACK_KING_SIDE_CASTLING_BIT_PATTERN) == BLACK_KING_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START + 1) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START + 2);
   }
 
   @inline
-  isValidBlackBigCastlingMove(): bool {
-    return ((this.emptyBitBoard & BLACK_BIG_CASTLING_BIT_PATTERN) == BLACK_BIG_CASTLING_BIT_PATTERN) &&
+  isValidBlackQueenSideCastlingMove(): bool {
+    return ((this.emptyBitBoard & BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN) == BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START - 1) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START - 2);
@@ -530,15 +530,15 @@ class MoveGenerator {
     this.generateMovesFromBitboard(KING, start, kingTargets & this.emptyBitBoard);
 
     // Castling moves
-    if (start != WHITE_KING_START || this.board.whiteKingMoved()) {
+    if (start != WHITE_KING_START) {
       return;
     }
 
-    if (!this.board.whiteRightRookMoved() && this.isValidWhiteSmallCastlingMove()) {
+    if (this.board.canWhiteCastleKingSide() && this.isValidWhiteKingSideCastlingMove()) {
       unchecked(this.moves[this.count++] = encodeMove(KING, start, start + 2));
     }
 
-    if (!this.board.whiteLeftRookMoved() && this.isValidWhiteBigCastlingMove()) {
+    if (this.board.canWhiteCastleQueenSide() && this.isValidWhiteQueenSideCastlingMove()) {
       unchecked(this.moves[this.count++] = encodeMove(KING, start, start - 2));
     }
   };
@@ -554,15 +554,15 @@ class MoveGenerator {
     // Normal moves
     this.generateMovesFromBitboard(KING, start, kingTargets & this.emptyBitBoard);
 
-    if (start != BLACK_KING_START || this.board.blackKingMoved()) {
+    if (start != BLACK_KING_START) {
       return;
     }
 
-    if (!this.board.blackRightRookMoved() && this.isValidBlackSmallCastlingMove()) {
+    if (this.board.canBlackCastleKingSide() && this.isValidBlackKingSideCastlingMove()) {
       unchecked(this.moves[this.count++] = encodeMove(KING, start, start + 2));
     }
 
-    if (!this.board.blackLeftRookMoved() && this.isValidBlackBigCastlingMove()) {
+    if (this.board.canBlackCastleQueenSide() && this.isValidBlackQueenSideCastlingMove()) {
       unchecked(this.moves[this.count++] = encodeMove(KING, start, start - 2));
     }
   };

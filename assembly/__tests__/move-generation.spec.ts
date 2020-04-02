@@ -22,7 +22,16 @@ import {
   generateFilteredMoves,
   isCheckMate,
 } from '../move-generation';
-import { BLACK, BLACK_KING_MOVED, Board, EMPTY, WHITE } from '../board';
+import {
+  ALL_CASTLING_RIGHTS,
+  BLACK, BLACK_KING_SIDE_CASTLING, BLACK_QUEEN_SIDE_CASTLING,
+  Board,
+  EMPTY,
+  NO_CASTLING_RIGHTS,
+  WHITE,
+  WHITE_KING_SIDE_CASTLING,
+  WHITE_QUEEN_SIDE_CASTLING
+} from '../board';
 import { B, BISHOP, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 import { sign } from '../util';
 
@@ -38,7 +47,7 @@ function emptyBoardWithKings(): Array<i32> {
     0,  0,  0,  0,  0,  0,  0,  0, // 48 - 55
     0,  0,  0,  0,  0,  0,  K,  0, // 56 - 63
     // ...
-    0, 0, 0                        // counter and states
+    0, 0, NO_CASTLING_RIGHTS       // counter and states
   ];
 }
 
@@ -784,6 +793,7 @@ describe("White king moves", () => {
 
   it("Generates castling moves", () => {
     const board: Board = boardWithKing(KING, 60);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, ROOK, 56);
     addPiece(board, ROOK, 63);
 
@@ -796,6 +806,7 @@ describe("White king moves", () => {
 
   it("Does not generate castling move if king already moved", () => {
     const board: Board = boardWithKing(KING, 60);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     board.setWhiteKingMoved();
     addPiece(board, ROOK, 56);
     addPiece(board, ROOK, 63);
@@ -807,10 +818,11 @@ describe("White king moves", () => {
 
   it("Does not generate castling move if rook already moved", () => {
     const board: Board = boardWithKing(KING, 60);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, ROOK, 56);
     addPiece(board, ROOK, 63);
-    board.setWhiteLeftRookMoved();
-    board.setWhiteRightRookMoved();
+    board.setWhiteQueenSideRookMoved();
+    board.setWhiteKingSideRookMoved();
 
     const moves = generateMovesForStartIndex(board, WHITE, 60);
 
@@ -828,6 +840,7 @@ describe("White king moves", () => {
 
   it("Does not generate castling move if king would pass an attacked field", () => {
     const board: Board = boardWithKing(KING, 60);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, ROOK, 56);
     addPiece(board, ROOK, 63);
 
@@ -841,6 +854,7 @@ describe("White king moves", () => {
 
   it("Still generates the queen-side castling move if only the rook passes an attacked field", () => {
     const board: Board = boardWithKing(KING, 60);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, ROOK, 56);
     addPiece(board, ROOK, 63);
 
@@ -933,6 +947,7 @@ describe("Black king moves", () => {
 
   it("Generates castling moves", () => {
     const board: Board = boardWithKing(-KING, 4);
+    board.setStateBit(ALL_CASTLING_RIGHTS);
     addPiece(board, -ROOK, 0);
     addPiece(board, -ROOK, 7);
 
@@ -945,6 +960,7 @@ describe("Black king moves", () => {
 
   it("Does not generate castling move if king already moved", () => {
     const board: Board = boardWithKing(-KING, 4);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     board.setBlackKingMoved();
     addPiece(board, -ROOK, 0);
     addPiece(board, -ROOK, 7);
@@ -956,10 +972,11 @@ describe("Black king moves", () => {
 
   it("Does not generate castling move if rook already moved", () => {
     const board: Board = boardWithKing(-KING, 4);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, -ROOK, 56);
     addPiece(board, -ROOK, 63);
-    board.setBlackLeftRookMoved();
-    board.setBlackRightRookMoved();
+    board.setBlackQueenSideRookMoved();
+    board.setBlackKingSideRookMoved();
 
     const moves = generateMovesForStartIndex(board, BLACK, 4);
 
@@ -977,6 +994,7 @@ describe("Black king moves", () => {
 
   it("Does not generate castling move if king would pass an attacked field", () => {
     const board: Board = boardWithKing(-KING, 4);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, -ROOK, 0);
     addPiece(board, -ROOK, 7);
 
@@ -990,6 +1008,7 @@ describe("Black king moves", () => {
 
   it("Still generates the queen-side castling move if only the rook passes an attacked field", () => {
     const board: Board = boardWithKing(-KING, 4);
+    board.setStateBit(ALL_CASTLING_RIGHTS)
     addPiece(board, -ROOK, 0);
     addPiece(board, -ROOK, 7);
 
@@ -1036,7 +1055,7 @@ describe('Check detection', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  K,  0,  0,  0,
-      0, 0, BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ];
 
     expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(3, "All pawn moves would leave king in check");
@@ -1053,7 +1072,7 @@ describe('Check detection', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  Q,  0,  0,  0,
       0,  0,  0,  0,  K,  0,  0,  0,
-      0, 0, BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ];
 
     expect(generateFilteredMoves(new Board(board), BLACK)).toHaveLength(6, "All knight moves would leave king in check");

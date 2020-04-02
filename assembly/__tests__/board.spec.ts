@@ -17,14 +17,12 @@
  */
 
 import {
+  ALL_CASTLING_RIGHTS,
   BLACK,
-  BLACK_KING_MOVED,
   Board,
-  mirrored,
+  mirrored, NO_CASTLING_RIGHTS,
   PAWN_POSITION_SCORES,
-  WHITE,
-  WHITE_KING_MOVED,
-  WHITE_RIGHT_ROOK_MOVED
+  WHITE
 } from '../board';
 import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
 
@@ -260,19 +258,19 @@ describe("Board state", () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, +K,  0,  0,  0,  0,
-      0, 0, 0
+      0, 0, ALL_CASTLING_RIGHTS
     ]);
 
-    expect(board.getCastlingStateBits()).toBe(0);
+    expect(board.getCastlingStateBits()).toBe(0b1111);
 
     board.setWhiteKingMoved();
-    board.setWhiteLeftRookMoved();
-    board.setWhiteRightRookMoved();
+    board.setWhiteQueenSideRookMoved();
+    board.setWhiteKingSideRookMoved();
     board.setBlackKingMoved();
-    board.setBlackLeftRookMoved();
-    board.setBlackRightRookMoved();
+    board.setBlackQueenSideRookMoved();
+    board.setBlackKingSideRookMoved();
 
-    expect(board.getCastlingStateBits()).toBe(0b111111);
+    expect(board.getCastlingStateBits()).toBe(0);
   });
 });
 
@@ -289,7 +287,7 @@ describe("Zobrist hashing", () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, +K,  0,  0,  0,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, 0
     ]);
 
     board.recalculateHash();
@@ -318,7 +316,7 @@ describe("Zobrist hashing", () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, +K,  0,  0,  0,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.recalculateHash();
@@ -339,7 +337,7 @@ describe("Zobrist hashing", () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, +K,  0,  0,  0,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.recalculateHash();
@@ -362,13 +360,13 @@ describe("Zobrist hashing", () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0, +K, +R,  0,  0,  0,  0,  0,
-      0, 0, 0
+      0, 0, ALL_CASTLING_RIGHTS
     ]);
 
     board.recalculateHash();
     const initialHash = board.getHash();
 
-    board.setWhiteLeftRookMoved();
+    board.setWhiteQueenSideRookMoved();
     board.setWhiteKingMoved();
     expect(board.getHash()).not.toBe(initialHash, "Hash after castling state change should be different");
   });
@@ -391,7 +389,7 @@ describe("Zobrist hashing", () => {
     board.addPiece(WHITE, P, 48);
     board.addPiece(BLACK, K, 1);
     board.setWhiteKingMoved();
-    board.setBlackLeftRookMoved();
+    board.setBlackQueenSideRookMoved();
 
     board.increaseHalfMoveCount();
 
@@ -542,7 +540,7 @@ describe('Evaluate position', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0, +P, +P, +P, +P,
       R,  N,  B,  0,  0, +R, +K,  0,
-      0, 0, WHITE_KING_MOVED | WHITE_RIGHT_ROOK_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ];
 
     expect(new Board(board).getScore()).toBeGreaterThan(0);

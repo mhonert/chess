@@ -22,12 +22,8 @@ import EngineControl from '../engine';
 import {Engine} from '../engine';
 import {
   BLACK,
-  BLACK_KING_MOVED,
-  BLACK_LEFT_ROOK_MOVED,
-  BLACK_RIGHT_ROOK_MOVED,
-  Board,
-  WHITE,
-  WHITE_KING_MOVED,
+  Board, NO_CASTLING_RIGHTS,
+  WHITE
 } from '../board';
 import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
 
@@ -77,7 +73,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, -K,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0, -R,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.performEncodedMove(findBestMove(board, BLACK, 2));
@@ -96,7 +92,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       +R,  0,  0,  0, +K,  0,  0, +R,
-      0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 3));
@@ -117,7 +113,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0, +P,  0,  0,
       0,  0,  0,  0, +P,  0, +K, +R,
       0,  0, +N,  0,  0, +R, +B,  0,
-      0, 0, BLACK_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 3));
@@ -177,7 +173,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0,  0,  0, -R,
       0,  0,  0,  0,  0,  0,  P,  K,
       0,  0,  0,  0,  0,  0,  0,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     const move = findBestMove(board, WHITE, 2);
@@ -196,7 +192,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0, -R,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
     board.increaseHalfMoveCount();
 
@@ -220,7 +216,7 @@ describe('Finds moves', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  K,  0,
-      0, 0, WHITE_KING_MOVED | BLACK_KING_MOVED
+      0, 0, NO_CASTLING_RIGHTS
     ]);
 
     board.performEncodedMove(findBestMove(board, WHITE, 1));

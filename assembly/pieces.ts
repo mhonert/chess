@@ -45,10 +45,10 @@ export const KING_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([1, 8, -1
 export const BISHOP_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([-7, -9, 7, 9]);
 export const ROOK_DIRECTIONS: StaticArray<i32> = StaticArray.fromArray([-1, -8, 1, 8]);
 
-export const WHITE_LEFT_ROOK_START = 56;
-export const WHITE_RIGHT_ROOK_START = 63;
-export const BLACK_LEFT_ROOK_START = 0;
-export const BLACK_RIGHT_ROOK_START = 7;
+export const WHITE_QUEEN_SIDE_ROOK_START = 56;
+export const WHITE_KING_SIDE_ROOK_START = 63;
+export const BLACK_QUEEN_SIDE_ROOK_START = 0;
+export const BLACK_KING_SIDE_ROOK_START = 7;
 
 export const WHITE_PAWNS_BASELINE_START = 48;
 export const WHITE_PAWNS_BASELINE_END = 55;

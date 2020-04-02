@@ -17,14 +17,10 @@
  */
 
 import {
-  BLACK,
-  BLACK_LEFT_ROOK_MOVED,
-  BLACK_RIGHT_ROOK_MOVED,
+  BLACK, BLACK_KING_SIDE_CASTLING, BLACK_QUEEN_SIDE_CASTLING,
   Board,
-  EMPTY,
-  WHITE,
-  WHITE_LEFT_ROOK_MOVED,
-  WHITE_RIGHT_ROOK_MOVED
+  EMPTY, NO_CASTLING_RIGHTS,
+  WHITE, WHITE_KING_SIDE_CASTLING, WHITE_QUEEN_SIDE_CASTLING
 } from './board';
 import {
   BLACK_ENPASSANT_LINE_END,
@@ -90,24 +86,20 @@ function activeColor(board: Board): string {
 
 function castlingAvailability(board: Board): string {
   let result: string = "";
-  if (!board.whiteKingMoved()) {
-    if (!board.whiteRightRookMoved()) {
-      result += "K";
-    }
-
-    if (!board.whiteLeftRookMoved()) {
-      result += "Q";
-    }
+  if (board.canWhiteCastleKingSide()) {
+    result += "K";
   }
 
-  if (!board.blackKingMoved()) {
-    if (!board.blackRightRookMoved()) {
-      result += "k";
-    }
+  if (board.canWhiteCastleQueenSide()) {
+    result += "Q";
+  }
 
-    if (!board.blackLeftRookMoved()) {
-      result += "q";
-    }
+  if (board.canBlackCastleKingSide()) {
+    result += "k";
+  }
+
+  if (board.canBlackCastleQueenSide()) {
+    result += "q";
   }
 
   return result.length == 0 ? "-" : result;
@@ -158,7 +150,7 @@ export function fromFEN(fen: string): Board {
 
   const activeColor = readActiveColor(fenParts[1]);
   readCastlingAvailability(board, fenParts[2]);
-  readEnPassantTargetSquare(board,fenParts[3]);
+  readEnPassantTargetSquare(board, fenParts[3]);
   readHalfMoveClock(board,fenParts[4]);
   readFullMoveNumber(board, activeColor, fenParts[5]);
 
@@ -212,7 +204,7 @@ function readActiveColor(fenPart: string): i32 {
 }
 
 function readCastlingAvailability(board: Board, fenPart: string): void {
-  let state = WHITE_RIGHT_ROOK_MOVED | WHITE_LEFT_ROOK_MOVED | BLACK_RIGHT_ROOK_MOVED | BLACK_LEFT_ROOK_MOVED;
+  let state = NO_CASTLING_RIGHTS;
 
   if (fenPart == "-") {
     board.setState(state);
@@ -222,13 +214,13 @@ function readCastlingAvailability(board: Board, fenPart: string): void {
   for (let i = 0; i < fenPart.length; i++) {
     const castlingChar = fenPart.charAt(i);
     if (castlingChar == "K") {
-      state &= ~WHITE_RIGHT_ROOK_MOVED;
+      state |= WHITE_KING_SIDE_CASTLING;
     } else if (castlingChar == "Q") {
-      state &= ~WHITE_LEFT_ROOK_MOVED;
+      state |= WHITE_QUEEN_SIDE_CASTLING;
     } else if (castlingChar == "k") {
-      state &= ~BLACK_RIGHT_ROOK_MOVED;
+      state |= BLACK_KING_SIDE_CASTLING;
     } else if (castlingChar == "q") {
-      state &= ~BLACK_LEFT_ROOK_MOVED;
+      state |= BLACK_QUEEN_SIDE_CASTLING;
     } else {
         throw new Error("Invalid FEN string: unexpected character in castling availability string: " + castlingChar);
     }

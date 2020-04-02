@@ -20,9 +20,9 @@ import {
   BISHOP,
   BLACK_ENPASSANT_LINE_END,
   BLACK_ENPASSANT_LINE_START,
-  BLACK_LEFT_ROOK_START,
+  BLACK_QUEEN_SIDE_ROOK_START,
   BLACK_PAWNS_BASELINE_START,
-  BLACK_RIGHT_ROOK_START,
+  BLACK_KING_SIDE_ROOK_START,
   KING,
   KNIGHT,
   PAWN,
@@ -31,9 +31,9 @@ import {
   ROOK,
   WHITE_ENPASSANT_LINE_END,
   WHITE_ENPASSANT_LINE_START,
-  WHITE_LEFT_ROOK_START,
+  WHITE_QUEEN_SIDE_ROOK_START,
   WHITE_PAWNS_BASELINE_START,
-  WHITE_RIGHT_ROOK_START
+  WHITE_KING_SIDE_ROOK_START
 } from './pieces';
 import { sign, toBitBoardString } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
@@ -176,7 +176,7 @@ export class Board {
       this.hashCode ^= PLAYER_RNG_NUMBER;
     }
 
-    this.updateHashForCastling(0);
+    this.updateHashForCastling(ALL_CASTLING_RIGHTS);
     this.updateHashForEnPassent(0);
   }
 
@@ -234,16 +234,16 @@ export class Board {
     unchecked(this.items[pos] = EMPTY);
 
     if (piece == ROOK) {
-      if (pos == WHITE_LEFT_ROOK_START) {
-        this.setWhiteLeftRookMoved();
-      } else if (pos == WHITE_RIGHT_ROOK_START) {
-        this.setWhiteRightRookMoved();
+      if (pos == WHITE_QUEEN_SIDE_ROOK_START) {
+        this.setWhiteQueenSideRookMoved();
+      } else if (pos == WHITE_KING_SIDE_ROOK_START) {
+        this.setWhiteKingSideRookMoved();
       }
     } else if (piece == -ROOK) {
-      if (pos == BLACK_LEFT_ROOK_START) {
-        this.setBlackLeftRookMoved();
-      } else if (pos == BLACK_RIGHT_ROOK_START) {
-        this.setBlackRightRookMoved();
+      if (pos == BLACK_QUEEN_SIDE_ROOK_START) {
+        this.setBlackQueenSideRookMoved();
+      } else if (pos == BLACK_KING_SIDE_ROOK_START) {
+        this.setBlackKingSideRookMoved();
       }
     }
 
@@ -324,11 +324,11 @@ export class Board {
 
       // Special castling handling
       if (start - end == -2) {
-        this.removePiece(WHITE_RIGHT_ROOK_START);
+        this.removePiece(WHITE_KING_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
 
       } else if (start - end == 2) {
-        this.removePiece(WHITE_LEFT_ROOK_START);
+        this.removePiece(WHITE_QUEEN_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
 
       }
@@ -338,11 +338,11 @@ export class Board {
 
       // Special castling handling
       if (start - end == -2) {
-        this.removePiece(BLACK_RIGHT_ROOK_START);
+        this.removePiece(BLACK_KING_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
 
       } else if (start - end == 2) {
-        this.removePiece(BLACK_LEFT_ROOK_START);
+        this.removePiece(BLACK_QUEEN_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
       }
     }
@@ -383,11 +383,11 @@ export class Board {
       // Undo Castle
       if (start - end == -2) {
         this.removePieceWithoutIncrementalUpdate(WHITE_KING_START + 1);
-        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_RIGHT_ROOK_START);
+        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_KING_SIDE_ROOK_START);
 
       } else if (start - end == 2) {
         this.removePieceWithoutIncrementalUpdate(WHITE_KING_START - 1);
-        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_LEFT_ROOK_START);
+        this.addPieceWithoutIncrementalUpdate(WHITE, ROOK, WHITE_QUEEN_SIDE_ROOK_START);
 
       }
 
@@ -397,11 +397,11 @@ export class Board {
       // Undo Castle
       if (start - end == -2) {
         this.removePieceWithoutIncrementalUpdate(BLACK_KING_START + 1);
-        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_RIGHT_ROOK_START);
+        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_KING_SIDE_ROOK_START);
 
       } else if (start - end == 2) {
         this.removePieceWithoutIncrementalUpdate(BLACK_KING_START - 1);
-        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_LEFT_ROOK_START);
+        this.addPieceWithoutIncrementalUpdate(BLACK, -ROOK, BLACK_QUEEN_SIDE_ROOK_START);
 
       }
     }
@@ -547,85 +547,77 @@ export class Board {
   }
 
   @inline
-  whiteKingMoved(): bool {
-    return (this.getState() & WHITE_KING_MOVED) != 0;
+  canWhiteCastleKingSide(): bool {
+    return (this.getState() & WHITE_KING_SIDE_CASTLING) != 0;
   }
 
   @inline
-  blackKingMoved(): bool {
-    return (this.getState() & BLACK_KING_MOVED) != 0;
+  canBlackCastleKingSide(): bool {
+    return (this.getState() & BLACK_KING_SIDE_CASTLING) != 0;
   }
 
   @inline
-  whiteLeftRookMoved(): bool {
-    return (this.getState() & WHITE_LEFT_ROOK_MOVED) != 0;
+  canWhiteCastleQueenSide(): bool {
+    return (this.getState() & WHITE_QUEEN_SIDE_CASTLING) != 0;
   }
 
   @inline
-  whiteRightRookMoved(): bool {
-    return (this.getState() & WHITE_RIGHT_ROOK_MOVED) != 0;
-  }
-
-  @inline
-  blackLeftRookMoved(): bool {
-    return (this.getState() & BLACK_LEFT_ROOK_MOVED) != 0;
-  }
-
-  @inline
-  blackRightRookMoved(): bool {
-    return (this.getState() & BLACK_RIGHT_ROOK_MOVED) != 0;
+  canBlackCastleQueenSide(): bool {
+    return (this.getState() & BLACK_QUEEN_SIDE_CASTLING) != 0;
   }
 
   @inline
   setWhiteKingMoved(): void {
-    if (!this.whiteKingMoved()) {
+    if (this.canWhiteCastleKingSide() || this.canWhiteCastleQueenSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(WHITE_KING_MOVED);
+      this.clearStateBit(WHITE_KING_SIDE_CASTLING);
+      this.clearStateBit(WHITE_QUEEN_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
 
   @inline
   setBlackKingMoved(): void {
-    if (!this.blackKingMoved()) {
+    if (this.canBlackCastleKingSide() || this.canBlackCastleQueenSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(BLACK_KING_MOVED);
+      this.clearStateBit(BLACK_KING_SIDE_CASTLING);
+      this.clearStateBit(BLACK_QUEEN_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
 
   @inline
-  setWhiteLeftRookMoved(): void {
-    if (!this.whiteLeftRookMoved()) {
+  setWhiteQueenSideRookMoved(): void {
+    if (this.canWhiteCastleQueenSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(WHITE_LEFT_ROOK_MOVED);
+      this.clearStateBit(WHITE_QUEEN_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
 
   @inline
-  setWhiteRightRookMoved(): void {
-    if (!this.whiteRightRookMoved()) {
+  setWhiteKingSideRookMoved(): void {
+    if (this.canWhiteCastleKingSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(WHITE_RIGHT_ROOK_MOVED);
+      this.clearStateBit(WHITE_KING_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
 
   @inline
-  setBlackLeftRookMoved(): void {
-    if (!this.blackLeftRookMoved()) {
+  setBlackQueenSideRookMoved(): void {
+    if (this.canBlackCastleQueenSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(BLACK_LEFT_ROOK_MOVED);
+      this.clearStateBit(BLACK_QUEEN_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
 
   @inline
-  setBlackRightRookMoved(): void {
-    if (!this.blackRightRookMoved()) {
+  setBlackKingSideRookMoved(): void {
+    if (this.canBlackCastleKingSide()) {
       const previousCastlingState = this.getCastlingStateBits();
-      this.setStateBit(BLACK_RIGHT_ROOK_MOVED);
+      this.clearStateBit(BLACK_KING_SIDE_CASTLING);
       this.updateHashForCastling(previousCastlingState);
     }
   };
@@ -638,7 +630,7 @@ export class Board {
 
   @inline
   getCastlingStateBits(): i32 {
-    return (this.getState() >> CASTLING_BITSTART) & 0x3f; // extract 6-bits from state which describe the castling state
+    return (this.getState() >> CASTLING_BITSTART) & 0xf; // extract 4-bits from state which describe the castling state
   }
 
   @inline
@@ -820,15 +812,15 @@ export const WHITE: i32 = 1;
 export const EMPTY: i32 = 0;
 
 // Bit-Patterns for Board state
-export const WHITE_KING_MOVED: i32 = 1 << 7;
-export const BLACK_KING_MOVED: i32 = 1 << 8;
-export const WHITE_LEFT_ROOK_MOVED: i32 = 1 << 9;
-export const WHITE_RIGHT_ROOK_MOVED: i32 = 1 << 10;
-export const BLACK_LEFT_ROOK_MOVED: i32 = 1 << 11;
-export const BLACK_RIGHT_ROOK_MOVED: i32 = 1 << 12;
+export const WHITE_KING_SIDE_CASTLING: i32 = 1 << 7;
+export const BLACK_KING_SIDE_CASTLING: i32 = 1 << 8;
+export const WHITE_QUEEN_SIDE_CASTLING: i32 = 1 << 9;
+export const BLACK_QUEEN_SIDE_CASTLING: i32 = 1 << 10;
 
 const CASTLING_BITSTART = 7;
 
+export const ALL_CASTLING_RIGHTS = WHITE_KING_SIDE_CASTLING | WHITE_QUEEN_SIDE_CASTLING | BLACK_KING_SIDE_CASTLING | BLACK_QUEEN_SIDE_CASTLING;
+export const NO_CASTLING_RIGHTS = 0;
 
 // Encode 'en passant' move possibilities for
 // white pawns in bits 13 to 20 and for
