@@ -16,18 +16,21 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { rand64 } from '../zobrist';
+
+import { Random } from '../random';
 
 describe("Random number generated", () => {
 
   it("quickly calculates evenly distributed random numbers", () => {
+    const rnd = new Random();
+
     const numberCounts = new Array<i32>(6);
     numberCounts.fill(0, 0, numberCounts.length);
 
     const iterations = 1_000_000;
 
     for (let i = 0; i < iterations; i++) {
-      const number = u32(rand64() % 6);
+      const number = u32(rnd.rand64() % 6);
       numberCounts[number]++;
     }
 

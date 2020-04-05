@@ -81,4 +81,3 @@ export function toBitBoardString(value: u64, separator: string = '/'): string {
  return result;
 }
 
-

@@ -745,12 +745,6 @@ export class Board {
     return (hAttacks & rooks) != 0 || (hAttacks & queens) != 0 || (vAttacks & rooks) != 0 || ((vAttacks & queens) != 0);
   }
 
-  logBitBoards(color: i32): void {
-    for (let i = 0; i < this.bitBoardPieces.length; i++) {
-      trace("Piece " + (i - 6).toString() + ": " + toBitBoardString(this.bitBoardPieces[i]));
-    }
-  }
-
   setHistory(history: PositionHistory): void {
     this.positionHistory = history;
   }

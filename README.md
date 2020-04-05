@@ -16,6 +16,7 @@ to run all calculations in the background without blocking the main thread for t
 - Chess engine implemented in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript)
 - Basic UCI protocol support (standalone engine)
 - Computer opponent with 5 difficulty levels
+- Opening Database for varied gameplay
 - Drag'n'Drop support to move chess pieces
 - Touch support for mobile devices
 - Responsive design
@@ -27,7 +28,6 @@ to run all calculations in the background without blocking the main thread for t
 
 ## Planned engine improvements
 - Improve position evaluation
-- Use opening database
 
 ## Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine
@@ -42,4 +42,5 @@ to run all calculations in the background without blocking the main thread for t
 This project is licensed under the GNU General Public License - see the [LICENSE](LICENSE) for details.
 
 ## Attributions
-Images for the chess pieces come from [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces).
+* Images for the chess pieces come from [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
+* The opening book was generated based upon a selected set of chess games from the [FICS Games Database](https://www.ficsgames.org)

@@ -44,6 +44,8 @@ import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
+import { openingBookData } from './opening-book-data';
+import { findOpeningMove } from './opening-book';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -78,6 +80,8 @@ export class Engine {
   private timeLimitMillis: i64;
   private isEndGame: bool = false;
   private isCancelPossible: bool = false;
+  private useOpeningBook: bool = false;
+  private openingBookPlyLimit: i32 = i32(openingBookData[0]);
 
   constructor() {
     this.board = fromFEN(STARTPOS);
@@ -106,6 +110,10 @@ export class Engine {
     this.board.setHistory(this.history);
 
     this.isEndGame = board.isEndGame();
+  }
+
+  setUseOpeningBook(use: bool): void {
+    this.useOpeningBook = use;
   }
 
   refreshStateAfterMove(increaseTTableAge: bool): void {
@@ -141,6 +149,33 @@ export class Engine {
       return encodeScoredMove(0, this.terminalScore(playerColor, 0) * playerColor);
     }
 
+    // Check opening book for a move
+    if (this.useOpeningBook && this.board.getHalfMoveCount() < this.openingBookPlyLimit) {
+      const move = findOpeningMove(this.board);
+      if (move != 0) {
+        // Validate move
+        for (let i = 0; i < moves.length; i++) {
+          const genMove = decodeMove(unchecked(moves[i]));
+          if (genMove == move) {
+            const targetPieceId = decodePiece(move);
+            const moveStart = decodeStartIndex(move);
+            const moveEnd = decodeEndIndex(move);
+            const previousPiece = this.board.getItem(moveStart);
+
+            const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
+            const isValidMove = !this.board.isInCheck(playerColor);
+
+            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+
+            if (isValidMove) {
+              return encodeScoredMove(move, 0);
+            } else {
+              break;
+            }
+          }
+        }
+      }
+    }
 
     let bestScoredMove: i32 = 0;
 
@@ -771,6 +806,10 @@ class EngineControl {
 
   perft(depth: i32): u64 {
     return perft(this.getBoard(), depth);
+  }
+
+  setUseOpeningBook(useBook: bool): void {
+    this.engine.setUseOpeningBook(useBook);
   }
 
   /** Finds the best move for the current player color.

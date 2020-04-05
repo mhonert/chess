@@ -23,6 +23,7 @@
 import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
 import { BLACK, WHITE } from './board';
+import { randomizeOpeningBookMoves } from './opening-book';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [3, 0, 0],
@@ -44,10 +45,18 @@ const ACTIVE_PLAYER = 64; // 0 - White, 1 - Black
 const WHITE_IN_CHECK = 128;
 const BLACK_IN_CHECK = 256;
 
+let isInitialized = false;
+
 // Resets the engine state for a new game
 export function newGame(): void {
   EngineControl.reset();
-  EngineControl.resizeTranspositionTable(96);
+
+  if (!isInitialized) {
+    EngineControl.resizeTranspositionTable(64);
+    EngineControl.setUseOpeningBook(true);
+    randomizeOpeningBookMoves();
+    isInitialized = true;
+  }
 }
 
 // Sets the current board to the given position and returns the encoded game state

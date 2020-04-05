@@ -25,12 +25,13 @@ import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import { WHITE } from './board';
+import { randomizeOpeningBookMoves } from './opening-book';
 
 export { _abort } from './io/wasi/abort';
 
 // Option names
 const HASH_OPTION = "Hash";
-const FUTILITY_PRUNE_MARGIN_OPTION = "FutilityPruneMargin";
+const OWNBOOK_OPTION = "OwnBook"
 
 // Options
 let transpositionTableSizeChanged: bool = false;
@@ -41,6 +42,8 @@ let transpositionTableSizeInMB: u32 = 1;
 export function _start(): void {
   let isRunning = true;
   let isPositionSet: bool = false;
+
+  EngineControl.setUseOpeningBook(false);
 
   do {
     const line: string = stdio.readLine();
@@ -88,9 +91,10 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.0.9");
+  stdio.writeLine("id name Wasabi 1.1.0");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
+  stdio.writeLine("option name OwnBook type check default false");
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
 
   stdio.writeLine("uciok");
@@ -219,6 +223,13 @@ function setOption(params: Array<string>): void {
     if (sizeInMB >= 1 && sizeInMB != transpositionTableSizeInMB) {
       transpositionTableSizeInMB = min(sizeInMB, MAX_HASH_SIZE_MB);
       transpositionTableSizeChanged = true;
+    }
+
+  } else if (name == OWNBOOK_OPTION) {
+    const useBook = "true" == params[3].toLowerCase();
+    EngineControl.setUseOpeningBook(useBook);
+    if (useBook) {
+      randomizeOpeningBookMoves();
     }
   }
 }
