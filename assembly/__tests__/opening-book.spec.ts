@@ -17,7 +17,7 @@
  */
 
 import { fromFEN, STARTPOS } from '../fen';
-import { isLikelyValidMove } from '../move-generation';
+import { isValidMove } from '../move-generation';
 import { findOpeningMove } from '../opening-book';
 
 describe("Find moves from opening book", () => {
@@ -26,7 +26,7 @@ describe("Find moves from opening book", () => {
 
     for (let ply = 1; ply <= 4; ply++) {
       const openingMove = findOpeningMove(board);
-      expect(isLikelyValidMove(board, board.getActivePlayer(), openingMove)).toBeTruthy("No move found for ply #" + ply.toString())
+      expect(isValidMove(board, board.getActivePlayer(), openingMove)).toBeTruthy("No move found for ply #" + ply.toString())
       board.performEncodedMove(openingMove);
     }
   })

@@ -214,24 +214,9 @@ class MoveGenerator {
     return count;
   }
 
-  @inline
-  isLikelyValidMove(board: Board, activeColor: i32, move: i32): bool {
-    const start = decodeStartIndex(move);
-    const piece = board.getItem(start);
-    if (piece == EMPTY || sign(piece) != activeColor) {
-      return false;
-    }
-
-    const end = decodeEndIndex(move);
-    const targetPiece = board.getItem(end);
-
-    return (targetPiece == EMPTY || sign(targetPiece) != activeColor);
-  }
-
   getGeneratedMoves(): StaticArray<i32> {
     return StaticArray.slice(this.moves, 0, this.count);
   }
-
 
   // Filters out any moves that would leave the own king in check.
   getFilteredGeneratedMoves(activeColor: i32): StaticArray<i32> {
@@ -580,6 +565,61 @@ class MoveGenerator {
     return check;
   };
 
+  @inline
+  isValidMove(board: Board, activeColor: i32, move: i32): bool {
+    this.board = board;
+    this.count = 0;
+    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
+    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
+    this.emptyBitBoard = ~this.occupiedBitBoard;
+
+    const start = decodeStartIndex(move);
+    const piece = this.board.getItem(start);
+    if (piece == EMPTY || sign(piece) != activeColor) {
+      return false;
+    }
+
+    switch (piece * activeColor) {
+      case PAWN:
+        if (activeColor == WHITE) {
+          this.generateWhitePawnMoves();
+        } else {
+          this.generateBlackPawnMoves();
+        }
+        break;
+
+      case KNIGHT:
+        this.generateKnightMoves(activeColor, start);
+        break;
+
+      case BISHOP:
+        this.generateBishopMoves(activeColor, BISHOP, start);
+        break;
+
+      case ROOK:
+        this.generateRookMoves(activeColor, ROOK, start);
+        break;
+
+      case QUEEN:
+        this.generateRookMoves(activeColor, QUEEN, start);
+        this.generateBishopMoves(activeColor, QUEEN, start);
+        break;
+
+      case KING:
+        if (activeColor == WHITE) {
+          this.generateWhiteKingMoves(start);
+        } else {
+          this.generateBlackKingMoves(start);
+        }
+        break;
+
+      default:
+        throw new Error("Unexpected piece ID " + piece.toString());
+    }
+
+    return this.moves.includes(move);
+  }
+
   hasValidMoves(board: Board, activeColor: i32): bool {
     this.board = board;
     this.count = 0;
@@ -700,8 +740,8 @@ export function mainPieceMoveCount(board: Board, activeColor: i32): i32 {
 }
 
 @inline
-export function isLikelyValidMove(board: Board, activeColor: i32, move: i32): bool {
-  return DEFAULT_INSTANCE.isLikelyValidMove(board, activeColor, move);
+export function isValidMove(board: Board, activeColor: i32, move: i32): bool {
+  return DEFAULT_INSTANCE.isValidMove(board, activeColor, move);
 }
 
 @inline

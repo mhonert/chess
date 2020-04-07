@@ -28,7 +28,7 @@ import {
   generateFilteredMoves,
   generateMoves,
   isCheckMate,
-  isLikelyValidMove
+  isValidMove
 } from './move-generation';
 import {
   getDepth,
@@ -308,7 +308,7 @@ export class Engine {
     const entry = this.transpositionTable.getEntry(this.board.getHash());
     const nextMove = entry != 0 ? decodeMove(getScoredMove(entry)) : 0;
 
-    const followUpUciMoves = nextMove != 0 && isLikelyValidMove(this.board, this.board.getActivePlayer(), nextMove)
+    const followUpUciMoves = nextMove != 0 && isValidMove(this.board, this.board.getActivePlayer(), nextMove)
       ? " " + this.extractPV(nextMove, depth - 1)
       : "";
 
@@ -388,7 +388,7 @@ export class Engine {
       move = decodeMove(scoredMove);
 
       // Validate hash move for additional protection against hash collisions
-      if (move == 0 || !isLikelyValidMove(this.board, playerColor, decodeMove(scoredMove))) {
+      if (move == 0 || !isValidMove(this.board, playerColor, decodeMove(scoredMove))) {
         scoredMove = 0;
         move = 0;
       }

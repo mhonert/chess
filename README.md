@@ -17,17 +17,16 @@ to run all calculations in the background without blocking the main thread for t
 - Basic UCI protocol support (standalone engine)
 - Computer opponent with 5 difficulty levels
 - Opening Database for varied gameplay
+- Move history to undo player moves
 - Drag'n'Drop support to move chess pieces
 - Touch support for mobile devices
 - Responsive design
-- Undo player move
 
 ## Planned features
-- Save game in local storage
 - Export and import positions in [FEN](https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation)
 
 ## Planned engine improvements
-- Improve position evaluation
+- Improve position evaluation (pawn structure, king safety, etc.)
 
 ## Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine
@@ -43,4 +42,4 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 
 ## Attributions
 * Images for the chess pieces come from [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
-* The opening book was generated based upon a selected set of chess games from the [FICS Games Database](https://www.ficsgames.org)
+* The opening book was generated from a selection of chess games from the [FICS Games Database](https://www.ficsgames.org)
