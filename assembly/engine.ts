@@ -152,28 +152,8 @@ export class Engine {
     // Check opening book for a move
     if (this.useOpeningBook && this.board.getHalfMoveCount() < this.openingBookPlyLimit) {
       const move = findOpeningMove(this.board);
-      if (move != 0) {
-        // Validate move
-        for (let i = 0; i < moves.length; i++) {
-          const genMove = decodeMove(unchecked(moves[i]));
-          if (genMove == move) {
-            const targetPieceId = decodePiece(move);
-            const moveStart = decodeStartIndex(move);
-            const moveEnd = decodeEndIndex(move);
-            const previousPiece = this.board.getItem(moveStart);
-
-            const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
-            const isValidMove = !this.board.isInCheck(playerColor);
-
-            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
-
-            if (isValidMove) {
-              return encodeScoredMove(move, 0);
-            } else {
-              break;
-            }
-          }
-        }
+      if (move != 0 && isValidMove(this.board, playerColor, move)) {
+        return encodeScoredMove(move, 0);
       }
     }
 
