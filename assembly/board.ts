@@ -40,15 +40,16 @@ import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
-  antiDiagonalAttacks,
-  blackPawnAttacks,
+  antiDiagonalAttacks, blackLeftPawnAttacks,
+  blackRightPawnAttacks,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
   KNIGHT_PATTERNS,
-  verticalAttacks,
-  whitePawnAttacks
+  verticalAttacks, whiteLeftPawnAttacks,
+  whiteRightPawnAttacks
 } from './bitboard';
+import { stdio } from './io';
 
 export const WHITE_KING_START = 60;
 export const BLACK_KING_START = 4;
@@ -683,66 +684,130 @@ export class Board {
     return this.isAttacked(-activeColor, this.findKingPosition(activeColor));
   };
 
-  isAttacked(opponentColor: i32, pos: i32): bool {
-
-    const occupied = this.getAllPieceBitBoard(WHITE) | this.getAllPieceBitBoard(BLACK);
-
-    const diaAttacks = diagonalAttacks(occupied, pos);
-    const antiDiaAttacks = antiDiagonalAttacks(occupied, pos);
-    const bishops = this.getBitBoard(BISHOP * opponentColor + 6);
-    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
-    if ((diaAttacks & bishops) != 0 || (diaAttacks & queens) != 0 || (antiDiaAttacks & bishops) != 0 || ((antiDiaAttacks & queens) != 0)) {
-      return true;
-    }
-
-    const hAttacks = horizontalAttacks(occupied, pos);
-    const vAttacks = verticalAttacks(occupied, pos);
-    const rooks = this.getBitBoard(ROOK * opponentColor + 6);
-    if ((hAttacks & rooks) != 0 || (hAttacks & queens) != 0 || (vAttacks & rooks) != 0 || ((vAttacks & queens) != 0)) {
-      return true;
-    }
-
-    return this.isKnightAttacked(opponentColor, pos) ||
-      this.isAttackedByPawns(opponentColor, pos) ||
-      this.isAttackedByKing(opponentColor, pos);
-  }
-
+  // Returns the position of the smallest attacker or -1 if there is no attacker
   @inline
-  isAttackedByKing(opponentColor: i32, pos: i32): bool {
-    const opponentKingAttacks: u64 = unchecked(KING_PATTERNS[this.findKingPosition(opponentColor)]);
-    return ((opponentKingAttacks & (1 << u64(pos))) != 0);
-  }
-
-
-  @inline
-  isAttackedByPawns(opponentColor: i32, pos: i32): bool {
-    const opponentPawns = this.getBitBoard(PAWN * opponentColor + 6);
+  findSmallestAttacker(occupiedBB: u64, opponentColor: i32, pos: i32): i32 {
+    const targetBB: u64 = u64(1) << pos;
     if (opponentColor == WHITE) {
-      return (whitePawnAttacks(opponentPawns) & (1 << u64(pos))) != 0;
+
+      // Check pawns
+      const whitePawns = this.getBitBoard(PAWN + 6) & occupiedBB;
+      if (whiteLeftPawnAttacks(whitePawns) & targetBB) {
+        return pos + 9;
+      } else if (whiteRightPawnAttacks(whitePawns) & targetBB) {
+        return pos + 7;
+      }
+
+      // Check knights
+      const knights = this.getBitBoard(KNIGHT + 6) & occupiedBB;
+      const attackingKnights = knights & unchecked(KNIGHT_PATTERNS[pos]);
+      if (attackingKnights != 0) {
+        return i32(ctz(attackingKnights));
+      }
+
+      // Check bishops
+      const allDiagonalAttacks = diagonalAttacks(occupiedBB, pos) | antiDiagonalAttacks(occupiedBB, pos);
+      const bishops = this.getBitBoard(BISHOP + 6) & occupiedBB;
+      const attackingBishops = bishops & allDiagonalAttacks;
+      if (attackingBishops != 0) {
+        return i32(ctz(attackingBishops));
+      }
+
+      // Check rooks
+      const orthogonalAttacks = horizontalAttacks(occupiedBB, pos) | verticalAttacks(occupiedBB, pos);
+      const rooks = this.getBitBoard(ROOK + 6) & occupiedBB;
+      const attackingRooks = rooks & orthogonalAttacks;
+      if (attackingRooks != 0) {
+        return i32(ctz(attackingRooks));
+      }
+
+      // Check queens
+      const queens = this.getBitBoard(QUEEN + 6) & occupiedBB;
+      const attackingQueens = queens & (orthogonalAttacks | allDiagonalAttacks);
+      if (attackingQueens != 0) {
+        return i32(ctz(attackingQueens));
+      }
+
+      // Check king
+      const kingPos = this.whiteKingIndex;
+      const attackingKing: u64 = unchecked(KING_PATTERNS[kingPos]) & targetBB;
+      if (attackingKing != 0) {
+        const kingBB: u64 = u64(1) << kingPos
+        if ((kingBB & occupiedBB) != 0) {
+          return kingPos;
+        }
+      }
+
     } else {
-      return (blackPawnAttacks(opponentPawns) & (1 << u64(pos))) != 0;
+      // Check pawns
+      const blackPawns = this.getBitBoard(-PAWN + 6) & occupiedBB;
+      if (blackLeftPawnAttacks(blackPawns) & targetBB) {
+        return pos - 7;
+      } else if (blackRightPawnAttacks(blackPawns) & targetBB) {
+        return pos - 9;
+      }
+      if (pos == 61 && (this.getItem(pos - 7) == -PAWN || this.getItem(pos - 9) == -PAWN)) {
+        stdio.writeLine("! ------------------------------------------------------------")
+        stdio.writeLine("Occ: " + toBitBoardString(occupiedBB));
+        stdio.writeLine("Paw: " + toBitBoardString(blackPawns));
+        stdio.writeLine("Tar: " + toBitBoardString(targetBB));
+        stdio.writeLine("Lef: " + toBitBoardString(blackLeftPawnAttacks(blackPawns)));
+        stdio.writeLine("Rig: " + toBitBoardString(blackRightPawnAttacks(blackPawns)));
+        stdio.writeLine("! ------------------------------------------------------------")
+
+      }
+
+      // Check knights
+      const knights = this.getBitBoard(-KNIGHT + 6) & occupiedBB;
+      const attackingKnights = knights & unchecked(KNIGHT_PATTERNS[pos]);
+      if (attackingKnights != 0) {
+        return i32(ctz(attackingKnights));
+      }
+
+      // Check bishops
+      const allDiagonalAttacks = diagonalAttacks(occupiedBB, pos) | antiDiagonalAttacks(occupiedBB, pos);
+      const bishops = this.getBitBoard(-BISHOP + 6) & occupiedBB;
+      const attackingBishops = bishops & allDiagonalAttacks;
+      if (attackingBishops != 0) {
+        return i32(ctz(attackingBishops));
+      }
+
+      // Check rooks
+      const orthogonalAttacks = horizontalAttacks(occupiedBB, pos) | verticalAttacks(occupiedBB, pos);
+      const rooks = this.getBitBoard(-ROOK + 6) & occupiedBB;
+      const attackingRooks = rooks & orthogonalAttacks;
+      if (attackingRooks != 0) {
+        return i32(ctz(attackingRooks));
+      }
+
+      // Check queens
+      const queens = this.getBitBoard(-QUEEN + 6) & occupiedBB;
+      const attackingQueens = queens & (orthogonalAttacks | allDiagonalAttacks);
+      if (attackingQueens != 0) {
+        return i32(ctz(attackingQueens));
+      }
+
+      // Check king
+      const kingPos = this.blackKingIndex;
+      const attackingKing: u64 = unchecked(KING_PATTERNS[kingPos]) & targetBB;
+      if (attackingKing != 0) {
+        const kingBB: u64 = u64(1) << kingPos
+        if ((kingBB & occupiedBB) != 0) {
+          return kingPos;
+        }
+      }
+
     }
+    return -1;
   }
 
   @inline
-  isAttackedDiagonally(opponentColor: i32, pos: i32, bitPos: i32, occupied: u64): bool {
-    const diaAttacks = diagonalAttacks(occupied, bitPos);
-    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
-    const bishops = this.getBitBoard(BISHOP * opponentColor + 6);
-    const antiDiaAttacks = antiDiagonalAttacks(occupied, bitPos);
-
-    return (diaAttacks & bishops) != 0 || (diaAttacks & queens) != 0 || (antiDiaAttacks & bishops) != 0 || ((antiDiaAttacks & queens) != 0);
+  getOccupancyBitboard(): u64 {
+    return this.getAllPieceBitBoard(WHITE) | this.getAllPieceBitBoard(BLACK);
   }
 
-
-  @inline
-  isAttackedOrthogonally(opponentColor: i32, pos: i32, bitPos: i32, occupied: u64): bool {
-    const hAttacks = horizontalAttacks(occupied, bitPos);
-    const queens = this.getBitBoard(QUEEN * opponentColor + 6);
-    const rooks = this.getBitBoard(ROOK * opponentColor + 6);
-    const vAttacks = verticalAttacks(occupied, bitPos);
-
-    return (hAttacks & rooks) != 0 || (hAttacks & queens) != 0 || (vAttacks & rooks) != 0 || ((vAttacks & queens) != 0);
+  isAttacked(opponentColor: i32, pos: i32): bool {
+    return this.findSmallestAttacker(this.getOccupancyBitboard(), opponentColor, pos) >= 0;
   }
 
   setHistory(history: PositionHistory): void {

@@ -168,22 +168,30 @@ export function verticalAttacks(occupied: u64, pos: i32): u64 {
 
 @inline
 export function blackPawnAttacks(pawns: u64): u64 {
-  let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
-  attackToLeft <<= 7;
-
-  let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
-  attackToRight <<= 9;
-
-  return attackToLeft | attackToRight;
+  return blackLeftPawnAttacks(pawns) | blackRightPawnAttacks(pawns);
 }
 
 @inline
 export function whitePawnAttacks(pawns: u64): u64 {
-  let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
-  attackToLeft >>= 9;
+  return whiteLeftPawnAttacks(pawns) | whiteRightPawnAttacks(pawns);
+}
 
-  let attackToRight = pawns & 0x7f7f7f7f7f7f7f7f; // mask left column
-  attackToRight >>= 7;
+@inline
+export function whiteLeftPawnAttacks(pawns: u64): u64 {
+  return (pawns & 0xfefefefefefefefe) >> 9 // mask right column
+}
 
-  return attackToLeft | attackToRight;
+@inline
+export function whiteRightPawnAttacks(pawns: u64): u64 {
+  return (pawns & 0x7f7f7f7f7f7f7f7f) >> 7 // mask right column
+}
+
+@inline
+export function blackLeftPawnAttacks(pawns: u64): u64 {
+  return (pawns & 0xfefefefefefefefe) << 7 // mask right column
+}
+
+@inline
+export function blackRightPawnAttacks(pawns: u64): u64 {
+  return (pawns & 0x7f7f7f7f7f7f7f7f) << 9 // mask right column
 }

@@ -25,6 +25,7 @@ import {
   WHITE
 } from '../board';
 import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
+import { stdio } from '../io';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {
@@ -547,3 +548,174 @@ describe('Evaluate position', () => {
   });
 });
 
+describe('Find smallest attacker', () => {
+  it('Finds white pawn left attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  P,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(34);
+  });
+
+  it('Finds white pawn right attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  0,  0,  P,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(36);
+  });
+
+  it('Finds black pawn left attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  B,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, BLACK, 27)).toBe(20);
+  });
+
+  it('Finds black pawn right attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0, -P,  0,  0,  0,  0,  0,
+      0,  0,  0,  B,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, BLACK, 27)).toBe(18);
+  });
+
+  it('Finds knight attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  N,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(37);
+  });
+
+  it('Finds bishop attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  B,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(45);
+  });
+
+  it('Finds rook attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      R,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(24);
+  });
+
+  it('Finds queen attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  Q,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(29);
+  });
+
+  it('Finds king attack', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, -B,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(35);
+  });
+
+  it('Finds smallest attacker among multiple attackers', () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0, +R, -B,  0,  0,  0,  0,
+      0,  0,  0, +K,  B,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    const occupied = board.getOccupancyBitboard();
+    expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(36);
+  });
+});
