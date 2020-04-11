@@ -49,7 +49,6 @@ import {
   verticalAttacks, whiteLeftPawnAttacks,
   whiteRightPawnAttacks
 } from './bitboard';
-import { stdio } from './io';
 
 export const WHITE_KING_START = 60;
 export const BLACK_KING_START = 4;
@@ -745,16 +744,6 @@ export class Board {
         return pos - 7;
       } else if (blackRightPawnAttacks(blackPawns) & targetBB) {
         return pos - 9;
-      }
-      if (pos == 61 && (this.getItem(pos - 7) == -PAWN || this.getItem(pos - 9) == -PAWN)) {
-        stdio.writeLine("! ------------------------------------------------------------")
-        stdio.writeLine("Occ: " + toBitBoardString(occupiedBB));
-        stdio.writeLine("Paw: " + toBitBoardString(blackPawns));
-        stdio.writeLine("Tar: " + toBitBoardString(targetBB));
-        stdio.writeLine("Lef: " + toBitBoardString(blackLeftPawnAttacks(blackPawns)));
-        stdio.writeLine("Rig: " + toBitBoardString(blackRightPawnAttacks(blackPawns)));
-        stdio.writeLine("! ------------------------------------------------------------")
-
       }
 
       // Check knights

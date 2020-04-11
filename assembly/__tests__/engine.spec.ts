@@ -17,7 +17,7 @@
  */
 
 
-import { B, K, N, P, Q, QUEEN, R } from '../pieces';
+import { B, K, N, P, PAWN, PIECE_VALUES, Q, QUEEN, R, ROOK } from '../pieces';
 import EngineControl from '../engine';
 import {Engine} from '../engine';
 import {
@@ -311,6 +311,71 @@ describe("Move list sorting", () => {
 
     expect(decodeScore(moves[0])).toBe(5);
     expect(decodeScore(moves[1])).toBe(12);
+  });
+});
+
+describe("Static exchange evaluation", () => {
+  it("Evaluates re-capture with a negative score", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0, -B,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  0,  Q,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    const engine = new Engine();
+    engine.setBoard(board);
+
+    expect(engine.seeScore(BLACK, 52, 44, Q, P)).toBeLessThan(0);
+
+  });
+
+  it("Takes discovered attacks for white into account", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0, -Q,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  0,  R,  0,  0,  0,
+      0,  0,  0,  0,  R,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    const engine = new Engine();
+    engine.setBoard(board);
+
+    expect(engine.seeScore(BLACK, 52, 44, R, P)).toBeGreaterThan(0);
+
+  });
+
+  it("Takes discovered attacks for black into account", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  Q,  0,  0,
+      0,  0,  0,  0,  P,  0,  0,  0,
+      0,  0,  0,  0, -R,  0,  0,  0,
+      0,  0,  0,  0, -R,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    const engine = new Engine();
+    engine.setBoard(board);
+
+    expect(engine.seeScore(WHITE, 52, 44, R, P)).toBeGreaterThan(0);
+
   });
 });
 

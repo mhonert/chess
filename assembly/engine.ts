@@ -39,7 +39,7 @@ import {
 } from './transposition-table';
 import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { PAWN } from './pieces';
+import { KING, PAWN, PIECE_VALUES } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
@@ -604,16 +604,12 @@ export class Engine {
       const moveStart = decodeStartIndex(move);
       const moveEnd = decodeEndIndex(move);
       const previousPiece = this.board.getItem(moveStart);
+      const previousPieceId = abs(previousPiece);
+      const capturedPieceId = abs(this.board.getItem(moveEnd));
 
-      if (abs(this.board.getItem(moveEnd)) <= abs(previousPiece) && this.board.isAttacked(-activePlayer, moveEnd)) {
-        const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
-        const isAttackerDefended = this.board.isAttacked(activePlayer, moveEnd);
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPiece);
-
-        if (!isAttackerDefended) {
-          // skip move if the attacked piece has lower or equal value, is defended and not defended by an own piece
-          continue;
-        }
+      if (this.seeScore(-activePlayer, moveStart, moveEnd, previousPieceId, capturedPieceId) <= 0) {
+        // skip non-winning captures
+        continue;
       }
 
       const removedPiece = this.board.performMove(targetPieceId, moveStart, moveEnd);
@@ -636,6 +632,51 @@ export class Engine {
       }
     }
     return alpha;
+  }
+
+  /* Perform a Static Exchange Evaluation (SEE) to check, whether the net gain of the capture is still positive,
+     after applying all immediate and discovered re-capture attacks.
+
+     Returns:
+     - a positive integer for winning captures
+     - a negative integer for losing captures
+     - a 0 otherwise
+   */
+  @inline
+  seeScore(opponentColor: i32, from: i32, target: i32, ownPieceId: i32, capturedPieceId: i32): i32 {
+    let score = unchecked(PIECE_VALUES[capturedPieceId]);
+    let occupied = this.board.getOccupancyBitboard() & ~(u64(1) << from);
+
+    let trophyPieceScore = unchecked(PIECE_VALUES[ownPieceId]);
+
+    do {
+      // Opponent attack
+      const attackerPos = this.board.findSmallestAttacker(occupied, opponentColor, target);
+      if (attackerPos < 0) {
+        return score;
+      }
+      score -= trophyPieceScore;
+      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.board.getItem(attackerPos))]);
+      if (score + trophyPieceScore < 0) {
+        return score;
+      }
+
+      occupied &= ~(u64(1) << attackerPos);
+
+      // Own attack
+      const ownAttackerPos = this.board.findSmallestAttacker(occupied, -opponentColor, target);
+      if (ownAttackerPos < 0) {
+        return score;
+      }
+
+      score += trophyPieceScore;
+      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.board.getItem(ownAttackerPos))]);
+      if (score - trophyPieceScore > 0) {
+        return score;
+      }
+
+      occupied &= ~(u64(1) << ownAttackerPos);
+    } while (true);
   }
 
   // Move evaluation heuristic for initial move ordering
@@ -762,7 +803,6 @@ function createCaptureOrderScores(): StaticArray<i32> {
 
   return scores;
 }
-
 
 class EngineControl {
   private board: Board;
