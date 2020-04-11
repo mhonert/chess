@@ -442,26 +442,40 @@ export class Engine {
 
       let reductions: i32 = 0;
 
-      if (!skip && !this.board.isInCheck(-playerColor))  {
+      if (!skip)  {
         hasValidMoves = true;
+        const givesCheck = this.board.isInCheck(-playerColor);
+        if (removedPieceId == EMPTY) {
 
-        if (allowReductions && evaluatedMoveCount > LMR_THRESHOLD && removedPieceId == EMPTY && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
-          // Reduce search depth for late moves (i.e. after trying the most promising moves)
-          reductions = LMR_REDUCTIONS;
-
-        } else if (allowFutileMovePruning && removedPieceId == EMPTY && targetPieceId == abs(previousPiece)) {
-          if (ownMovesLeft <= 1) {
-            // Prune futile move
-            skip = true;
-            if (pruneLowScore > bestScore) {
-              bestMove = 0;
-              bestScore = pruneLowScore; // remember score with added margin for cases when all moves are pruned
+          if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
+            // Reduce search depth for late moves (i.e. after trying the most promising moves)
+            reductions = LMR_REDUCTIONS;
+            if (this.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+              // Reduce more, if piece could be captured
+              reductions++;
             }
-          } else {
-            // Reduce futile move
-            reductions = FUTILE_MOVE_REDUCTIONS;
+
+          } else if (allowFutileMovePruning && targetPieceId == abs(previousPiece)) {
+            if (givesCheck) {
+              if (this.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+                // Reduce futile move
+                reductions = FUTILE_MOVE_REDUCTIONS;
+              }
+            } else if (ownMovesLeft <= 1) {
+              // Prune futile move
+              skip = true;
+              if (pruneLowScore > bestScore) {
+                bestMove = 0;
+                bestScore = pruneLowScore; // remember score with added margin for cases when all moves are pruned
+              }
+            } else {
+              // Reduce futile move
+              reductions = FUTILE_MOVE_REDUCTIONS;
+            }
           }
-        } else if (removedPieceId <= abs(previousPiece) && this.board.isAttacked(-playerColor, moveEnd) && !this.board.isAttacked(playerColor, moveEnd)) {
+        }
+
+        if (!skip && reductions == 0 && !givesCheck && removedPieceId <= abs(previousPiece) && this.seeScore(-playerColor, moveStart, moveEnd, abs(previousPiece), removedPieceId) < 0) {
           // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
           reductions = LOSING_MOVE_REDUCTIONS;
         }

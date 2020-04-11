@@ -24,13 +24,11 @@ import {
 } from '../move-generation';
 import {
   ALL_CASTLING_RIGHTS,
-  BLACK, BLACK_KING_SIDE_CASTLING, BLACK_QUEEN_SIDE_CASTLING,
+  BLACK,
   Board,
   EMPTY,
   NO_CASTLING_RIGHTS,
   WHITE,
-  WHITE_KING_SIDE_CASTLING,
-  WHITE_QUEEN_SIDE_CASTLING
 } from '../board';
 import { B, BISHOP, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
 import { sign } from '../util';
