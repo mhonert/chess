@@ -16,6 +16,8 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+import { BLACK, Board, WHITE } from './board';
+
 @inline
 export function sign(value: i32): i32 {
   if (value == 0) {
@@ -65,7 +67,6 @@ export function fromBitBoardString(bits: string): u64 {
   return result;
 }
 
-
 export function toBitBoardString(value: u64, separator: string = '/'): string {
  let result = "";
  for (let i = 0; i < 64; i++) {
@@ -79,5 +80,17 @@ export function toBitBoardString(value: u64, separator: string = '/'): string {
    }
  }
  return result;
+}
+
+export function moveKing(board: Board, piece: i32, location: i32): void {
+  const color = piece < 0 ? BLACK : WHITE;
+
+  const kingPos = board.findKingPosition(color);
+  board.removePiece(kingPos);
+
+  board.addPiece(color, abs(piece), location);
+  const state = board.getState();
+  board.updateKingPosition(color, location);
+  board.setState(state);
 }
 

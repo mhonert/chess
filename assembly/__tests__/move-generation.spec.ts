@@ -31,7 +31,7 @@ import {
   WHITE,
 } from '../board';
 import { B, BISHOP, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, PAWN, Q, QUEEN, R, ROOK } from '../pieces';
-import { sign } from '../util';
+import { moveKing, sign } from '../util';
 
 
 function emptyBoardWithKings(): Array<i32> {
@@ -1194,18 +1194,6 @@ function boardWithKing(piece: i32, location: i32): Board {
   moveKing(board, piece, location);
 
   return board;
-}
-
-function moveKing(board: Board, piece: i32, location: i32): void {
-  const color = piece < 0 ? BLACK : WHITE;
-
-  const kingPos = board.findKingPosition(color);
-  board.removePiece(kingPos);
-
-  board.addPiece(color, abs(piece), location);
-  const state = board.getState();
-  board.updateKingPosition(color, location);
-  board.setState(state);
 }
 
 // Generates moves and filters for valid moves for the given start index

@@ -24,7 +24,9 @@ import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
-import { WHITE } from './board';
+import {
+  WHITE
+} from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 
 export { _abort } from './io/wasi/abort';
@@ -224,6 +226,9 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeInMB = min(sizeInMB, MAX_HASH_SIZE_MB);
       transpositionTableSizeChanged = true;
     }
+
+  // } else if (name == 'DoubledPawnPenalty') {
+  //   DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
 
   } else if (name == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();

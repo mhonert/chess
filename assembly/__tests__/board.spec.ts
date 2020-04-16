@@ -19,13 +19,16 @@
 import {
   ALL_CASTLING_RIGHTS,
   BLACK,
-  Board,
+  Board, DOUBLED_PAWN_PENALTY,
   mirrored, NO_CASTLING_RIGHTS,
   PAWN_POSITION_SCORES,
   WHITE
 } from '../board';
-import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
+import { B, BISHOP, BISHOP_DIRECTIONS, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
 import { stdio } from '../io';
+import { Engine } from '../engine';
+import { moveKing, toBitBoardString } from '../util';
+import { ISOLATED_PAWN_PATTERNS } from '../bitboard';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {
@@ -482,22 +485,66 @@ describe('Evaluate position', () => {
     expect(new Board(items).getScore()).toBe(0);
   });
 
-  // TODO: Store pawn bitboard in Board class and take them into account for the scoring function
-  // it('Calculates lower score for doubled pawns', () => {
-  //   const board: Array<i32> = [
-  //     -R, -N, -B, -Q, -K, -B, -N, -R,
-  //     -P, -P, -P, -P, -P, -P, -P, -P,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0,  0,  0,  0,  0,
-  //      0,  0,  0,  0, +P,  0,  0,  0,
-  //     +P, +P, +P,  0, +P, +P, +P, +P,
-  //     +R, +N, +B, +Q, +K, +B, +N, +R,
-  //     0, 0, 0
-  //   ];
-  //
-  //   expect(new Board(board).getScore()).toBeLessThan(0);
-  // });
+  it('Calculates lower score for doubled pawns', () => {
+    const board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  P,  0,  0,  0,  0,
+      0,  0,  0,  P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    expect(board.getScore()).toBeLessThan(board.getMaterialScore());
+  });
+
+  it('Calculates lower score for doubled pawns on all squares', () => {
+    const board = new Board([
+     -K,  0,  0,  0,  0,  0,  0,  0,
+      K,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+
+    for (let color = BLACK; color <= WHITE; color++) {
+      if (color != BLACK || color != WHITE) {
+        continue;
+      }
+      for (let row = 0; row < 8; row++) {
+        if (board.getItem(row) == K) {
+          // Move kings to the next row to make sure that they are not overwritten during the test
+          moveKing(board, board.getItem(row), (row + 1) & 7);
+          moveKing(board, board.getItem(row + 8), (row + 8 + 1) & 7);
+        }
+        for (let col1 = 0; col1 < 8; col1++) {
+          const firstPawnPos = row + col1 * 8;
+          board.addPiece(color, P, firstPawnPos);
+          for (let col2 = 0; col2 < 8; col2++) {
+            if (col1 == col2) {
+              continue;
+            }
+
+            const secondPawnPos = row + col2 * 8;
+            board.addPiece(color, P, secondPawnPos);
+
+            const appliedPenaly = board.getMaterialScore() - board.getScore();
+            expect(appliedPenaly).toBe(DOUBLED_PAWN_PENALTY);
+
+            board.removePiece(secondPawnPos);
+          }
+          board.removePiece(firstPawnPos);
+        }
+      }
+    }
+  });
 
   it('Calculates higher score for pieces outside starting position', () => {
     const board: Array<i32> = [
@@ -719,3 +766,61 @@ describe('Find smallest attacker', () => {
     expect(board.findSmallestAttacker(occupied, WHITE, 27)).toBe(36);
   });
 });
+
+
+describe("Static exchange evaluation", () => {
+  it("Evaluates re-capture with a negative score", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0, -B,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  0,  Q,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    expect(board.seeScore(BLACK, 52, 44, Q, P)).toBeLessThan(0);
+
+  });
+
+  it("Takes discovered attacks for white into account", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0, -Q,  0,  0,
+      0,  0,  0,  0, -P,  0,  0,  0,
+      0,  0,  0,  0,  R,  0,  0,  0,
+      0,  0,  0,  0,  R,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    expect(board.seeScore(BLACK, 52, 44, R, P)).toBeGreaterThan(0);
+
+  });
+
+  it("Takes discovered attacks for black into account", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0,  0,  0,  0,  0,  0, -K,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  K,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  Q,  0,  0,
+      0,  0,  0,  0,  P,  0,  0,  0,
+      0,  0,  0,  0, -R,  0,  0,  0,
+      0,  0,  0,  0, -R,  0,  0,  0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    expect(board.seeScore(WHITE, 52, 44, R, P)).toBeGreaterThan(0);
+
+  });
+});
+

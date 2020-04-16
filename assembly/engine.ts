@@ -37,7 +37,7 @@ import {
   TRANSPOSITION_MAX_DEPTH,
   TranspositionTable
 } from './transposition-table';
-import { fromFEN, STARTPOS } from './fen';
+import { fromFEN, STARTPOS, toFEN } from './fen';
 import { PositionHistory } from './history';
 import { KING, PAWN, PIECE_VALUES } from './pieces';
 import { KillerMoveTable } from './killermove-table';
@@ -176,7 +176,6 @@ export class Engine {
 
       let a = -beta; // Search principal variation node with full window
 
-      const allowReductions = !isInCheck && depth >= LMR_START_DEPTH;
       let evaluatedMoveCount = 0;
 
       for (let i: i32 = 0; i < moves.length; i++) {
@@ -191,19 +190,15 @@ export class Engine {
 
         const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
 
-        const reductions: i32 = (allowReductions && removedPieceId == EMPTY && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, targetPieceId) && !this.board.isInCheck(-playerColor))
-          ? LMR_REDUCTIONS
-          : 0;
-
         // Use principal variation search
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, 1, false, true);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true);
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
           break;
         }
 
         // Repeat search if it falls outside the window
-        if (-result > alpha && (-result < beta || reductions > 0)) {
+        if (-result > alpha && -result < beta) {
           result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true);
           if (result == CANCEL_SEARCH) {
             this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
@@ -268,7 +263,7 @@ export class Engine {
       alpha = previousAlpha;
       beta = previousBeta;
       this.isCancelPossible = depth >= minimumDepth;
-    };
+    }
 
     return bestScoredMove;
   };
@@ -288,7 +283,8 @@ export class Engine {
     const entry = this.transpositionTable.getEntry(this.board.getHash());
     const nextMove = entry != 0 ? decodeMove(getScoredMove(entry)) : 0;
 
-    const followUpUciMoves = nextMove != 0 && isValidMove(this.board, this.board.getActivePlayer(), nextMove)
+    const isValidFollowUpMove = nextMove != 0 && isValidMove(this.board, this.board.getActivePlayer(), nextMove);
+    const followUpUciMoves =  isValidFollowUpMove
       ? " " + this.extractPV(nextMove, depth - 1)
       : "";
 
@@ -450,14 +446,14 @@ export class Engine {
           if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
             reductions = LMR_REDUCTIONS;
-            if (this.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+            if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
               // Reduce more, if piece could be captured
               reductions++;
             }
 
           } else if (allowFutileMovePruning && targetPieceId == abs(previousPiece)) {
             if (givesCheck) {
-              if (this.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+              if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
                 // Reduce futile move
                 reductions = FUTILE_MOVE_REDUCTIONS;
               }
@@ -475,7 +471,7 @@ export class Engine {
           }
         }
 
-        if (!skip && reductions == 0 && !givesCheck && removedPieceId <= abs(previousPiece) && this.seeScore(-playerColor, moveStart, moveEnd, abs(previousPiece), removedPieceId) < 0) {
+        if (!skip && reductions == 0 && !givesCheck && removedPieceId <= abs(previousPiece) && this.board.seeScore(-playerColor, moveStart, moveEnd, abs(previousPiece), removedPieceId) < 0) {
           // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
           reductions = LOSING_MOVE_REDUCTIONS;
         }
@@ -621,7 +617,7 @@ export class Engine {
       const previousPieceId = abs(previousPiece);
       const capturedPieceId = abs(this.board.getItem(moveEnd));
 
-      if (this.seeScore(-activePlayer, moveStart, moveEnd, previousPieceId, capturedPieceId) <= 0) {
+      if (this.board.seeScore(-activePlayer, moveStart, moveEnd, previousPieceId, capturedPieceId) <= 0) {
         // skip non-winning captures
         continue;
       }
@@ -646,51 +642,6 @@ export class Engine {
       }
     }
     return alpha;
-  }
-
-  /* Perform a Static Exchange Evaluation (SEE) to check, whether the net gain of the capture is still positive,
-     after applying all immediate and discovered re-capture attacks.
-
-     Returns:
-     - a positive integer for winning captures
-     - a negative integer for losing captures
-     - a 0 otherwise
-   */
-  @inline
-  seeScore(opponentColor: i32, from: i32, target: i32, ownPieceId: i32, capturedPieceId: i32): i32 {
-    let score = unchecked(PIECE_VALUES[capturedPieceId]);
-    let occupied = this.board.getOccupancyBitboard() & ~(u64(1) << from);
-
-    let trophyPieceScore = unchecked(PIECE_VALUES[ownPieceId]);
-
-    do {
-      // Opponent attack
-      const attackerPos = this.board.findSmallestAttacker(occupied, opponentColor, target);
-      if (attackerPos < 0) {
-        return score;
-      }
-      score -= trophyPieceScore;
-      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.board.getItem(attackerPos))]);
-      if (score + trophyPieceScore < 0) {
-        return score;
-      }
-
-      occupied &= ~(u64(1) << attackerPos);
-
-      // Own attack
-      const ownAttackerPos = this.board.findSmallestAttacker(occupied, -opponentColor, target);
-      if (ownAttackerPos < 0) {
-        return score;
-      }
-
-      score += trophyPieceScore;
-      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.board.getItem(ownAttackerPos))]);
-      if (score - trophyPieceScore > 0) {
-        return score;
-      }
-
-      occupied &= ~(u64(1) << ownAttackerPos);
-    } while (true);
   }
 
   // Move evaluation heuristic for initial move ordering

@@ -35,7 +35,7 @@ import {
   WHITE_PAWNS_BASELINE_START,
   WHITE_KING_SIDE_ROOK_START
 } from './pieces';
-import { sign, toBitBoardString } from './util';
+import { sign } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
@@ -53,7 +53,6 @@ import {
 export const WHITE_KING_START = 60;
 export const BLACK_KING_START = 4;
 
-
 const HALFMOVE_CLOCK_INDEX = 64;
 const HALFMOVE_COUNT_INDEX = 65;
 const STATE_INDEX = 66;
@@ -63,6 +62,9 @@ export const MAX_FIELD_DISTANCE: i32 = 7; // maximum distance between two fields
 const MAX_GAME_HALFMOVES = 5898 * 2;
 
 export const EN_PASSANT_BIT = 1 << 31;
+
+// Evaluation constants
+export const DOUBLED_PAWN_PENALTY: i32 = 7;
 
 export class Board {
   private items: StaticArray<i32>;
@@ -186,8 +188,75 @@ export class Board {
   }
 
   @inline
-  getScore(): i32 {
+  getMaterialScore(): i32 {
     return this.score;
+  }
+
+  @inline
+  getScore(): i32 {
+    let score = this.getMaterialScore();
+
+    const whitePawns = this.getBitBoard(PAWN + 6);
+    score -= this.calcDoubledPawnPenalty(whitePawns);
+    const blackPawns = this.getBitBoard(-PAWN + 6);
+    score += this.calcDoubledPawnPenalty(blackPawns);
+
+    return score;
+  }
+
+  @inline
+  calcDoubledPawnPenalty(pawns: u64): i32 {
+    const doubled = (pawns & rotr(pawns, 8))
+      | pawns & rotr(pawns, 16)
+      | pawns & rotr(pawns, 24)
+      | pawns & rotr(pawns, 32);
+
+    return i32(popcnt(doubled)) * DOUBLED_PAWN_PENALTY;
+  }
+
+  /* Perform a Static Exchange Evaluation (SEE) to check, whether the net gain of the capture is still positive,
+     after applying all immediate and discovered re-capture attacks.
+
+     Returns:
+     - a positive integer for winning captures
+     - a negative integer for losing captures
+     - a 0 otherwise
+   */
+  @inline
+  seeScore(opponentColor: i32, from: i32, target: i32, ownPieceId: i32, capturedPieceId: i32): i32 {
+    let score = unchecked(PIECE_VALUES[capturedPieceId]);
+    let occupied = this.getOccupancyBitboard() & ~(u64(1) << from);
+
+    let trophyPieceScore = unchecked(PIECE_VALUES[ownPieceId]);
+
+    do {
+      // Opponent attack
+      const attackerPos = this.findSmallestAttacker(occupied, opponentColor, target);
+      if (attackerPos < 0) {
+        return score;
+      }
+      score -= trophyPieceScore;
+      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.getItem(attackerPos))]);
+      if (score + trophyPieceScore < 0) {
+        return score;
+      }
+
+      occupied &= ~(u64(1) << attackerPos);
+
+      // Own attack
+      const ownAttackerPos = this.findSmallestAttacker(occupied, -opponentColor, target);
+      if (ownAttackerPos < 0) {
+        return score;
+      }
+
+      score += trophyPieceScore;
+      trophyPieceScore = unchecked(PIECE_VALUES[abs(this.getItem(ownAttackerPos))]);
+      if (score - trophyPieceScore > 0) {
+        return score;
+      }
+
+      occupied &= ~(u64(1) << ownAttackerPos);
+    } while (true);
   }
 
   @inline
