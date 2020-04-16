@@ -25,10 +25,7 @@ import {
   WHITE
 } from '../board';
 import { B, BISHOP, BISHOP_DIRECTIONS, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
-import { stdio } from '../io';
-import { Engine } from '../engine';
-import { moveKing, toBitBoardString } from '../util';
-import { ISOLATED_PAWN_PATTERNS } from '../bitboard';
+import { moveKing } from '../util';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {

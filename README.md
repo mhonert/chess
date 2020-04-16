@@ -1,7 +1,7 @@
 # :sushi: Wasabi Chess Engine ([Play here!](https://mhonert.github.io/chess))
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![Website mhonert.github.io./chess](https://img.shields.io/website-up-down-green-red/http/mhonert.github.io/chess)](https://mhonert.github.io/chess)
+[![Website mhonert.github.io./chess](https://img.shields.io/website?url=https%3A%2F%2Fmhonert.github.io%2Fchess)](https://mhonert.github.io/chess)
 
 Wasabi - WebAssembly Chess Engine written in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript).
 
