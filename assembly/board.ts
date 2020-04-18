@@ -33,20 +33,20 @@ import {
   WHITE_ENPASSANT_LINE_START,
   WHITE_QUEEN_SIDE_ROOK_START,
   WHITE_PAWNS_BASELINE_START,
-  WHITE_KING_SIDE_ROOK_START
+  WHITE_KING_SIDE_ROOK_START, EG_PIECE_VALUES
 } from './pieces';
-import { sign } from './util';
+import { pack2x16, sign, unpackFirst16, unpackSecond16 } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
-  antiDiagonalAttacks, blackLeftPawnAttacks,
+  antiDiagonalAttacks, BLACK_KING_SHIELD_PATTERNS, blackLeftPawnAttacks,
   blackRightPawnAttacks,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
   KNIGHT_PATTERNS,
-  verticalAttacks, whiteLeftPawnAttacks,
+  verticalAttacks, WHITE_KING_SHIELD_PATTERNS, whiteLeftPawnAttacks,
   whiteRightPawnAttacks
 } from './bitboard';
 
@@ -66,11 +66,14 @@ export const EN_PASSANT_BIT = 1 << 31;
 // Evaluation constants
 export const DOUBLED_PAWN_PENALTY: i32 = 7;
 
+export let KING_SHIELD_BONUS: i32 = 10;
+
 export class Board {
   private items: StaticArray<i32>;
   private whiteKingIndex: i32;
   private blackKingIndex: i32;
-  private score: i32 = 0;
+  private score: i16 = 0; // mid game score
+  private egScore: i16 = 0; // end game score
   private bitBoardPieces: StaticArray<u64> = new StaticArray<u64>(13);
   private bitBoardAllPieces: StaticArray<u64> = new StaticArray<u64>(2);
   private hashCode: u64 = 0; // Hash code for the current position
@@ -78,7 +81,7 @@ export class Board {
   private historyCounter: i32 = 0;
   private stateHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
   private hashCodeHistory: StaticArray<u64> = new StaticArray<u64>(MAX_GAME_HALFMOVES);
-  private scoreHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
+  private scoreHistory: StaticArray<u32> = new StaticArray<u32>(MAX_GAME_HALFMOVES);
   private halfMoveClockHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
 
   private positionHistory: PositionHistory = new PositionHistory();
@@ -145,7 +148,7 @@ export class Board {
     unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
     unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
     unchecked(this.hashCodeHistory[this.historyCounter] = this.hashCode);
-    unchecked(this.scoreHistory[this.historyCounter] = this.score);
+    unchecked(this.scoreHistory[this.historyCounter] = pack2x16(this.score, this.egScore));
     this.historyCounter++;
   }
 
@@ -155,7 +158,9 @@ export class Board {
     unchecked(this.items[STATE_INDEX] = unchecked(this.stateHistory[this.historyCounter]));
     unchecked(this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter]);
     this.hashCode = unchecked(this.hashCodeHistory[this.historyCounter]);
-    this.score = unchecked(this.scoreHistory[this.historyCounter]);
+    const packedScore = unchecked(this.scoreHistory[this.historyCounter]);
+    this.score = unpackFirst16(packedScore);
+    this.egScore = unpackSecond16(packedScore);
     this.items[HALFMOVE_COUNT_INDEX]--;
   }
 
@@ -170,7 +175,7 @@ export class Board {
     for (let pos: i32 = 0; pos < 64; pos++) {
       const piece = this.items[pos];
       if (piece != EMPTY) {
-        this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
+        this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
       }
     }
 
@@ -189,19 +194,40 @@ export class Board {
 
   @inline
   getMaterialScore(): i32 {
-    return this.score;
+    return this.isEndGame() ? this.egScore : this.score;
   }
 
   @inline
   getScore(): i32 {
-    let score = this.getMaterialScore();
+    let score = i32(this.score);
+    let egScore = i32(this.egScore);
 
     const whitePawns = this.getBitBoard(PAWN + 6);
-    score -= this.calcDoubledPawnPenalty(whitePawns);
     const blackPawns = this.getBitBoard(-PAWN + 6);
-    score += this.calcDoubledPawnPenalty(blackPawns);
 
-    return score;
+    const whiteQueens = this.getBitBoard(QUEEN + 6);
+    const blackQueens = this.getBitBoard(-QUEEN + 6);
+
+    if (!this.isEndGame()) {
+      // Add bonus for pawns which form a shield in front of the king
+      const whiteFrontKingShield = i32(popcnt(whitePawns & unchecked(WHITE_KING_SHIELD_PATTERNS[this.whiteKingIndex])));
+      const blackFrontKingShield = i32(popcnt(blackPawns & unchecked(BLACK_KING_SHIELD_PATTERNS[this.blackKingIndex])));
+
+      score += whiteFrontKingShield * KING_SHIELD_BONUS;
+      score -= blackFrontKingShield * KING_SHIELD_BONUS;
+    }
+
+    // Interpolate between opening/mid-game score and the end game score for a smooth transition
+    const phase: i32 = i32(popcnt(whitePawns | blackPawns)) + (whiteQueens > 0 ? 1 : 0) * 4 + (blackQueens > 0 ? 1 : 0) * 4;
+    const egPhase: i32 = 24 - phase;
+
+    let interpolatedScore = ((score * phase) + (egScore * egPhase)) / 24;
+
+    // Perform evaluations which apply to all game phases
+    interpolatedScore -= this.calcDoubledPawnPenalty(whitePawns);
+    interpolatedScore += this.calcDoubledPawnPenalty(blackPawns);
+
+    return interpolatedScore;
   }
 
   @inline
@@ -264,11 +290,21 @@ export class Board {
     const piece = pieceId * pieceColor;
     unchecked(this.items[pos] = piece);
 
-    this.score += this.calculateScore(pos, pieceColor, pieceId);
-    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
+    this.updateAddScore(pos, piece);
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
+  }
+
+  @inline
+  updateAddScore(pos: i32, piece: i32): void {
+    const packedScores = piece > 0
+      ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
+      : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
+
+    this.score += unpackFirst16(packedScores);
+    this.egScore += unpackSecond16(packedScores);
   }
 
   @inline
@@ -282,11 +318,21 @@ export class Board {
   removePiece(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
 
-    const color = sign(piece);
-    this.score -= this.calculateScore(pos, color, abs(piece));
-    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[(piece + 6) * 64 + pos]);
+    this.updateSubtractScore(pos, piece);
+    this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
 
+    const color = sign(piece);
     return this.remove(piece, color, pos);
+  }
+
+  @inline
+  updateSubtractScore(pos: i32, piece: i32): void {
+    const packedScores = piece > 0
+      ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
+      : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
+
+    this.score -= unpackFirst16(packedScores);
+    this.egScore -= unpackSecond16(packedScores);
   }
 
   // Version of removePiece for optimization purposes without incremental update
@@ -504,10 +550,22 @@ export class Board {
   @inline
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
-      return unchecked(WHITE_POSITION_SCORES[(this.endgame << 9) + (pieceId - 1) * 64 + pos])
+      if (this.isEndGame()) {
+        return i32(unpackSecond16(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
+
+      } else {
+        return i32(unpackFirst16(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
+
+      }
 
     } else {
-      return unchecked(BLACK_POSITION_SCORES[(this.endgame << 9) + (pieceId - 1) * 64 + pos])
+      if (this.isEndGame()) {
+        return i32(unpackSecond16(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
+
+      } else {
+        return i32(unpackFirst16(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
+
+      }
     }
   }
 
@@ -1028,37 +1086,29 @@ const KING_ENDGAME_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -10, -6, -6, -6, -6, -6, -6, -10
 ]);
 
-function combineScores(color: i32, arrays: StaticArray<i32>[]): StaticArray<i32> {
-  let size = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    size += arrays[i].length;
-  }
+function combineScores(color: i32, midgameScores: StaticArray<i32>[], endgameScores: StaticArray<i32>[]): StaticArray<u32> {
+  const result = new StaticArray<u32>(64 * 7);
+  let index = 64;
+  for (let pieceId = PAWN; pieceId <= KING; pieceId++) {
+    const pieceValue = i16(PIECE_VALUES[pieceId] * color);
+    const egPieceValue = i16(EG_PIECE_VALUES[pieceId] * color);
 
-  const result = new StaticArray<i32>(64 * 14);
-  let index = 0;
-  for (let i = 0; i < arrays.length; i++) {
-    if (i == 6) {
-      // fill 2x 64 elements to align with 512
-      for (let j = 0; j < 128; j++) {
-        result[index++] = 0;
-      }
-    }
-    const pieceValue = PIECE_VALUES[i % 6 + 1] * color;
-    for (let j = 0; j < arrays[i].length; j++) {
-      result[index++] = arrays[i][j] * 5 * color + pieceValue;
+    for (let pos = 0; pos < 64; pos++) {
+      const posScore = pieceValue + i16(midgameScores[pieceId - 1][pos] * 5 * color);
+      const egPosScore = egPieceValue + i16(endgameScores[pieceId - 1][pos] * 5 * color);
+      result[index++] = pack2x16(posScore, egPosScore);
     }
   }
   return result;
 }
 
-const WHITE_POSITION_SCORES: StaticArray<i32> = combineScores(WHITE, [
-  PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES,
-  PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES
-]);
+const WHITE_POSITION_SCORES: StaticArray<u32> = combineScores(WHITE,
+  [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES],
+  [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES]);
 
-const BLACK_POSITION_SCORES: StaticArray<i32> = combineScores(BLACK, [
-  mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES),
-  mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
+const BLACK_POSITION_SCORES: StaticArray<u32> = combineScores(BLACK,
+  [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)],
+  [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
 
 export function mirrored(input: StaticArray<i32>): StaticArray<i32> {
   let output = StaticArray.slice(input);

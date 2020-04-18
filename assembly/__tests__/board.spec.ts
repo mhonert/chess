@@ -24,7 +24,7 @@ import {
   PAWN_POSITION_SCORES,
   WHITE
 } from '../board';
-import { B, BISHOP, BISHOP_DIRECTIONS, K, KING, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
+import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
 import { moveKing } from '../util';
 
 describe('Mirrored function', () => {

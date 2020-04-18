@@ -94,3 +94,17 @@ export function moveKing(board: Board, piece: i32, location: i32): void {
   board.setState(state);
 }
 
+@inline
+export function pack2x16(a: i16, b: i16): u32 {
+  return (u32(b) << 16) | (u32(a) & 0xFFFF);
+}
+
+@inline
+export function unpackFirst16(packed: u32): i16 {
+  return i16(packed & 0xFFFF);
+}
+
+@inline
+export function unpackSecond16(packed: u32): i16 {
+  return i16(packed >> 16);
+}

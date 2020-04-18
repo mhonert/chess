@@ -37,9 +37,9 @@ import {
   TRANSPOSITION_MAX_DEPTH,
   TranspositionTable
 } from './transposition-table';
-import { fromFEN, STARTPOS, toFEN } from './fen';
+import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
-import { KING, PAWN, PIECE_VALUES } from './pieces';
+import { PAWN } from './pieces';
 import { KillerMoveTable } from './killermove-table';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
@@ -57,7 +57,6 @@ const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
 const LMR_THRESHOLD: i32 = 3;
 const LMR_REDUCTIONS: i32 = 2;
-const LMR_START_DEPTH: i32 = 7;
 
 const FUTILE_MOVE_REDUCTIONS: i32 = 2;
 const LOSING_MOVE_REDUCTIONS: i32 = 2;
@@ -135,7 +134,6 @@ export class Engine {
     this.timeLimitMillis = timeLimitMillis;
     this.startTime = clock.currentMillis();
 
-    const isInCheck = this.board.isInCheck(playerColor);
     const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, 0, 0);
 
     if (moves.length == 1) {

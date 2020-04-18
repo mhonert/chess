@@ -25,6 +25,7 @@ import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import {
+  KING_SHIELD_BONUS,
   WHITE
 } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
@@ -93,11 +94,11 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.1.0");
+  stdio.writeLine("id name Wasabi 1.1.1");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
-  stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)")
+  stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)");
 
   stdio.writeLine("uciok");
 }
@@ -227,8 +228,8 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeChanged = true;
     }
 
-  // } else if (name == 'DoubledPawnPenalty') {
-  //   DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
+  } else if (name == 'KingShieldBonus') {
+    KING_SHIELD_BONUS = I32.parseInt(params[3]);
 
   } else if (name == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();

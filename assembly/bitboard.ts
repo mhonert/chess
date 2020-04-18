@@ -194,3 +194,39 @@ export function blackLeftPawnAttacks(pawns: u64): u64 {
 export function blackRightPawnAttacks(pawns: u64): u64 {
   return (pawns & 0x7f7f7f7f7f7f7f7f) << 9 // mask right column
 }
+
+export const WHITE_KING_SHIELD_PATTERNS = createKingShieldPatterns(-1);
+export const BLACK_KING_SHIELD_PATTERNS = createKingShieldPatterns(1);
+
+function createKingShieldPatterns(direction: i32): StaticArray<u64> {
+  const patterns = new StaticArray<u64>(64);
+
+  for (let pos: u32 = 0; pos < 64; pos++) {
+    const row = pos / 8;
+    const col = pos & 7;
+
+    let pattern: u64 = 0;
+    for (let distance = 1; distance <= 2; distance++) {
+      const shieldRow = row + (direction * distance);
+      if (shieldRow < 0 || shieldRow > 7) { // Outside the board
+        continue;
+      }
+
+      let frontPawnPos = shieldRow * 8 + col;
+      pattern |= (1 << frontPawnPos);
+      if (col > 0) {
+        let frontWestPawnPos = shieldRow * 8 + col - 1;
+        pattern |= (1 << frontWestPawnPos);
+      }
+      if (col < 7) {
+        let frontEastPawnPos = shieldRow * 8 + col + 1;
+        pattern |= (1 << frontEastPawnPos);
+      }
+    }
+
+    patterns[pos] = pattern;
+  }
+
+  return patterns;
+}
+

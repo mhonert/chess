@@ -16,7 +16,15 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { differentColor, fromBitBoardString, sameColor, toBitBoardString } from '../util';
+import {
+  differentColor,
+  fromBitBoardString,
+  pack2x16,
+  sameColor,
+  toBitBoardString,
+  unpackFirst16,
+  unpackSecond16
+} from '../util';
 
 
 describe("fromBitBoardString", () => {
@@ -86,4 +94,30 @@ describe("differentColor", () => {
 
 });
 
+
+describe("pack2x16", () => {
+  it("packs two i16 values into one u32 value", () => {
+    const a: i16 = 1;
+    const b: i16 = 2;
+    const packed = pack2x16(a, b);
+    expect(unpackFirst16(packed)).toBe(a, "first");
+    expect(unpackSecond16(packed)).toBe(b, "second");
+  });
+
+  it("packs two maximum i16 values into one u32 value", () => {
+    const a = i16.MAX_VALUE;
+    const b = i16.MAX_VALUE;
+    const packed = pack2x16(a, b);
+    expect(unpackFirst16(packed)).toBe(a, "first");
+    expect(unpackSecond16(packed)).toBe(b, "second");
+  });
+
+  it("packs two minimum i16 values into one u32 value", () => {
+    const a = i16.MIN_VALUE;
+    const b = i16.MIN_VALUE;
+    const packed = pack2x16(a, b);
+    expect(unpackFirst16(packed)).toBe(a, "first");
+    expect(unpackSecond16(packed)).toBe(b, "second");
+  });
+});
 
