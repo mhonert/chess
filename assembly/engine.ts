@@ -658,7 +658,7 @@ export class Engine {
       return (posScore * 16) - activePlayer * ownOriginalPieceId - activePlayer * 4096;
 
     } else {
-      return posScore + activePlayer * unchecked(CAPTURE_ORDER_SCORES[capturedPieceId + ownOriginalPieceId * 8]);
+      return posScore + activePlayer * unchecked(CAPTURE_ORDER_SCORES[(capturedPieceId - 1) + (ownOriginalPieceId - 1) * 8]);
 
     }
   };
@@ -754,7 +754,7 @@ function isPawnMoveCloseToPromotion(previousPiece: i32, moveEnd: i32): bool {
 
 // Order capture moves first by most valuable victim and then by least valuable attacker (MVV-LVA)
 function createCaptureOrderScores(): StaticArray<i32> {
-  const scores = new StaticArray<i32>(6 * 8);
+  const scores = new StaticArray<i32>(6 + 6 * 8);
 
   let orderScore: i32 = 0;
   for (let victim = 0; victim <= 5; victim++) {

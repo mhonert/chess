@@ -183,7 +183,7 @@ export class Board {
       this.hashCode ^= PLAYER_RNG_NUMBER;
     }
 
-    this.updateHashForCastling(ALL_CASTLING_RIGHTS);
+    this.updateHashForCastling(ALL_CASTLING_RIGHTS >> CASTLING_BITSTART);
     this.updateHashForEnPassent(0);
   }
 
