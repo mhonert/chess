@@ -35,7 +35,7 @@ import {
   WHITE_PAWNS_BASELINE_START,
   WHITE_KING_SIDE_ROOK_START, EG_PIECE_VALUES
 } from './pieces';
-import { pack2x16, sign, unpackFirst16, unpackSecond16 } from './util';
+import { packScores, sign, unpackFirstScore, unpackSecondScore } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
@@ -148,7 +148,7 @@ export class Board {
     unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
     unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
     unchecked(this.hashCodeHistory[this.historyCounter] = this.hashCode);
-    unchecked(this.scoreHistory[this.historyCounter] = pack2x16(this.score, this.egScore));
+    unchecked(this.scoreHistory[this.historyCounter] = packScores(this.score, this.egScore));
     this.historyCounter++;
   }
 
@@ -159,8 +159,8 @@ export class Board {
     unchecked(this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter]);
     this.hashCode = unchecked(this.hashCodeHistory[this.historyCounter]);
     const packedScore = unchecked(this.scoreHistory[this.historyCounter]);
-    this.score = unpackFirst16(packedScore);
-    this.egScore = unpackSecond16(packedScore);
+    this.score = unpackFirstScore(packedScore);
+    this.egScore = unpackSecondScore(packedScore);
     this.items[HALFMOVE_COUNT_INDEX]--;
   }
 
@@ -303,8 +303,8 @@ export class Board {
       ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
       : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
 
-    this.score += unpackFirst16(packedScores);
-    this.egScore += unpackSecond16(packedScores);
+    this.score += unpackFirstScore(packedScores);
+    this.egScore += unpackSecondScore(packedScores);
   }
 
   @inline
@@ -331,8 +331,8 @@ export class Board {
       ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
       : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
 
-    this.score -= unpackFirst16(packedScores);
-    this.egScore -= unpackSecond16(packedScores);
+    this.score -= unpackFirstScore(packedScores);
+    this.egScore -= unpackSecondScore(packedScores);
   }
 
   // Version of removePiece for optimization purposes without incremental update
@@ -551,19 +551,19 @@ export class Board {
   calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
     if (color == WHITE) {
       if (this.isEndGame()) {
-        return i32(unpackSecond16(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
+        return i32(unpackSecondScore(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
 
       } else {
-        return i32(unpackFirst16(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
+        return i32(unpackFirstScore(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
 
       }
 
     } else {
       if (this.isEndGame()) {
-        return i32(unpackSecond16(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
+        return i32(unpackSecondScore(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
 
       } else {
-        return i32(unpackFirst16(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
+        return i32(unpackFirstScore(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
 
       }
     }
@@ -1096,7 +1096,7 @@ function combineScores(color: i32, midgameScores: StaticArray<i32>[], endgameSco
     for (let pos = 0; pos < 64; pos++) {
       const posScore = pieceValue + i16(midgameScores[pieceId - 1][pos] * 5 * color);
       const egPosScore = egPieceValue + i16(endgameScores[pieceId - 1][pos] * 5 * color);
-      result[index++] = pack2x16(posScore, egPosScore);
+      result[index++] = packScores(posScore, egPosScore);
     }
   }
   return result;

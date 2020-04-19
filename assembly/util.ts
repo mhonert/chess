@@ -94,17 +94,20 @@ export function moveKing(board: Board, piece: i32, location: i32): void {
   board.setState(state);
 }
 
+// Packs two scores (i16) into a single value (u32)
 @inline
-export function pack2x16(a: i16, b: i16): u32 {
+export function packScores(a: i16, b: i16): u32 {
   return (u32(b) << 16) | (u32(a) & 0xFFFF);
 }
 
+// Unpacks the first score from a packed value (see packScore)
 @inline
-export function unpackFirst16(packed: u32): i16 {
+export function unpackFirstScore(packed: u32): i16 {
   return i16(packed & 0xFFFF);
 }
 
+// Unpacks the second score from a packed value (see packScore)
 @inline
-export function unpackSecond16(packed: u32): i16 {
+export function unpackSecondScore(packed: u32): i16 {
   return i16(packed >> 16);
 }

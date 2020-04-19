@@ -19,11 +19,11 @@
 import {
   differentColor,
   fromBitBoardString,
-  pack2x16,
+  packScores,
   sameColor,
   toBitBoardString,
-  unpackFirst16,
-  unpackSecond16
+  unpackFirstScore,
+  unpackSecondScore
 } from '../util';
 
 
@@ -95,29 +95,29 @@ describe("differentColor", () => {
 });
 
 
-describe("pack2x16", () => {
+describe("packScores", () => {
   it("packs two i16 values into one u32 value", () => {
     const a: i16 = 1;
     const b: i16 = 2;
-    const packed = pack2x16(a, b);
-    expect(unpackFirst16(packed)).toBe(a, "first");
-    expect(unpackSecond16(packed)).toBe(b, "second");
+    const packed = packScores(a, b);
+    expect(unpackFirstScore(packed)).toBe(a, "first");
+    expect(unpackSecondScore(packed)).toBe(b, "second");
   });
 
   it("packs two maximum i16 values into one u32 value", () => {
     const a = i16.MAX_VALUE;
     const b = i16.MAX_VALUE;
-    const packed = pack2x16(a, b);
-    expect(unpackFirst16(packed)).toBe(a, "first");
-    expect(unpackSecond16(packed)).toBe(b, "second");
+    const packed = packScores(a, b);
+    expect(unpackFirstScore(packed)).toBe(a, "first");
+    expect(unpackSecondScore(packed)).toBe(b, "second");
   });
 
   it("packs two minimum i16 values into one u32 value", () => {
     const a = i16.MIN_VALUE;
     const b = i16.MIN_VALUE;
-    const packed = pack2x16(a, b);
-    expect(unpackFirst16(packed)).toBe(a, "first");
-    expect(unpackSecond16(packed)).toBe(b, "second");
+    const packed = packScores(a, b);
+    expect(unpackFirstScore(packed)).toBe(a, "first");
+    expect(unpackSecondScore(packed)).toBe(b, "second");
   });
 });
 

@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { BLACK, Board, EMPTY, WHITE } from './board';
+import { BLACK, Board, EMPTY, EN_PASSANT_BIT, WHITE } from './board';
 import {
   decodeEndIndex,
   decodeMove,
@@ -429,7 +429,8 @@ export class Engine {
       const moveEnd = decodeEndIndex(move);
       const previousPiece = this.board.getItem(moveStart);
 
-      const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
+      const moveState = this.board.performMove(targetPieceId, moveStart, moveEnd);
+      const removedPieceId = moveState & ~EN_PASSANT_BIT;
 
       let skip: bool = this.board.isInCheck(playerColor); // skip if move would put own king in check
 
@@ -443,14 +444,14 @@ export class Engine {
           if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
             reductions = LMR_REDUCTIONS;
-            if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+            if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
               // Reduce more, if piece could be captured
               reductions++;
             }
 
           } else if (allowFutileMovePruning && targetPieceId == abs(previousPiece)) {
             if (givesCheck) {
-              if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+              if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
                 // Reduce futile move
                 reductions = FUTILE_MOVE_REDUCTIONS;
               }
@@ -465,17 +466,19 @@ export class Engine {
               // Reduce futile move
               reductions = FUTILE_MOVE_REDUCTIONS;
             }
+          } else if (!givesCheck && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
+            // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
+            reductions = LOSING_MOVE_REDUCTIONS;
           }
-        }
-
-        if (!skip && reductions == 0 && !givesCheck && removedPieceId <= abs(previousPiece) && this.board.seeScore(-playerColor, moveStart, moveEnd, abs(previousPiece), removedPieceId) < 0) {
+        } else if (!givesCheck && removedPieceId <= abs(previousPiece) && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
           // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
           reductions = LOSING_MOVE_REDUCTIONS;
         }
+
       }
 
       if (skip) {
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
 
       } else {
         hasValidMoves = true;
@@ -484,7 +487,7 @@ export class Engine {
         let a = evaluatedMoveCount > 1 ? -(alpha + 1) : -beta;
         let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification);
         if (result == CANCEL_SEARCH) {
-          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+          this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
           return CANCEL_SEARCH;
         }
 
@@ -492,7 +495,7 @@ export class Engine {
           // Repeat search without reduction
           result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification);
           if (result == CANCEL_SEARCH) {
-            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+            this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
             return CANCEL_SEARCH;
           }
 
@@ -500,7 +503,7 @@ export class Engine {
 
         const score = -result;
 
-        this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
+        this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
 
         // Use mini-max algorithm ...
         if (score > bestScore) {
