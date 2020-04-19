@@ -17,9 +17,8 @@
  */
 
 
-import { B, K, N, P, PAWN, PIECE_VALUES, Q, QUEEN, R, ROOK } from '../pieces';
+import { B, K, N, P, Q, QUEEN, R } from '../pieces';
 import EngineControl from '../engine';
-import {Engine} from '../engine';
 import {
   BLACK,
   Board, NO_CASTLING_RIGHTS,
@@ -240,77 +239,6 @@ describe('Finds moves', () => {
 
     expect(boardState5 != boardState1).toBeTruthy("Threefold repetion!");
 
-  });
-});
-
-describe("Move list sorting", () => {
-
-  it("sorts moves descending by score", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
-
-    const engine = new Engine();
-    engine.sortByScoreDescending(moves);
-
-    expect(decodeScore(moves[0])).toBe(27);
-    expect(decodeScore(moves[1])).toBe(15);
-    expect(decodeScore(moves[2])).toBe(12);
-    expect(decodeScore(moves[3])).toBe(5);
-  });
-
-  it("sorts empty move list descending", () => {
-    const engine = new Engine();
-    engine.sortByScoreDescending(new StaticArray<i32>(0));
-  });
-
-  it("sorts moves with 1 element descending", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12)]);
-    const engine = new Engine();
-    engine.sortByScoreDescending(moves);
-
-    expect(decodeScore(moves[0])).toBe(12);
-  });
-
-  it("sorts moves with 2 elements descending", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 5), encodeScoredMove(1, 12)]);
-    const engine = new Engine();
-    engine.sortByScoreDescending(moves);
-
-    expect(decodeScore(moves[0])).toBe(12);
-    expect(decodeScore(moves[1])).toBe(5);
-  });
-
-  it("sorts moves ascending by score for black player", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5), encodeScoredMove(2, 27), encodeScoredMove(3, 15)]);
-
-    const engine = new Engine();
-    engine.sortByScoreAscending(moves);
-
-    expect(decodeScore(moves[0])).toBe(5);
-    expect(decodeScore(moves[1])).toBe(12);
-    expect(decodeScore(moves[2])).toBe(15);
-    expect(decodeScore(moves[3])).toBe(27);
-  });
-
-  it("sorts empty move list ascending", () => {
-    const engine = new Engine();
-    engine.sortByScoreAscending(new StaticArray<i32>(0));
-  });
-
-  it("sorts moves with 1 element ascending", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12)]);
-    const engine = new Engine();
-    engine.sortByScoreAscending(moves);
-
-    expect(decodeScore(moves[0])).toBe(12);
-  });
-
-  it("sorts moves with 2 elements ascending", () => {
-    const moves: StaticArray<i32> = StaticArray.fromArray([encodeScoredMove(0, 12), encodeScoredMove(1, 5)]);
-    const engine = new Engine();
-    engine.sortByScoreAscending(moves);
-
-    expect(decodeScore(moves[0])).toBe(5);
-    expect(decodeScore(moves[1])).toBe(12);
   });
 });
 

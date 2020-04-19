@@ -46,6 +46,7 @@ import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
 import { openingBookData } from './opening-book-data';
 import { findOpeningMove } from './opening-book';
+import { getCaptureOrderScore, sortByScoreAscending, sortByScoreDescending } from './move-ordering';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -65,8 +66,6 @@ const QS_PRUNE_MARGIN: i32 = 950;
 
 const PRIMARY_KILLER_SCORE_BONUS: i32 = 2048;
 const SECONDARY_KILLER_SCORE_BONUS: i32 = 1024;
-
-const CAPTURE_ORDER_SCORES = createCaptureOrderScores();
 
 export class Engine {
 
@@ -256,7 +255,7 @@ export class Engine {
 
       stdio.writeLine("info " + depthInfo + scoreInfo + nodesInfo + npsInfo + timeInfo + pvInfo);
 
-      this.sortByScoreDescending(moves);
+      sortByScoreDescending(moves);
 
       alpha = previousAlpha;
       beta = previousBeta;
@@ -557,7 +556,7 @@ export class Engine {
       move = decodeMove(scoredMove);
 
       moveIndex++;
-      while (decodeMove(unchecked(moves[moveIndex])) == hashMove && moveIndex < moves.length) {
+      while (moveIndex < moves.length && decodeMove(unchecked(moves[moveIndex])) == hashMove) {
         moveIndex++;
       }
 
@@ -652,13 +651,14 @@ export class Engine {
     const ownOriginalPieceId = activePlayer * this.board.getItem(moveStart); // might be different in case of pawn promotions
 
     const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
-    const capturedPieceId = this.board.getItem(moveEnd);
+    const capturedPiece = this.board.getItem(moveEnd);
 
-    if (capturedPieceId == EMPTY) {
+    if (capturedPiece == EMPTY) {
       return (posScore * 16) - activePlayer * ownOriginalPieceId - activePlayer * 4096;
 
     } else {
-      return posScore + activePlayer * unchecked(CAPTURE_ORDER_SCORES[(capturedPieceId - 1) + (ownOriginalPieceId - 1) * 8]);
+      const capturedPieceId = abs(capturedPiece);
+      return posScore + activePlayer * getCaptureOrderScore(ownOriginalPieceId, capturedPieceId);
 
     }
   };
@@ -685,52 +685,13 @@ export class Engine {
     }
 
     if (playerColor == WHITE) {
-      this.sortByScoreDescending(moves);
+      sortByScoreDescending(moves);
     } else {
-      this.sortByScoreAscending(moves);
+      sortByScoreAscending(moves);
     }
 
     return moves;
   };
-
-  @inline
-  sortByScoreDescending(moves: StaticArray<i32>): void {
-    // Basic insertion sort
-    for (let i = 1; i < moves.length; i++) {
-      const x = unchecked(moves[i]);
-      const xScore = decodeScore(x);
-      let j = i - 1;
-      while (j >= 0) {
-        const y = unchecked(moves[j]);
-        if (decodeScore(y) >= xScore) {
-          break;
-        }
-        unchecked(moves[j + 1] = y);
-        j--;
-      }
-      unchecked(moves[j + 1] = x);
-    }
-  }
-
-  @inline
-  sortByScoreAscending(moves: StaticArray<i32>): void {
-    // Basic insertion sort
-    for (let i = 1; i < moves.length; i++) {
-      const x = unchecked(moves[i]);
-      const xScore = decodeScore(x);
-      let j = i - 1;
-      while (j >= 0) {
-        const y = unchecked(moves[j]);
-        if (decodeScore(y) <= xScore) {
-          break;
-        }
-        unchecked(moves[j + 1] = y);
-        j--;
-      }
-      unchecked(moves[j + 1] = x);
-    }
-  }
-
 
   // If a check mate position can be achieved, then earlier check mates should have a better score than later check mates
   // to prevent unnecessary delays.
@@ -750,21 +711,6 @@ export class Engine {
 function isPawnMoveCloseToPromotion(previousPiece: i32, moveEnd: i32): bool {
   return (previousPiece == PAWN && moveEnd <= 23) || // White moves to last three lines
          (previousPiece == -PAWN && moveEnd >= 40); // Black moves to last three lines
-}
-
-// Order capture moves first by most valuable victim and then by least valuable attacker (MVV-LVA)
-function createCaptureOrderScores(): StaticArray<i32> {
-  const scores = new StaticArray<i32>(6 + 6 * 8);
-
-  let orderScore: i32 = 0;
-  for (let victim = 0; victim <= 5; victim++) {
-    for (let captor = 5; captor >= 0; captor--) {
-      scores[victim + captor * 8] = orderScore * 64;
-      orderScore++;
-    }
-  }
-
-  return scores;
 }
 
 class EngineControl {

@@ -64,9 +64,9 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 export const EN_PASSANT_BIT = 1 << 31;
 
 // Evaluation constants
-export const DOUBLED_PAWN_PENALTY: i32 = 7;
+export const DOUBLED_PAWN_PENALTY: i32 = 6;
 
-export let KING_SHIELD_BONUS: i32 = 10;
+const KING_SHIELD_BONUS: i32 = 4;
 
 export class Board {
   private items: StaticArray<i32>;
