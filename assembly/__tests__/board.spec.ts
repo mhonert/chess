@@ -821,3 +821,47 @@ describe("Static exchange evaluation", () => {
   });
 });
 
+describe("Pawn move promotion check", () => {
+  it("White pawn is close to promotion", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0, 0, 0, 0, 0, 0, -K, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, K, 0, 0, P, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    expect(board.isPawnMoveCloseToPromotion(P, 20, 2)).toBeTruthy("2 moves away and not blocked")
+    expect(board.isPawnMoveCloseToPromotion(P, 20, 1)).toBeFalsy("2 moves away, but only 1 move left")
+
+    board.addPiece(BLACK, P, 12);
+    expect(board.isPawnMoveCloseToPromotion(P, 20, 2)).toBeFalsy("2 moves away, but blocked")
+  });
+
+  it("Black pawn is close to promotion", () => {
+    // prettier-ignore
+    const board: Board = new Board([
+      0, 0, 0, 0, 0, 0, -K, 0,
+      0, 0, 0, 0,  0, 0, 0, 0,
+      0, K, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0,-P, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, 0, 0, 0, 0, 0, 0,
+      0, 0, NO_CASTLING_RIGHTS
+    ]);
+
+    expect(board.isPawnMoveCloseToPromotion(-P, 43, 2)).toBeTruthy("2 moves away and not blocked")
+    expect(board.isPawnMoveCloseToPromotion(-P, 43, 1)).toBeFalsy("2 moves away, but only 1 move left")
+
+    board.addPiece(WHITE, P, 51);
+    expect(board.isPawnMoveCloseToPromotion(-P, 43, 2)).toBeFalsy("2 moves away, but blocked")
+  });
+
+});

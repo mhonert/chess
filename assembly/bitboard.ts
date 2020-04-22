@@ -230,3 +230,26 @@ function createKingShieldPatterns(direction: i32): StaticArray<u64> {
   return patterns;
 }
 
+// Patterns to check, whether the path in front of the pawn is free (i.e. not blocked by opponent pieces)
+export const WHITE_PAWN_FREEPATH_PATTERNS = createPawnFreePathPatterns(-1);
+export const BLACK_PAWN_FREEPATH_PATTERNS = createPawnFreePathPatterns(1);
+
+function createPawnFreePathPatterns(direction: i32): StaticArray<u64> {
+  const patterns = new StaticArray<u64>(64);
+
+  for (let pos: u32 = 0; pos < 64; pos++) {
+    let row = pos / 8;
+    const col = pos & 7;
+
+    let pattern: u64 = 0;
+    while (row >= 1 && row <= 6) {
+      row += direction;
+
+      pattern |= u64(1) << (row * 8 + col);
+    }
+
+    patterns[pos] = pattern;
+  }
+
+  return patterns;
+}

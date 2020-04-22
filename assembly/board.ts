@@ -40,13 +40,13 @@ import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
-  antiDiagonalAttacks, BLACK_KING_SHIELD_PATTERNS, blackLeftPawnAttacks,
+  antiDiagonalAttacks, BLACK_KING_SHIELD_PATTERNS, BLACK_PAWN_FREEPATH_PATTERNS, blackLeftPawnAttacks,
   blackRightPawnAttacks,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
   KNIGHT_PATTERNS,
-  verticalAttacks, WHITE_KING_SHIELD_PATTERNS, whiteLeftPawnAttacks,
+  verticalAttacks, WHITE_KING_SHIELD_PATTERNS, WHITE_PAWN_FREEPATH_PATTERNS, whiteLeftPawnAttacks,
   whiteRightPawnAttacks
 } from './bitboard';
 
@@ -65,6 +65,8 @@ export const EN_PASSANT_BIT = 1 << 31;
 
 // Evaluation constants
 export const DOUBLED_PAWN_PENALTY: i32 = 6;
+
+const PASSED_PAWN_BONUS_1: i32 = 4;
 
 const KING_SHIELD_BONUS: i32 = 4;
 
@@ -224,8 +226,59 @@ export class Board {
     let interpolatedScore = ((score * phase) + (egScore * egPhase)) / 24;
 
     // Perform evaluations which apply to all game phases
+
+    // Doubled pawn penalty
     interpolatedScore -= this.calcDoubledPawnPenalty(whitePawns);
     interpolatedScore += this.calcDoubledPawnPenalty(blackPawns);
+
+    const whitePieces = this.getAllPieceBitBoard(WHITE);
+    const blackPieces = this.getAllPieceBitBoard(BLACK);
+
+    // Passed white pawns bonus
+    let pawns = whitePawns
+    while (pawns != 0) {
+      const pos: i32 = i32(ctz(pawns));
+      pawns ^= 1 << pos; // unset bit
+      const distanceToPromotion = pos / 8;
+      if (distanceToPromotion <= 4 && (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos]) & blackPieces) == 0) {
+        const col = pos & 7;
+        if (col == 0 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos - 1]) & blackPawns) == 0) {
+          const reversedDistance = 5 - distanceToPromotion;
+          interpolatedScore += (PASSED_PAWN_BONUS_1 * reversedDistance);
+
+          if (col == 7 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos + 1]) & blackPawns) == 0) {
+            interpolatedScore += ((1 << reversedDistance) + reversedDistance);
+
+          }
+        } else if (col == 7 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos + 1]) & blackPawns) == 0) {
+          const reversedDistance = 5 - distanceToPromotion;
+          interpolatedScore += (PASSED_PAWN_BONUS_1 * reversedDistance);
+        }
+      }
+    }
+
+    // Passed black pawns bonus
+    pawns = blackPawns;
+    while (pawns != 0) {
+      const pos: i32 = i32(ctz(pawns));
+      pawns ^= 1 << pos; // unset bit
+      const distanceToPromotion = 7 - pos / 8;
+      if (distanceToPromotion <= 4 && (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos]) & whitePieces) == 0) {
+        const col = pos & 7;
+        if (col == 0 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos - 1]) & whitePawns) == 0) {
+          const reversedDistance = 5 - distanceToPromotion;
+          interpolatedScore -= (PASSED_PAWN_BONUS_1 * reversedDistance);
+
+          if (col == 7 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos + 1]) & whitePawns) == 0) {
+            interpolatedScore -= ((1 << reversedDistance) + reversedDistance);
+
+          }
+        } else if (col == 7 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos + 1]) & whitePawns) == 0) {
+          const reversedDistance = 5 - distanceToPromotion;
+          interpolatedScore -= (PASSED_PAWN_BONUS_1 * reversedDistance);
+        }
+      }
+    }
 
     return interpolatedScore;
   }
@@ -952,6 +1005,7 @@ export class Board {
     return this.endgame != 0;
   }
 
+  @inline
   updateEndGameStatus(): void {
     const pawnCount = popcnt(this.getBitBoard(PAWN * WHITE + 6)) + popcnt(this.getBitBoard(PAWN * BLACK + 6));
     if (pawnCount <= 3) {
@@ -965,6 +1019,26 @@ export class Board {
 
     this.endgame = otherPieceCount <= 3 ? 1 : 0;
   }
+
+
+  @inline
+  isPawnMoveCloseToPromotion(piece: i32, moveEnd: i32, movesLeft: i32): bool {
+    if (piece == PAWN) {
+      const distanceToPromotion = moveEnd / 8;
+      if (distanceToPromotion <= movesLeft && (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[moveEnd]) & this.getAllPieceBitBoard(BLACK)) == 0) {
+        return true;
+      }
+
+    } else if (piece == -PAWN) {
+      const distanceToPromotion = 7 - moveEnd / 8;
+      if (distanceToPromotion <= movesLeft && (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[moveEnd]) & this.getAllPieceBitBoard(WHITE)) == 0) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
 }
 
 // Return index 0 for BLACK (-1) and 1 for WHITE (+1)

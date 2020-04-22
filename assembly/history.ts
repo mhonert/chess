@@ -17,7 +17,7 @@
  */
 
 export class PositionHistory {
-  private positions: Uint64Array = new Uint64Array(1024);
+  private positions: StaticArray<u64> = new StaticArray<u64>(1024);
   private index: i32 = 0;
 
   @inline

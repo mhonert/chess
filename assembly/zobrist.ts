@@ -26,16 +26,16 @@ import { Random } from './random';
 
 const zobristRnd = new Random();
 
-export const PIECE_RNG_NUMBERS: Uint64Array = randArray(13 * 64);
+export const PIECE_RNG_NUMBERS: StaticArray<u64> = randArray(13 * 64);
 
 export const PLAYER_RNG_NUMBER = zobristRnd.rand64();
-export const EN_PASSANT_RNG_NUMBERS: Uint64Array = randArray(16);
+export const EN_PASSANT_RNG_NUMBERS: StaticArray<u64> = randArray(16);
 
 // Optimization: setting the last element to 0 allows to remove some branching (xor with 0 does not change the hash)
-export const CASTLING_RNG_NUMBERS: Uint64Array = lastElementZero(randArray(16));
+export const CASTLING_RNG_NUMBERS: StaticArray<u64> = lastElementZero(randArray(16));
 
-function randArray(count: i32): Uint64Array {
-  const numbers = new Uint64Array(count);
+function randArray(count: i32): StaticArray<u64> {
+  const numbers = new StaticArray<u64>(count);
 
   for (let i = 0; i < count; i++) {
     numbers[i] = zobristRnd.rand64();
@@ -44,7 +44,7 @@ function randArray(count: i32): Uint64Array {
   return numbers;
 }
 
-function lastElementZero(elements: Uint64Array): Uint64Array {
+function lastElementZero(elements: StaticArray<u64>): StaticArray<u64> {
   elements[elements.length - 1] = 0;
   return elements;
 }

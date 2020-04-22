@@ -441,7 +441,7 @@ export class Engine {
         const givesCheck = this.board.isInCheck(-playerColor);
         if (removedPieceId == EMPTY) {
 
-          if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !isPawnMoveCloseToPromotion(previousPiece, moveEnd)) {
+          if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !this.board.isPawnMoveCloseToPromotion(previousPiece, moveEnd, ownMovesLeft - 1)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
             reductions = LMR_REDUCTIONS;
             if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
@@ -710,11 +710,6 @@ export class Engine {
   };
 }
 
-@inline
-function isPawnMoveCloseToPromotion(previousPiece: i32, moveEnd: i32): bool {
-  return (previousPiece == PAWN && moveEnd <= 23) || // White moves to last three lines
-         (previousPiece == -PAWN && moveEnd >= 40); // Black moves to last three lines
-}
 
 class EngineControl {
   private board: Board;
