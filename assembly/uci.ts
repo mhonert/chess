@@ -91,7 +91,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.1.3");
+  stdio.writeLine("id name Wasabi 1.1.4");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
@@ -225,17 +225,16 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeChanged = true;
 
     }
-  // } else if (name == 'PassedPawnBonus1') {
-  //   PASSED_PAWN_BONUS_1 = I32.parseInt(params[3]);
-  //
-  // } else if (name == 'PassedPawnBonus2') {
-  //   PASSED_PAWN_BONUS_2 = I32.parseInt(params[3]);
+  // } else if (name == 'PassedPawnBonus') {
+  //   PASSED_PAWN_BONUS = I32.parseInt(params[3]);
   //
   // } else if (name == 'DoubledPawnPenalty') {
   //   DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
   //
   // } else if (name == 'KingShieldBonus') {
   //   KING_SHIELD_BONUS = I32.parseInt(params[3]);
+  // } else if (name == 'QuiescenceSEEThreshold') {
+  //   QS_SEE_THRESHOLD = I32.parseInt(params[3]) * 10;
 
   } else if (name == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();

@@ -62,6 +62,7 @@ const LMR_REDUCTIONS: i32 = 2;
 const FUTILE_MOVE_REDUCTIONS: i32 = 2;
 const LOSING_MOVE_REDUCTIONS: i32 = 2;
 
+const QS_SEE_THRESHOLD: i32 = 100;
 const QS_PRUNE_MARGIN: i32 = 950;
 
 const PRIMARY_KILLER_SCORE_BONUS: i32 = 2048;
@@ -587,26 +588,28 @@ export class Engine {
       return 0;
     }
 
-    const standPat = this.board.getScore() * activePlayer;
+    const positionScore = this.board.getScore() * activePlayer;
 
     if (ply >= TRANSPOSITION_MAX_DEPTH) {
-      return standPat;
+      return positionScore;
     }
 
-    if (standPat >= beta) {
+    if (positionScore >= beta) {
       return beta;
     }
 
-    // Delta pruning
-    if (!this.isEndGame && standPat < alpha - QS_PRUNE_MARGIN) {
+    // Prune nodes where the position score is already so far below alpha that it is very unlikely to be raised by any available move
+    if (positionScore < alpha - QS_PRUNE_MARGIN) {
       return alpha;
     }
 
-    if (alpha < standPat) {
-      alpha = standPat;
+    if (alpha < positionScore) {
+      alpha = positionScore;
     }
 
     const moves = this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer, ply, 0);
+
+    let threshold = alpha - positionScore - QS_SEE_THRESHOLD;
 
     for (let i = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
@@ -617,8 +620,8 @@ export class Engine {
       const previousPieceId = abs(previousPiece);
       const capturedPieceId = abs(this.board.getItem(moveEnd));
 
-      if (this.board.seeScore(-activePlayer, moveStart, moveEnd, previousPieceId, capturedPieceId) <= 0) {
-        // skip non-winning captures
+      // skip captures with a SEE score below the given threshold
+      if (this.board.seeScore(-activePlayer, moveStart, moveEnd, previousPieceId, capturedPieceId) <= threshold) {
         continue;
       }
 
@@ -639,6 +642,7 @@ export class Engine {
 
       if (score > alpha) {
         alpha = score;
+        threshold = alpha - positionScore - QS_SEE_THRESHOLD;
       }
     }
     return alpha;

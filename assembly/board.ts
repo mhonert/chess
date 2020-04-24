@@ -128,11 +128,6 @@ export class Board {
   }
 
   @inline
-  length(): i32 {
-    return this.items.length;
-  }
-
-  @inline
   getBitBoard(index: i32): u64 {
     return unchecked(this.bitBoardPieces[index]);
   }
@@ -146,7 +141,7 @@ export class Board {
    *  However, the board representation itself is not stored.
    */
   @inline
-  storeState(): void {
+  private storeState(): void {
     unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
     unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
     unchecked(this.hashCodeHistory[this.historyCounter] = this.hashCode);
@@ -155,15 +150,15 @@ export class Board {
   }
 
   @inline
-  restoreState(): void {
+  private restoreState(): void {
     this.historyCounter--;
     unchecked(this.items[STATE_INDEX] = unchecked(this.stateHistory[this.historyCounter]));
     unchecked(this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter]);
+    unchecked(this.items[HALFMOVE_COUNT_INDEX]--);
     this.hashCode = unchecked(this.hashCodeHistory[this.historyCounter]);
     const packedScore = unchecked(this.scoreHistory[this.historyCounter]);
     this.score = unpackFirstScore(packedScore);
     this.egScore = unpackSecondScore(packedScore);
-    this.items[HALFMOVE_COUNT_INDEX]--;
   }
 
   @inline
@@ -343,7 +338,7 @@ export class Board {
     const piece = pieceId * pieceColor;
     unchecked(this.items[pos] = piece);
 
-    this.updateAddScore(pos, piece);
+    this.addPieceScore(pos, piece);
     this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
@@ -351,7 +346,7 @@ export class Board {
   }
 
   @inline
-  updateAddScore(pos: i32, piece: i32): void {
+  private addPieceScore(pos: i32, piece: i32): void {
     const packedScores = piece > 0
       ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
       : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
@@ -361,7 +356,7 @@ export class Board {
   }
 
   @inline
-  addPieceWithoutIncrementalUpdate(pieceColor: i32, piece: i32, pos: i32): void {
+  private addPieceWithoutIncrementalUpdate(pieceColor: i32, piece: i32, pos: i32): void {
     unchecked(this.items[pos] = piece);
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
     unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
@@ -371,7 +366,7 @@ export class Board {
   removePiece(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
 
-    this.updateSubtractScore(pos, piece);
+    this.subtractPieceScore(pos, piece);
     this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
 
     const color = sign(piece);
@@ -379,7 +374,7 @@ export class Board {
   }
 
   @inline
-  updateSubtractScore(pos: i32, piece: i32): void {
+  private subtractPieceScore(pos: i32, piece: i32): void {
     const packedScores = piece > 0
       ? unchecked(WHITE_POSITION_SCORES[(piece * 64) + pos])
       : unchecked(BLACK_POSITION_SCORES[(-piece * 64) + pos]);
@@ -390,7 +385,7 @@ export class Board {
 
   // Version of removePiece for optimization purposes without incremental update
   @inline
-  removePieceWithoutIncrementalUpdate(pos: i32): i32 {
+  private removePieceWithoutIncrementalUpdate(pos: i32): i32 {
     const piece = unchecked(this.items[pos]);
     return this.remove(piece, sign(piece), pos);
   }
@@ -519,6 +514,7 @@ export class Board {
     return EMPTY;
   };
 
+  @inline
   performNullMove(): void {
     this.storeState();
     this.increaseHalfMoveCount();
@@ -577,22 +573,9 @@ export class Board {
     this.restoreState();
   };
 
+  @inline
   undoNullMove(): void {
     this.restoreState();
-  }
-
-  hasOrthogonalSlidingFigure(color: i32, pos: i32): bool {
-    const pieces = unchecked(this.bitBoardPieces[color * ROOK + 6]) | unchecked(this.bitBoardPieces[color * QUEEN + 6]);
-    return (pieces & (1 << pos)) != 0;
-  }
-
-  hasDiagonalSlidingFigure(color: i32, pos: i32): bool {
-    const pieces = unchecked(this.bitBoardPieces[color * BISHOP + 6]) | unchecked(this.bitBoardPieces[color * QUEEN + 6]);
-    return (pieces & (1 << pos)) != 0;
-  }
-
-  hasKnight(color: i32, pos: i32): bool {
-    return (unchecked(this.bitBoardPieces[KNIGHT * color + 6]) & (1 << pos)) != 0;
   }
 
   @inline
@@ -688,12 +671,12 @@ export class Board {
 
   @inline
   initializeHalfMoveCount(value: i32): void {
-    this.items[HALFMOVE_COUNT_INDEX] = value;
+    unchecked(this.items[HALFMOVE_COUNT_INDEX] = value);
   }
 
   @inline
   setHalfMoveClock(value: i32): void {
-    this.items[HALFMOVE_CLOCK_INDEX] = value;
+    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = value);
   }
 
   @inline
@@ -703,17 +686,17 @@ export class Board {
 
   @inline
   getHalfMoveClock(): i32 {
-    return this.items[HALFMOVE_CLOCK_INDEX];
+    return unchecked(this.items[HALFMOVE_CLOCK_INDEX]);
   }
 
   @inline
   getHalfMoveCount(): i32 {
-    return this.items[HALFMOVE_COUNT_INDEX];
+    return unchecked(this.items[HALFMOVE_COUNT_INDEX]);
   }
 
   @inline
   getFullMoveCount(): i32 {
-    return this.items[HALFMOVE_COUNT_INDEX] / 2 + 1;
+    return unchecked(this.items[HALFMOVE_COUNT_INDEX]) / 2 + 1;
   }
 
   @inline
@@ -975,6 +958,7 @@ export class Board {
     return this.getAllPieceBitBoard(WHITE) | this.getAllPieceBitBoard(BLACK);
   }
 
+  @inline
   isAttacked(opponentColor: i32, pos: i32): bool {
     return this.findSmallestAttacker(this.getOccupancyBitboard(), opponentColor, pos) >= 0;
   }
@@ -1038,7 +1022,6 @@ export class Board {
 
     return false;
   }
-
 }
 
 // Return index 0 for BLACK (-1) and 1 for WHITE (+1)

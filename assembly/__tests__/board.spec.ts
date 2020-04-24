@@ -24,7 +24,7 @@ import {
   PAWN_POSITION_SCORES,
   WHITE
 } from '../board';
-import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, R, ROOK } from '../pieces';
+import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, QUEEN, R, ROOK } from '../pieces';
 import { moveKing } from '../util';
 
 describe('Mirrored function', () => {
@@ -53,7 +53,7 @@ describe('Attack detection via bitboards', () => {
     }
 
     for (let i = 0; i <= 63; i++) {
-      expect(board.hasOrthogonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
+      expect(hasOrthogonalSlidingFigure(board, WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
   });
 
@@ -111,7 +111,7 @@ describe('Attack detection via bitboards', () => {
     }
 
     for (let i = 0; i <= 63; i++) {
-      expect(board.hasDiagonalSlidingFigure(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
+      expect(hasDiagonalSlidingFigure(board, WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
   });
 
@@ -204,7 +204,7 @@ describe('Attack detection via bitboards', () => {
     }
 
     for (let i = 0; i <= 63; i++) {
-      expect(board.hasKnight(WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
+      expect(hasKnight(board, WHITE, i)).toBeTruthy("Missing figure @" + i.toString() + "")
     }
 
   });
@@ -428,36 +428,6 @@ describe('All piece bitboards', () => {
 
     for (let i = 0; i <= 63; i++) {
       board.removePiece(i);
-    }
-
-    expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
-
-  });
-
-  it('is updated correctly using addPieceWithoutIncrementalUpdate/removePieceWithoutIncrementalUpdate', () => {
-    const board: Board = new Board([
-      0,  0,  0, -K,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0, +K,  0,  0,  0,  0,
-      0, 0, 0
-    ]);
-
-    board.removePiece(board.findKingPosition(WHITE));
-    board.removePiece(board.findKingPosition(BLACK));
-
-    for (let i = 0; i <= 63; i++) {
-      board.addPieceWithoutIncrementalUpdate(WHITE, BISHOP, i);
-    }
-
-    expect(board.getAllPieceBitBoard(WHITE)).toBe(0xFFFFFFFFFFFFFFFF, "Pieces added correctly");
-
-    for (let i = 0; i <= 63; i++) {
-      board.removePieceWithoutIncrementalUpdate(i);
     }
 
     expect(board.getAllPieceBitBoard(WHITE)).toBe(0, "Pieces removed correctly");
@@ -865,3 +835,20 @@ describe("Pawn move promotion check", () => {
   });
 
 });
+
+// Test helper
+
+function hasOrthogonalSlidingFigure(board: Board, color: i32, pos: i32): bool {
+  const pieces = board.getBitBoard(color * ROOK + 6) | board.getBitBoard(color * QUEEN + 6);
+  return (pieces & (1 << pos)) != 0;
+}
+
+function hasDiagonalSlidingFigure(board: Board, color: i32, pos: i32): bool {
+  const pieces = board.getBitBoard(color * BISHOP + 6) | board.getBitBoard(color * QUEEN + 6);
+  return (pieces & (1 << pos)) != 0;
+}
+
+function hasKnight(board: Board, color: i32, pos: i32): bool {
+  return (board.getBitBoard(KNIGHT * color + 6) & (1 << pos)) != 0;
+}
+

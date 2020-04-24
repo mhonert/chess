@@ -50,8 +50,6 @@ class MoveGenerator {
   private occupiedBitBoard: u64;
   private emptyBitBoard: u64;
   private opponentBitBoard: u64;
-  private opponentOrEmptyBitboard: u64; // only available when counting moves
-
 
   generateMoves(board: Board, activeColor: i32): void {
     this.board = board;
@@ -171,49 +169,7 @@ class MoveGenerator {
     }
   }
 
-  mainPieceMoveCount(board: Board, activeColor: i32): i32 {
-    this.board = board;
-    this.occupiedBitBoard = this.board.getAllPieceBitBoard(WHITE) | this.board.getAllPieceBitBoard(BLACK);
-    this.opponentBitBoard = this.board.getAllPieceBitBoard(-activeColor);
-    this.emptyBitBoard = ~this.occupiedBitBoard;
-    this.opponentOrEmptyBitboard = this.opponentBitBoard | this.emptyBitBoard;
-
-    let count: i32 = 0;
-    let piece = KNIGHT * activeColor;
-    let bitboard = this.board.getBitBoard(piece + 6);
-    while (bitboard != 0) {
-      const pos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << pos; // unset bit
-      count += this.countKnightMoves(activeColor, pos);
-    }
-
-    piece = BISHOP * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
-    while (bitboard != 0) {
-      const pos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << pos; // unset bit
-      count += this.countBishopMoves(activeColor, pos);
-    }
-
-    piece = ROOK * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
-    while (bitboard != 0) {
-      const pos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << pos; // unset bit
-      count += this.countRookMoves(activeColor, pos);
-    }
-
-    piece = QUEEN * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
-    while (bitboard != 0) {
-      const pos: i32 = i32(ctz(bitboard));
-      bitboard ^= 1 << pos; // unset bit
-      count += this.countQueenMoves(activeColor, pos);
-    }
-
-    return count;
-  }
-
+  @inline
   getGeneratedMoves(): StaticArray<i32> {
     return StaticArray.slice(this.moves, 0, this.count);
   }
@@ -237,7 +193,7 @@ class MoveGenerator {
 
 
   @inline
-  generateWhitePawnMoves(): void {
+  private generateWhitePawnMoves(): void {
     const pawns = this.board.getBitBoard(PAWN + 6);
 
     this.generateWhiteStraightPawnMoves(pawns);
@@ -247,7 +203,7 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteStraightPawnMoves(pawns: u64): void {
+  private generateWhiteStraightPawnMoves(pawns: u64): void {
     // Single move
     pawns >>= 8;
 
@@ -263,7 +219,7 @@ class MoveGenerator {
   }
 
   @inline
-  generateWhiteAttackPawnMoves(pawns: u64): void {
+  private generateWhiteAttackPawnMoves(pawns: u64): void {
     let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
     attackToLeft >>= 9;
 
@@ -279,7 +235,7 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteEnPassantPawnMoves(pawns: u64): void {
+  private generateWhiteEnPassantPawnMoves(pawns: u64): void {
     let enPassant = this.board.getEnPassantStateBits() & 0xff;
 
     if (enPassant != 0) {
@@ -302,7 +258,7 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackPawnMoves(): void {
+  private generateBlackPawnMoves(): void {
     const pawns = this.board.getBitBoard(-PAWN + 6);
 
     this.generateBlackStraightPawnMoves(pawns);
@@ -311,7 +267,7 @@ class MoveGenerator {
   }
 
   @inline
-  generateBlackStraightPawnMoves(pawns: u64): void {
+  private generateBlackStraightPawnMoves(pawns: u64): void {
     // Single move
     pawns <<= 8;
 
@@ -327,7 +283,7 @@ class MoveGenerator {
   }
 
   @inline
-  generateBlackAttackPawnMoves(pawns: u64): void {
+  private generateBlackAttackPawnMoves(pawns: u64): void {
     let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
     attackToLeft <<= 7;
 
@@ -343,7 +299,7 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackEnPassantPawnMoves(pawns: u64): void {
+  private generateBlackEnPassantPawnMoves(pawns: u64): void {
     let enPassant = this.board.getEnPassantStateBits() >> 8;
 
     if (enPassant != 0) {
@@ -363,7 +319,6 @@ class MoveGenerator {
       }
     }
   }
-
 
   @inline
   private generatePawnMovesFromBitboard(bitboard: u64, direction: i32): void {
@@ -398,7 +353,7 @@ class MoveGenerator {
   }
 
   @inline
-  generateKnightMoves(activeColor: i32, start: i32): void {
+  private generateKnightMoves(activeColor: i32, start: i32): void {
     const knightTargets = unchecked(KNIGHT_PATTERNS[start]);
 
     // Captures
@@ -410,14 +365,7 @@ class MoveGenerator {
   };
 
   @inline
-  countKnightMoves(activeColor: i32, start: i32): i32 {
-    const knightTargets = unchecked(KNIGHT_PATTERNS[start]);
-
-    return i32(popcnt(knightTargets & this.opponentOrEmptyBitboard));
-  };
-
-  @inline
-  generateMovesFromBitboard(piece: i32, start: i32, bitboard: u64): void {
+  private generateMovesFromBitboard(piece: i32, start: i32, bitboard: u64): void {
     while (bitboard != 0) {
       const end: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << end; // unset bit
@@ -427,7 +375,7 @@ class MoveGenerator {
 
 
   @inline
-  generateBishopMoves(activeColor: i32, piece: i32, pos: i32): void {
+  private generateBishopMoves(activeColor: i32, piece: i32, pos: i32): void {
     const attacks = diagonalAttacks(this.occupiedBitBoard, pos) | antiDiagonalAttacks(this.occupiedBitBoard, pos);
 
     // Captures
@@ -438,13 +386,7 @@ class MoveGenerator {
   };
 
   @inline
-  countBishopMoves(activeColor: i32, pos: i32): i32 {
-    const attacks = diagonalAttacks(this.occupiedBitBoard, pos) | antiDiagonalAttacks(this.occupiedBitBoard, pos);
-    return i32(popcnt(attacks & this.opponentOrEmptyBitboard));
-  };
-
-  @inline
-  generateRookMoves(activeColor: i32, piece: i32, pos: i32): void {
+  private generateRookMoves(activeColor: i32, piece: i32, pos: i32): void {
     const attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
 
     // Captures
@@ -455,24 +397,13 @@ class MoveGenerator {
   };
 
   @inline
-  countRookMoves(activeColor: i32, pos: i32): i32 {
-    const attacks = horizontalAttacks(this.occupiedBitBoard, pos) | verticalAttacks(this.occupiedBitBoard, pos);
-    return i32(popcnt(attacks & this.opponentOrEmptyBitboard));
-  };
-
-  @inline
-  generateQueenMoves(activeColor: i32, piece: i32, pos: i32): void {
+  private generateQueenMoves(activeColor: i32, piece: i32, pos: i32): void {
     this.generateRookMoves(activeColor, piece, pos);
     this.generateBishopMoves(activeColor, piece, pos);
   };
 
   @inline
-  countQueenMoves(activeColor: i32, pos: i32): i32 {
-    return this.countBishopMoves(activeColor, pos) + this.countRookMoves(activeColor, pos);
-  };
-
-  @inline
-  isValidWhiteKingSideCastlingMove(): bool {
+  private isValidWhiteKingSideCastlingMove(): bool {
     return ((this.emptyBitBoard & WHITE_KING_SIDE_CASTLING_BIT_PATTERN) == WHITE_KING_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START + 1) &&
@@ -480,7 +411,7 @@ class MoveGenerator {
   }
 
   @inline
-  isValidWhiteQueenSideCastlingMove(): bool {
+  private isValidWhiteQueenSideCastlingMove(): bool {
     return ((this.emptyBitBoard & WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN) == WHITE_QUEEN_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START) &&
       !this.board.isAttacked(BLACK, WHITE_KING_START - 1) &&
@@ -488,7 +419,7 @@ class MoveGenerator {
   }
 
   @inline
-  isValidBlackKingSideCastlingMove(): bool {
+  private isValidBlackKingSideCastlingMove(): bool {
     return ((this.emptyBitBoard & BLACK_KING_SIDE_CASTLING_BIT_PATTERN) == BLACK_KING_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START + 1) &&
@@ -496,7 +427,7 @@ class MoveGenerator {
   }
 
   @inline
-  isValidBlackQueenSideCastlingMove(): bool {
+  private isValidBlackQueenSideCastlingMove(): bool {
     return ((this.emptyBitBoard & BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN) == BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START) &&
       !this.board.isAttacked(WHITE, BLACK_KING_START - 1) &&
@@ -505,7 +436,7 @@ class MoveGenerator {
 
 
   @inline
-  generateWhiteKingMoves(start: i32): void {
+  private generateWhiteKingMoves(start: i32): void {
     const kingTargets = unchecked(KING_PATTERNS[start]);
 
     // Captures
@@ -530,7 +461,7 @@ class MoveGenerator {
 
 
   @inline
-  generateBlackKingMoves(start: i32): void {
+  private generateBlackKingMoves(start: i32): void {
     const kingTargets = unchecked(KING_PATTERNS[start]);
 
     // Captures
@@ -620,6 +551,7 @@ class MoveGenerator {
     return this.moves.includes(move);
   }
 
+  @inline
   hasValidMoves(board: Board, activeColor: i32): bool {
     this.board = board;
     this.count = 0;
@@ -732,11 +664,6 @@ export function generateFilteredMoves(board: Board, activeColor: i32): StaticArr
 export function generateCaptureMoves(board: Board, activeColor: i32): StaticArray<i32> {
   DEFAULT_INSTANCE.generateCaptureMoves(board, activeColor);
   return DEFAULT_INSTANCE.getGeneratedMoves();
-}
-
-@inline
-export function mainPieceMoveCount(board: Board, activeColor: i32): i32 {
-  return DEFAULT_INSTANCE.mainPieceMoveCount(board, activeColor);
 }
 
 @inline
