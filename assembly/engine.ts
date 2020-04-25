@@ -245,7 +245,7 @@ export class Engine {
 
       bestScoredMove = encodeScoredMove(bestMove, bestScore);
       const depthInfo = "depth " + depth.toString();
-      const scoreInfo = " score cp " + (bestScore * playerColor).toString();
+      const scoreInfo = " score cp " + bestScore.toString();
       const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
       const nodesPerSecond = iterationDuration > 0 ? this.nodeCount * 1000 / iterationDuration : 0;
 
