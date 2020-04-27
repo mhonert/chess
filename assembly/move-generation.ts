@@ -70,7 +70,7 @@ class MoveGenerator {
     }
 
     let piece = KNIGHT * activeColor;
-    let bitboard = this.board.getBitBoard(piece + 6);
+    let bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -78,7 +78,7 @@ class MoveGenerator {
     }
 
     piece = BISHOP * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -86,7 +86,7 @@ class MoveGenerator {
     }
 
     piece = ROOK * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -94,7 +94,7 @@ class MoveGenerator {
     }
 
     piece = QUEEN * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -115,7 +115,7 @@ class MoveGenerator {
       const kingTargets = unchecked(KING_PATTERNS[kingPos]);
       this.generateMovesFromBitboard(KING, kingPos, kingTargets & this.opponentBitBoard);
 
-      const pawns = this.board.getBitBoard(PAWN + 6);
+      const pawns = this.board.getBitBoard(PAWN);
       this.generateWhiteAttackPawnMoves(pawns);
 
     } else {
@@ -123,12 +123,12 @@ class MoveGenerator {
       const kingTargets = unchecked(KING_PATTERNS[kingPos]);
       this.generateMovesFromBitboard(KING, kingPos, kingTargets & this.opponentBitBoard);
 
-      const pawns = this.board.getBitBoard(-PAWN + 6);
+      const pawns = this.board.getBitBoard(-PAWN);
       this.generateBlackAttackPawnMoves(pawns);
     }
 
     let piece = KNIGHT * activeColor;
-    let bitboard = this.board.getBitBoard(piece + 6);
+    let bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -138,7 +138,7 @@ class MoveGenerator {
     }
 
     piece = BISHOP * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -148,7 +148,7 @@ class MoveGenerator {
     }
 
     piece = ROOK * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -158,7 +158,7 @@ class MoveGenerator {
     }
 
     piece = QUEEN * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -194,7 +194,7 @@ class MoveGenerator {
 
   @inline
   private generateWhitePawnMoves(): void {
-    const pawns = this.board.getBitBoard(PAWN + 6);
+    const pawns = this.board.getBitBoard(PAWN);
 
     this.generateWhiteStraightPawnMoves(pawns);
     this.generateWhiteAttackPawnMoves(pawns);
@@ -259,7 +259,7 @@ class MoveGenerator {
 
   @inline
   private generateBlackPawnMoves(): void {
-    const pawns = this.board.getBitBoard(-PAWN + 6);
+    const pawns = this.board.getBitBoard(-PAWN);
 
     this.generateBlackStraightPawnMoves(pawns);
     this.generateBlackAttackPawnMoves(pawns);
@@ -575,7 +575,7 @@ class MoveGenerator {
     }
 
     let piece = BISHOP * activeColor;
-    let bitboard = this.board.getBitBoard(piece + 6);
+    let bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -586,7 +586,7 @@ class MoveGenerator {
     }
 
     piece = ROOK * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -597,7 +597,7 @@ class MoveGenerator {
     }
 
     piece = QUEEN * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit
@@ -608,7 +608,7 @@ class MoveGenerator {
     }
 
     piece = KNIGHT * activeColor;
-    bitboard = this.board.getBitBoard(piece + 6);
+    bitboard = this.board.getBitBoard(piece);
     while (bitboard != 0) {
       const pos: i32 = i32(ctz(bitboard));
       bitboard ^= 1 << pos; // unset bit

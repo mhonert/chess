@@ -263,7 +263,7 @@ function readEnPassantTargetSquare(board: Board, fenPart: string): void {
 }
 
 function readHalfMoveClock(board: Board, fenPart: string): void {
-  const halfMoveClock = i32(parseInt(fenPart));
+  const halfMoveClock = i16(parseInt(fenPart));
   if (halfMoveClock < 0) {
     throw new Error("Invalid FEN string: unexpected halfmove clock part: " + fenPart);
   }
@@ -272,7 +272,7 @@ function readHalfMoveClock(board: Board, fenPart: string): void {
 }
 
 function readFullMoveNumber(board: Board, activeColor: i32, fenPart: string): void {
-  const fullMoveNumber = i32(parseInt(fenPart));
+  const fullMoveNumber = i16(parseInt(fenPart));
   if (fullMoveNumber < 1) {
     throw new Error("Invalid FEN string: unexpected fullmove number part: " + fenPart);
   }

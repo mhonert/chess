@@ -3,8 +3,9 @@ module.exports = {
   flags: {
     "--runtime": ["full"],
     "--use": ["IS_WASI=0"],
-    "--optimizeLevel": "3",
+    "--optimizeLevel": "2",
     "--shrinkLevel": "0",
+    "--runPasses": ["flatten", "simplify-globals-optimizing","local-cse","simplify-locals-notee-nostructure","licm","vacuum"],
   },
 
   disclude: [/node_modules/],

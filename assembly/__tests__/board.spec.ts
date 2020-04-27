@@ -792,7 +792,7 @@ describe("Static exchange evaluation", () => {
 });
 
 describe("Pawn move promotion check", () => {
-  it("White pawn is close to promotion", () => {
+  it("Recognizes white pawns close to promotion", () => {
     // prettier-ignore
     const board: Board = new Board([
       0, 0, 0, 0, 0, 0, -K, 0,
@@ -813,7 +813,7 @@ describe("Pawn move promotion check", () => {
     expect(board.isPawnMoveCloseToPromotion(P, 20, 2)).toBeFalsy("2 moves away, but blocked")
   });
 
-  it("Black pawn is close to promotion", () => {
+  it("Recognizes black pawns close to promotion", () => {
     // prettier-ignore
     const board: Board = new Board([
       0, 0, 0, 0, 0, 0, -K, 0,
@@ -836,19 +836,63 @@ describe("Pawn move promotion check", () => {
 
 });
 
+describe("Draw detection by insufficient material", () => {
+
+  it("works for only 2 remaining kings", () => {
+    const board: Board = boardWithPieces([K, -K]);
+    expect(board.isInsufficientMaterialDraw()).toBeTruthy();
+  });
+
+  it("works for 3 remaining pieces", () => {
+    expect(boardWithPieces([B, K, -K]).isInsufficientMaterialDraw()).toBeTruthy();
+    expect(boardWithPieces([-B, K, -K]).isInsufficientMaterialDraw()).toBeTruthy();
+    expect(boardWithPieces([N, K, -K]).isInsufficientMaterialDraw()).toBeTruthy();
+    expect(boardWithPieces([-N, K, -K]).isInsufficientMaterialDraw()).toBeTruthy();
+
+    expect(boardWithPieces([R, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+    expect(boardWithPieces([Q, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+    expect(boardWithPieces([P, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+
+    expect(boardWithPieces([-R, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+    expect(boardWithPieces([-Q, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+    expect(boardWithPieces([-P, K, -K]).isInsufficientMaterialDraw()).toBeFalsy();
+  });
+
+});
+
 // Test helper
 
 function hasOrthogonalSlidingFigure(board: Board, color: i32, pos: i32): bool {
-  const pieces = board.getBitBoard(color * ROOK + 6) | board.getBitBoard(color * QUEEN + 6);
+  const pieces = board.getBitBoard(color * ROOK) | board.getBitBoard(color * QUEEN);
   return (pieces & (1 << pos)) != 0;
 }
 
 function hasDiagonalSlidingFigure(board: Board, color: i32, pos: i32): bool {
-  const pieces = board.getBitBoard(color * BISHOP + 6) | board.getBitBoard(color * QUEEN + 6);
+  const pieces = board.getBitBoard(color * BISHOP) | board.getBitBoard(color * QUEEN);
   return (pieces & (1 << pos)) != 0;
 }
 
 function hasKnight(board: Board, color: i32, pos: i32): bool {
-  return (board.getBitBoard(KNIGHT * color + 6) & (1 << pos)) != 0;
+  return (board.getBitBoard(KNIGHT * color) & (1 << pos)) != 0;
 }
 
+function boardWithPieces(pieces: Array<i32>): Board {
+  // prettier-ignore
+  const items = [
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, NO_CASTLING_RIGHTS
+  ];
+
+  for (let i = 0; i < pieces.length; i++) {
+    items[i] = pieces[i];
+  }
+
+  return new Board(items);
+}

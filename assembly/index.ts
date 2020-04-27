@@ -103,7 +103,7 @@ function encodeChessState(checkThreefoldRepetition: bool): Int32Array {
   const isStaleMate: bool = moves.length == 0;
   const isThreefoldRepetition: bool = checkThreefoldRepetition && board.isThreefoldRepetion();
   const isFiftyMoveDraw: bool = board.isFiftyMoveDraw();
-  const isInsufficientMaterialDraw: bool = false;
+  const isInsufficientMaterialDraw: bool = board.isInsufficientMaterialDraw();
 
   const hasGameEnded: bool = isCheckMate || isStaleMate || isThreefoldRepetition || isFiftyMoveDraw || isInsufficientMaterialDraw;
 

@@ -41,11 +41,11 @@ import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER
 import { PositionHistory } from './history';
 import {
   antiDiagonalAttacks, BLACK_KING_SHIELD_PATTERNS, BLACK_PAWN_FREEPATH_PATTERNS, blackLeftPawnAttacks,
-  blackRightPawnAttacks,
+  blackRightPawnAttacks, DARK_COLORED_FIELD_PATTERN,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
-  KNIGHT_PATTERNS,
+  KNIGHT_PATTERNS, LIGHT_COLORED_FIELD_PATTERN,
   verticalAttacks, WHITE_KING_SHIELD_PATTERNS, WHITE_PAWN_FREEPATH_PATTERNS, whiteLeftPawnAttacks,
   whiteRightPawnAttacks
 } from './bitboard';
@@ -70,21 +70,27 @@ const PASSED_PAWN_BONUS_1: i32 = 4;
 
 const KING_SHIELD_BONUS: i32 = 4;
 
+const PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = 100;
+const PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = 400;
+const PAWNLESS_DRAW_CLOCK_THRESHOLD = 64;
+
 export class Board {
   private items: StaticArray<i32>;
   private whiteKingIndex: i32;
   private blackKingIndex: i32;
   private score: i16 = 0; // mid game score
   private egScore: i16 = 0; // end game score
+  private halfMoveCount: i16 = 0;
+  private halfMoveClock: i16 = 0;
   private bitBoardPieces: StaticArray<u64> = new StaticArray<u64>(13);
-  private bitBoardAllPieces: StaticArray<u64> = new StaticArray<u64>(2);
+  private bitBoardAllPieces: StaticArray<u64> = new StaticArray<u64>(3);
   private hashCode: u64 = 0; // Hash code for the current position
 
   private historyCounter: i32 = 0;
   private stateHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
   private hashCodeHistory: StaticArray<u64> = new StaticArray<u64>(MAX_GAME_HALFMOVES);
   private scoreHistory: StaticArray<u32> = new StaticArray<u32>(MAX_GAME_HALFMOVES);
-  private halfMoveClockHistory: StaticArray<i32> = new StaticArray<i32>(MAX_GAME_HALFMOVES);
+  private halfMoveClockHistory: StaticArray<i16> = new StaticArray<i16>(MAX_GAME_HALFMOVES);
 
   private positionHistory: PositionHistory = new PositionHistory();
 
@@ -113,28 +119,28 @@ export class Board {
     }
 
     for (let i: i32 = 0; i < 64; i++) {
-      const piece = items[i];
+      const piece = unchecked(items[i]);
       if (piece != EMPTY) {
         this.addPiece(sign(piece), abs(piece), i);
       } else {
-        this.items[i] = items[i];
+        unchecked(this.items[i] = items[i]);
       }
     }
-    this.items[STATE_INDEX] = items[STATE_INDEX];
-    this.items[HALFMOVE_CLOCK_INDEX] = items[HALFMOVE_CLOCK_INDEX];
-    this.items[HALFMOVE_COUNT_INDEX] = items[HALFMOVE_COUNT_INDEX];
+    unchecked(this.items[STATE_INDEX] = items[STATE_INDEX]);
+    this.halfMoveClock = i16(items[HALFMOVE_CLOCK_INDEX]);
+    this.halfMoveCount = i16(items[HALFMOVE_COUNT_INDEX]);
 
     this.updateEndGameStatus();
   }
 
   @inline
-  getBitBoard(index: i32): u64 {
-    return unchecked(this.bitBoardPieces[index]);
+  getBitBoard(piece: i32): u64 {
+    return unchecked(this.bitBoardPieces[piece + 6]);
   }
 
   @inline
   getAllPieceBitBoard(color: i32): u64 {
-    return unchecked(this.bitBoardAllPieces[indexFromColor(color)]);
+    return unchecked(this.bitBoardAllPieces[color + 1]);
   }
 
   /** Stores some board state (e.g. hash-code, current score, etc.) in a history.
@@ -143,7 +149,7 @@ export class Board {
   @inline
   private storeState(): void {
     unchecked(this.stateHistory[this.historyCounter] = this.items[STATE_INDEX]);
-    unchecked(this.halfMoveClockHistory[this.historyCounter] = this.items[HALFMOVE_CLOCK_INDEX]);
+    unchecked(this.halfMoveClockHistory[this.historyCounter] = this.halfMoveClock);
     unchecked(this.hashCodeHistory[this.historyCounter] = this.hashCode);
     unchecked(this.scoreHistory[this.historyCounter] = packScores(this.score, this.egScore));
     this.historyCounter++;
@@ -151,10 +157,10 @@ export class Board {
 
   @inline
   private restoreState(): void {
+    this.halfMoveCount--;
     this.historyCounter--;
     unchecked(this.items[STATE_INDEX] = unchecked(this.stateHistory[this.historyCounter]));
-    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = this.halfMoveClockHistory[this.historyCounter]);
-    unchecked(this.items[HALFMOVE_COUNT_INDEX]--);
+    this.halfMoveClock = unchecked(this.halfMoveClockHistory[this.historyCounter]);
     this.hashCode = unchecked(this.hashCodeHistory[this.historyCounter]);
     const packedScore = unchecked(this.scoreHistory[this.historyCounter]);
     this.score = unpackFirstScore(packedScore);
@@ -199,11 +205,11 @@ export class Board {
     let score = i32(this.score);
     let egScore = i32(this.egScore);
 
-    const whitePawns = this.getBitBoard(PAWN + 6);
-    const blackPawns = this.getBitBoard(-PAWN + 6);
+    const whitePawns = this.getBitBoard(PAWN);
+    const blackPawns = this.getBitBoard(-PAWN);
 
-    const whiteQueens = this.getBitBoard(QUEEN + 6);
-    const blackQueens = this.getBitBoard(-QUEEN + 6);
+    const whiteQueens = this.getBitBoard(QUEEN);
+    const blackQueens = this.getBitBoard(-QUEEN);
 
     if (!this.isEndGame()) {
       // Add bonus for pawns which form a shield in front of the king
@@ -275,6 +281,17 @@ export class Board {
       }
     }
 
+    // Adjust score for positions, which are very likely to end in a draw
+    if ((blackPawns == 0 && interpolatedScore < -PAWNLESS_DRAW_SCORE_LOW_THRESHOLD && interpolatedScore > -PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD)
+      || (whitePawns == 0 && interpolatedScore > PAWNLESS_DRAW_SCORE_LOW_THRESHOLD && interpolatedScore < PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD)) {
+      const divider = PAWNLESS_DRAW_CLOCK_THRESHOLD - this.getHalfMoveClock();
+      if (divider > 0) {
+        interpolatedScore = interpolatedScore * divider / PAWNLESS_DRAW_CLOCK_THRESHOLD;
+      } else {
+        interpolatedScore /= PAWNLESS_DRAW_CLOCK_THRESHOLD;
+      }
+    }
+
     return interpolatedScore;
   }
 
@@ -342,7 +359,7 @@ export class Board {
     this.hashCode ^= unchecked(PIECE_RNG_NUMBERS[((piece + 6) * 64) + pos]);
 
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
-    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
+    unchecked(this.bitBoardAllPieces[pieceColor + 1] |= (1 << pos));
   }
 
   @inline
@@ -359,7 +376,7 @@ export class Board {
   private addPieceWithoutIncrementalUpdate(pieceColor: i32, piece: i32, pos: i32): void {
     unchecked(this.items[pos] = piece);
     unchecked(this.bitBoardPieces[piece + 6] |= (1 << pos));
-    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] |= (1 << pos));
+    unchecked(this.bitBoardAllPieces[pieceColor + 1] |= (1 << pos));
   }
 
   @inline
@@ -393,7 +410,7 @@ export class Board {
   @inline
   private remove(piece: i32, pieceColor: i32, pos: i32): i32 {
     unchecked(this.bitBoardPieces[piece + 6] &= ~(1 << pos));
-    unchecked(this.bitBoardAllPieces[indexFromColor(pieceColor)] &= ~(1 << pos));
+    unchecked(this.bitBoardAllPieces[pieceColor + 1] &= ~(1 << pos));
     unchecked(this.items[pos] = EMPTY);
 
     if (piece == ROOK) {
@@ -663,45 +680,45 @@ export class Board {
 
   @inline
   increaseHalfMoveCount(): void {
-    unchecked(this.items[HALFMOVE_COUNT_INDEX]++);
-    unchecked(this.items[HALFMOVE_CLOCK_INDEX]++);
+    this.halfMoveClock++;
+    this.halfMoveCount++;
 
     this.hashCode ^= PLAYER_RNG_NUMBER;
   }
 
   @inline
-  initializeHalfMoveCount(value: i32): void {
-    unchecked(this.items[HALFMOVE_COUNT_INDEX] = value);
+  initializeHalfMoveCount(value: i16): void {
+    this.halfMoveCount = value;
   }
 
   @inline
-  setHalfMoveClock(value: i32): void {
-    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = value);
+  setHalfMoveClock(value: i16): void {
+    this.halfMoveClock = value;
   }
 
   @inline
   resetHalfMoveClock(): void {
-    unchecked(this.items[HALFMOVE_CLOCK_INDEX] = 0);
+    this.halfMoveClock = 0;
   }
 
   @inline
   getHalfMoveClock(): i32 {
-    return unchecked(this.items[HALFMOVE_CLOCK_INDEX]);
+    return this.halfMoveClock;
   }
 
   @inline
   getHalfMoveCount(): i32 {
-    return unchecked(this.items[HALFMOVE_COUNT_INDEX]);
+    return this.halfMoveCount;
   }
 
   @inline
   getFullMoveCount(): i32 {
-    return unchecked(this.items[HALFMOVE_COUNT_INDEX]) / 2 + 1;
+    return this.halfMoveCount / 2 + 1;
   }
 
   @inline
   getActivePlayer(): i32 {
-    return (unchecked(this.items[HALFMOVE_COUNT_INDEX]) & 1) === 0 ? WHITE : BLACK;
+    return (this.halfMoveCount & 1) === 0 ? WHITE : BLACK;
   }
 
   @inline
@@ -853,7 +870,7 @@ export class Board {
     if (opponentColor == WHITE) {
 
       // Check pawns
-      const whitePawns = this.getBitBoard(PAWN + 6) & occupiedBB;
+      const whitePawns = this.getBitBoard(PAWN) & occupiedBB;
       if (whiteLeftPawnAttacks(whitePawns) & targetBB) {
         return pos + 9;
       } else if (whiteRightPawnAttacks(whitePawns) & targetBB) {
@@ -861,7 +878,7 @@ export class Board {
       }
 
       // Check knights
-      const knights = this.getBitBoard(KNIGHT + 6) & occupiedBB;
+      const knights = this.getBitBoard(KNIGHT) & occupiedBB;
       const attackingKnights = knights & unchecked(KNIGHT_PATTERNS[pos]);
       if (attackingKnights != 0) {
         return i32(ctz(attackingKnights));
@@ -869,7 +886,7 @@ export class Board {
 
       // Check bishops
       const allDiagonalAttacks = diagonalAttacks(occupiedBB, pos) | antiDiagonalAttacks(occupiedBB, pos);
-      const bishops = this.getBitBoard(BISHOP + 6) & occupiedBB;
+      const bishops = this.getBitBoard(BISHOP) & occupiedBB;
       const attackingBishops = bishops & allDiagonalAttacks;
       if (attackingBishops != 0) {
         return i32(ctz(attackingBishops));
@@ -877,14 +894,14 @@ export class Board {
 
       // Check rooks
       const orthogonalAttacks = horizontalAttacks(occupiedBB, pos) | verticalAttacks(occupiedBB, pos);
-      const rooks = this.getBitBoard(ROOK + 6) & occupiedBB;
+      const rooks = this.getBitBoard(ROOK) & occupiedBB;
       const attackingRooks = rooks & orthogonalAttacks;
       if (attackingRooks != 0) {
         return i32(ctz(attackingRooks));
       }
 
       // Check queens
-      const queens = this.getBitBoard(QUEEN + 6) & occupiedBB;
+      const queens = this.getBitBoard(QUEEN) & occupiedBB;
       const attackingQueens = queens & (orthogonalAttacks | allDiagonalAttacks);
       if (attackingQueens != 0) {
         return i32(ctz(attackingQueens));
@@ -902,7 +919,7 @@ export class Board {
 
     } else {
       // Check pawns
-      const blackPawns = this.getBitBoard(-PAWN + 6) & occupiedBB;
+      const blackPawns = this.getBitBoard(-PAWN) & occupiedBB;
       if (blackLeftPawnAttacks(blackPawns) & targetBB) {
         return pos - 7;
       } else if (blackRightPawnAttacks(blackPawns) & targetBB) {
@@ -910,7 +927,7 @@ export class Board {
       }
 
       // Check knights
-      const knights = this.getBitBoard(-KNIGHT + 6) & occupiedBB;
+      const knights = this.getBitBoard(-KNIGHT) & occupiedBB;
       const attackingKnights = knights & unchecked(KNIGHT_PATTERNS[pos]);
       if (attackingKnights != 0) {
         return i32(ctz(attackingKnights));
@@ -918,7 +935,7 @@ export class Board {
 
       // Check bishops
       const allDiagonalAttacks = diagonalAttacks(occupiedBB, pos) | antiDiagonalAttacks(occupiedBB, pos);
-      const bishops = this.getBitBoard(-BISHOP + 6) & occupiedBB;
+      const bishops = this.getBitBoard(-BISHOP) & occupiedBB;
       const attackingBishops = bishops & allDiagonalAttacks;
       if (attackingBishops != 0) {
         return i32(ctz(attackingBishops));
@@ -926,14 +943,14 @@ export class Board {
 
       // Check rooks
       const orthogonalAttacks = horizontalAttacks(occupiedBB, pos) | verticalAttacks(occupiedBB, pos);
-      const rooks = this.getBitBoard(-ROOK + 6) & occupiedBB;
+      const rooks = this.getBitBoard(-ROOK) & occupiedBB;
       const attackingRooks = rooks & orthogonalAttacks;
       if (attackingRooks != 0) {
         return i32(ctz(attackingRooks));
       }
 
       // Check queens
-      const queens = this.getBitBoard(-QUEEN + 6) & occupiedBB;
+      const queens = this.getBitBoard(-QUEEN) & occupiedBB;
       const attackingQueens = queens & (orthogonalAttacks | allDiagonalAttacks);
       if (attackingQueens != 0) {
         return i32(ctz(attackingQueens));
@@ -981,7 +998,32 @@ export class Board {
   // Note: it already considers the first repetition of a position as a draw to stop searching a branch that leads to a draw earlier.
   @inline
   isEngineDraw(): bool {
-    return this.positionHistory.isSingleRepetition() || this.isFiftyMoveDraw();
+    return this.positionHistory.isSingleRepetition() || this.isFiftyMoveDraw() || this.isInsufficientMaterialDraw();
+  }
+
+  @inline
+  isInsufficientMaterialDraw(): bool {
+    switch (u32(popcnt(this.getAllPieceBitBoard(WHITE) | this.getAllPieceBitBoard(BLACK)))) {
+      case 2:
+        // K vs K
+        return true;
+
+      case 3:
+        // K vs K+N or K vs K+B
+        const knightsOrBishops = this.getBitBoard(KNIGHT) | this.getBitBoard(-KNIGHT) | this.getBitBoard(BISHOP) | this.getBitBoard(-BISHOP);
+        return knightsOrBishops != 0;
+
+      case 4:
+        // Check for K+B vs K+B where bishops are on fields with the same color
+        const whiteBishops = this.getBitBoard(BISHOP);
+        const blackBishops = this.getBitBoard(-BISHOP);
+
+        return ((whiteBishops & LIGHT_COLORED_FIELD_PATTERN) != 0 && (blackBishops & LIGHT_COLORED_FIELD_PATTERN) != 0) ||
+          ((whiteBishops & DARK_COLORED_FIELD_PATTERN) != 0 && (blackBishops & DARK_COLORED_FIELD_PATTERN) != 0);
+
+      default:
+        return false;
+    }
   }
 
   @inline
@@ -991,15 +1033,15 @@ export class Board {
 
   @inline
   updateEndGameStatus(): void {
-    const pawnCount = popcnt(this.getBitBoard(PAWN * WHITE + 6)) + popcnt(this.getBitBoard(PAWN * BLACK + 6));
+    const pawnCount = popcnt(this.getBitBoard(PAWN)) + popcnt(this.getBitBoard(-PAWN));
     if (pawnCount <= 3) {
       this.endgame = 1;
       return;
     }
-    const otherPieceCount = popcnt(this.getBitBoard(KNIGHT * WHITE + 6)) + popcnt(this.getBitBoard(KNIGHT * BLACK + 6)) +
-      popcnt(this.getBitBoard(BISHOP * WHITE + 6)) + popcnt(this.getBitBoard(BISHOP * BLACK + 6)) +
-      popcnt(this.getBitBoard(ROOK * WHITE + 6)) + popcnt(this.getBitBoard(ROOK * BLACK + 6)) +
-      popcnt(this.getBitBoard(QUEEN * WHITE + 6)) + popcnt(this.getBitBoard(QUEEN * BLACK + 6));
+    const otherPieceCount = popcnt(this.getBitBoard(KNIGHT)) + popcnt(this.getBitBoard(-KNIGHT)) +
+      popcnt(this.getBitBoard(BISHOP)) + popcnt(this.getBitBoard(-BISHOP)) +
+      popcnt(this.getBitBoard(ROOK)) + popcnt(this.getBitBoard(-ROOK)) +
+      popcnt(this.getBitBoard(QUEEN)) + popcnt(this.getBitBoard(-QUEEN));
 
     this.endgame = otherPieceCount <= 3 ? 1 : 0;
   }

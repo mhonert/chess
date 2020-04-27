@@ -235,6 +235,14 @@ function setOption(params: Array<string>): void {
   //   KING_SHIELD_BONUS = I32.parseInt(params[3]);
   // } else if (name == 'QuiescenceSEEThreshold') {
   //   QS_SEE_THRESHOLD = I32.parseInt(params[3]) * 10;
+  // } else if (name == 'PawnlessDrawScoreLowThreshold') {
+  //   PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = I32.parseInt(params[3]);
+  //
+  // } else if (name == 'PawnlessDrawScoreHighThreshold') {
+  //   PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = I32.parseInt(params[3]);
+  //
+  // } else if (name == 'PawnLessDrawClockThreshold') {
+  //   PAWNLESS_DRAW_CLOCK_THRESHOLD = I32.parseInt(params[3]);
 
   } else if (name == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();
