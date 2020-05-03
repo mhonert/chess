@@ -1,6 +1,6 @@
 {
   "name": "wasabi-chess",
-  "version": "1.1.4",
+  "version": "1.1.5",
   "private": true,
   "homepage": "https://mhonert.github.io/chess",
   "license": "GPL-3.0-or-later",
@@ -17,7 +17,7 @@
     "styled-components": "^5.0.1"
   },
   "scripts": {
-    "asbuild": "asc assembly/index.ts --validate -O2 --runPasses flatten,simplify-globals-optimizing,local-cse,simplify-locals-notee-nostructure,licm,vacuum --use IS_WASI=0 -b public/as-api.wasm",
+    "asbuild": "asc assembly/index.ts --validate -O3 --use IS_WASI=0 -b public/as-api.wasm",
     "build:engine": "asc assembly/uci.ts --runtime half -O2 --runPasses flatten,simplify-globals-optimizing,local-cse,simplify-locals-notee-nostructure,licm,vacuum --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
     "asbuild:debug": "asc assembly/index.ts --debug --use IS_WASI=0 -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",

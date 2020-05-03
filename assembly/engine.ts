@@ -32,15 +32,15 @@ import {
 } from './move-generation';
 import {
   getDepth,
-  getScoredMove, getScoreType,
+  getScoredMove,
+  getScoreType,
   ScoreType,
   TRANSPOSITION_MAX_DEPTH,
   TranspositionTable
 } from './transposition-table';
-import { fromFEN, STARTPOS } from './fen';
+import { fromFEN, STARTPOS, toFEN } from './fen';
 import { PositionHistory } from './history';
-import { PAWN } from './pieces';
-import { KillerMoveTable } from './killermove-table';
+import { HistoryHeuristics } from './history-heuristics';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
@@ -71,7 +71,7 @@ const SECONDARY_KILLER_SCORE_BONUS: i32 = 1024;
 export class Engine {
 
   private transpositionTable: TranspositionTable = new TranspositionTable();
-  private killerMoveTable: KillerMoveTable = new KillerMoveTable();
+  private historyHeuristics: HistoryHeuristics = new HistoryHeuristics();
   private history: PositionHistory = new PositionHistory();
   private board: Board;
   private startTime: i64 = 0;
@@ -99,7 +99,7 @@ export class Engine {
   }
 
   setBoard(board: Board): void {
-    this.killerMoveTable.clear();
+    this.historyHeuristics.clear();
     this.transpositionTable.increaseAge();
 
     this.board = board;
@@ -119,7 +119,7 @@ export class Engine {
     if (increaseTTableAge) {
       this.transpositionTable.increaseAge();
     }
-    this.killerMoveTable.clear();
+    this.historyHeuristics.clear();
     if (this.board.getHalfMoveClock() == 0) {
       this.history.clear();
     }
@@ -130,6 +130,8 @@ export class Engine {
   findBestMove(playerColor: i32, minimumDepth: i32, timeLimitMillis: i64): i32 {
     let alpha: i32 = MIN_SCORE;
     let beta: i32 = MAX_SCORE;
+
+    this.historyHeuristics.clearHistory();
 
     this.timeLimitMillis = timeLimitMillis;
     this.startTime = clock.currentMillis();
@@ -158,10 +160,10 @@ export class Engine {
     let bestScoredMove: i32 = 0;
 
     this.isCancelPossible = false;
+    this.nodeCount = 0;
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
     for (let depth: i32 = 2; depth < TRANSPOSITION_MAX_DEPTH; depth++) {
-      this.nodeCount = 0;
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
 
@@ -188,8 +190,10 @@ export class Engine {
 
         const removedPieceId = this.board.performMove(targetPieceId, moveStart, moveEnd);
 
+        const givesCheck = this.board.isInCheck(-playerColor);
+
         // Use principal variation search
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true, givesCheck);
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
           break;
@@ -197,7 +201,7 @@ export class Engine {
 
         // Repeat search if it falls outside the window
         if (-result > alpha && -result < beta) {
-          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true);
+          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true, givesCheck);
           if (result == CANCEL_SEARCH) {
             this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
             break;
@@ -247,7 +251,7 @@ export class Engine {
       const depthInfo = "depth " + depth.toString();
       const scoreInfo = " score cp " + bestScore.toString();
       const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
-      const nodesPerSecond = iterationDuration > 0 ? this.nodeCount * 1000 / iterationDuration : 0;
+      const nodesPerSecond = totalDuration > 0 ? this.nodeCount * 1000 / totalDuration : 0;
 
       const nodesInfo = " nodes " + this.nodeCount.toString();
       const npsInfo = nodesPerSecond > 0 ? " nps " + nodesPerSecond.toString() : "";
@@ -293,7 +297,7 @@ export class Engine {
 
   // Recursively calls itself with alternating player colors to
   // find the best possible move in response to the current board position.
-  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool): i32 {
+  private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool, isInCheck: bool): i32 {
 
     this.nodeCount++;
 
@@ -303,11 +307,13 @@ export class Engine {
       return 0;
     }
 
-    const isInCheck = this.board.isInCheck(playerColor);
-
-    // Extend search if any player is in check
-    if (depth <= 0 && isInCheck) {
-      depth = 1;
+    // Extend search when in check
+    if (isInCheck) {
+      if (depth < 0) {
+        depth = 1;
+      } else {
+        depth++;
+      }
     }
 
     // Quiescence search
@@ -375,7 +381,7 @@ export class Engine {
     // Null move pruning
     if (!isPV && !nullMovePerformed && depth > 2 && !isInCheck) {
       this.board.performNullMove();
-      const result = this.recFindBestMove(-beta, -beta + 1, -playerColor, depth - 4, ply + 1, true, false);
+      const result = this.recFindBestMove(-beta, -beta + 1, -playerColor, depth - 4, ply + 1, true, false, false);
       this.board.undoNullMove();
       if (result == CANCEL_SEARCH) {
         return CANCEL_SEARCH;
@@ -391,8 +397,8 @@ export class Engine {
       }
     }
 
-    const primaryKillerMove = this.killerMoveTable.getPrimaryKiller(ply);
-    const secondaryKillerMove = this.killerMoveTable.getSecondaryKiller(ply);
+    const primaryKillerMove = this.historyHeuristics.getPrimaryKiller(ply);
+    const secondaryKillerMove = this.historyHeuristics.getSecondaryKiller(ply);
 
     if (scoredMove == 0) {
       // Generate moves, if no valid moves were found in the transposition table
@@ -423,6 +429,8 @@ export class Engine {
       allowFutileMovePruning = pruneLowScore <= alpha;
     }
 
+    let givesCheck: bool = false;
+
     do {
 
       const targetPieceId = decodePiece(move);
@@ -439,24 +447,19 @@ export class Engine {
 
       if (!skip)  {
         hasValidMoves = true;
-        const givesCheck = this.board.isInCheck(-playerColor);
+        givesCheck = this.board.isInCheck(-playerColor);
         if (removedPieceId == EMPTY) {
-
+          const hasNegativeHistory = this.historyHeuristics.hasNegativeHistory(playerColor, depth, moveStart, moveEnd);
           if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !this.board.isPawnMoveCloseToPromotion(previousPiece, moveEnd, ownMovesLeft - 1)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
             reductions = LMR_REDUCTIONS;
-            if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
-              // Reduce more, if piece could be captured
+            if (hasNegativeHistory || this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
+              // Reduce more, if move has negative history or SEE score
               reductions++;
             }
 
-          } else if (allowFutileMovePruning && targetPieceId == abs(previousPiece)) {
-            if (givesCheck) {
-              if (this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
-                // Reduce futile move
-                reductions = FUTILE_MOVE_REDUCTIONS;
-              }
-            } else if (ownMovesLeft <= 1) {
+          } else if (!givesCheck && allowFutileMovePruning && targetPieceId == abs(previousPiece)) {
+            if (ownMovesLeft <= 1 || (hasNegativeHistory && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0)) {
               // Prune futile move
               skip = true;
               if (pruneLowScore > bestScore) {
@@ -467,26 +470,28 @@ export class Engine {
               // Reduce futile move
               reductions = FUTILE_MOVE_REDUCTIONS;
             }
-          } else if (!givesCheck && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
-            // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
+          } else if (hasNegativeHistory || this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, EMPTY) < 0) {
+            // Reduce search depth for moves with negative history or negative SEE score
             reductions = LOSING_MOVE_REDUCTIONS;
           }
-        } else if (!givesCheck && removedPieceId <= abs(previousPiece) && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
-          // Reduce search depth if the target square is empty or has a lower/equal value, is attacked by an opponent piece and not defended by an own piece
+        } else if (removedPieceId <= abs(previousPiece) && this.board.seeScore(-playerColor, moveStart, moveEnd, targetPieceId, removedPieceId) < 0) {
+          // Reduce search depth for moves with negative capture moves with negative SEE score
           reductions = LOSING_MOVE_REDUCTIONS;
         }
-
       }
 
       if (skip) {
         this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
 
       } else {
+        if (removedPieceId == EMPTY) {
+          this.historyHeuristics.updatePlayedMoves(playerColor, moveStart, moveEnd);
+        }
         hasValidMoves = true;
         evaluatedMoveCount++;
 
         let a = evaluatedMoveCount > 1 ? -(alpha + 1) : -beta;
-        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification);
+        let result = this.recFindBestMove(a, -alpha, -playerColor, depth - reductions - 1, ply + 1, false, nullMoveVerification, givesCheck);
         if (result == CANCEL_SEARCH) {
           this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
           return CANCEL_SEARCH;
@@ -494,18 +499,18 @@ export class Engine {
 
         if (-result > alpha && (-result < beta || reductions > 0)) {
           // Repeat search without reduction
-          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification);
+          result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, ply + 1, false, nullMoveVerification, givesCheck);
           if (result == CANCEL_SEARCH) {
             this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
             return CANCEL_SEARCH;
           }
-
         }
 
         const score = -result;
 
         this.board.undoMove(previousPiece, moveStart, moveEnd, moveState);
 
+        let improvedAlpha = false;
         // Use mini-max algorithm ...
         if (score > bestScore) {
           bestScore = score;
@@ -515,13 +520,16 @@ export class Engine {
           if (bestScore > alpha) {
             alpha = bestScore;
             scoreType = ScoreType.EXACT;
+            improvedAlpha = true;
+
           }
           if (alpha >= beta) {
             this.transpositionTable.writeEntry(ttHash, depth, encodeScoredMove(bestMove, bestScore), ScoreType.LOWER_BOUND);
 
-            if (bestMove != hashMove && removedPieceId == EMPTY) {
-              this.killerMoveTable.writeEntry(ply, moveStart, moveEnd, bestMove);
+            if (removedPieceId == EMPTY) {
+              this.historyHeuristics.update(ply, playerColor, moveStart, moveEnd, bestMove);
             }
+
             return alpha;
           }
         }
@@ -652,21 +660,20 @@ export class Engine {
   // (low values are better for black and high values are better for white)
   @inline
   evaluateMoveScore(activePlayer: i32, encodedMove: i32): i32 {
-    const ownTargetPieceId = decodePiece(encodedMove);
     const moveStart = decodeStartIndex(encodedMove);
     const moveEnd = decodeEndIndex(encodedMove);
-    const ownOriginalPieceId = activePlayer * this.board.getItem(moveStart); // might be different in case of pawn promotions
 
-    const posScore = this.board.calculateScore(moveEnd, activePlayer, ownTargetPieceId) - this.board.calculateScore(moveStart, activePlayer, ownOriginalPieceId);
     const capturedPiece = this.board.getItem(moveEnd);
 
     if (capturedPiece == EMPTY) {
-      return (posScore * 16) - activePlayer * ownOriginalPieceId - activePlayer * 4096;
+      const historyScore = this.historyHeuristics.getHistoryScore(activePlayer, moveStart, moveEnd) * activePlayer;
+      return -activePlayer * 4096 + historyScore;
 
     } else {
+      const ownOriginalPieceId = activePlayer * this.board.getItem(moveStart); // might be different in case of pawn promotions
       const capturedPieceId = abs(capturedPiece);
-      return posScore + activePlayer * getCaptureOrderScore(ownOriginalPieceId, capturedPieceId);
 
+      return activePlayer * getCaptureOrderScore(ownOriginalPieceId, capturedPieceId);
     }
   };
 
@@ -712,6 +719,10 @@ export class Engine {
       return 0;
     }
   };
+
+  getNodeCount(): u64 {
+    return this.nodeCount;
+  }
 }
 
 
@@ -769,6 +780,11 @@ class EngineControl {
   resizeTranspositionTable(sizeInMB: u32): void {
     this.engine.resizeTranspositionTable(sizeInMB);
   }
+
+  getNodeCount(): u64 {
+    return this.engine.getNodeCount();
+  }
+
 }
 
 const CONTROL_INSTANCE = new EngineControl();

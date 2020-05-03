@@ -16,18 +16,19 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { KillerMoveTable } from '../killermove-table';
+import { HistoryHeuristics } from '../history-heuristics';
 import { encodeMove } from '../move-generation';
 import { QUEEN, ROOK } from '../pieces';
+import { WHITE } from '../board';
 
 describe("Killer move table", () => {
 
   it("Sets primary and secondary killer move entries correctly", () => {
-    const table = new KillerMoveTable();
+    const table = new HistoryHeuristics();
     const moveA = encodeMove(QUEEN, 1, 2);
     const moveB = encodeMove(ROOK, 4, 5);
-    table.writeEntry(1, 1, 2, moveA);
-    table.writeEntry(1, 4, 5, moveB);
+    table.update(1, WHITE, 1, 2, moveA);
+    table.update(1, WHITE, 4, 5, moveB);
 
     const primaryKiller = table.getPrimaryKiller(1);
     const secondaryKiller = table.getSecondaryKiller(1);
@@ -37,12 +38,12 @@ describe("Killer move table", () => {
   })
 
   it("Same move is not stored in primary and secondary slot", () => {
-    const table = new KillerMoveTable();
+    const table = new HistoryHeuristics();
     const moveA = encodeMove(QUEEN, 1, 2);
     const moveB = encodeMove(ROOK, 4, 5);
-    table.writeEntry(1, 4, 5, moveB);
-    table.writeEntry(1, 1, 2, moveA);
-    table.writeEntry(1, 1, 2, moveA);
+    table.update(1, WHITE, 4, 5, moveB);
+    table.update(1, WHITE, 1, 2, moveA);
+    table.update(1, WHITE, 1, 2, moveA);
 
     const primaryKiller = table.getPrimaryKiller(1);
     const secondaryKiller = table.getSecondaryKiller(1);
