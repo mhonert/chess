@@ -20,6 +20,7 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
 import EngineControl from './engine';
+import { TIMEEXT_MULTIPLIER } from './engine';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
@@ -36,7 +37,6 @@ const OWNBOOK_OPTION = "OwnBook"
 // Options
 let transpositionTableSizeChanged: bool = false;
 let transpositionTableSizeInMB: u32 = 1;
-
 
 // Entry point for the standalone engine
 export function _start(): void {
@@ -91,7 +91,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.1.5");
+  stdio.writeLine("id name Wasabi 1.1.6");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
@@ -157,7 +157,14 @@ function go(parameters: Array<string>): void {
     ? calculateTimeLimit(movetime, wtime, winc, movesToGo)
     : calculateTimeLimit(movetime, btime, binc, movesToGo);
 
-  const move = EngineControl.findBestMove(3, timeLimitMillis);
+  const timeLeft = (EngineControl.getBoard().getActivePlayer() == WHITE)
+    ? wtime
+    : btime;
+
+  // Use strict time limit if a fixed move time is set or
+  const isStrictTimeLimit = movetime != 0 || (timeLeft - (TIMEEXT_MULTIPLIER * timeLimitMillis) <= 10);
+
+  const move = EngineControl.findBestMove(3, timeLimitMillis, isStrictTimeLimit);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
@@ -225,7 +232,8 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeChanged = true;
 
     }
-  // } else if (name == 'PassedPawnBonus') {
+
+    // } else if (name == 'PassedPawnBonus') {
   //   PASSED_PAWN_BONUS = I32.parseInt(params[3]);
   //
   // } else if (name == 'DoubledPawnPenalty') {

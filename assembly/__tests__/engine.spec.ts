@@ -249,7 +249,7 @@ function findBestMove(board: Board, playerColor: i32, exactDepth: i32): i32 {
   if (board.getActivePlayer() != playerColor) {
     board.performNullMove();
   }
-  return EngineControl.findBestMove(exactDepth, 0);
+  return EngineControl.findBestMove(exactDepth, 0, true);
 }
 
 function findBestMoveIncrementally(board: Board, playerColor: i32, minimumDepth: i32, timeLimitMillis: i32): i32 {
@@ -257,7 +257,7 @@ function findBestMoveIncrementally(board: Board, playerColor: i32, minimumDepth:
   if (board.getActivePlayer() != playerColor) {
     board.performNullMove();
   }
-  return EngineControl.findBestMove(minimumDepth, timeLimitMillis);
+  return EngineControl.findBestMove(minimumDepth, timeLimitMillis, true);
 }
 
 

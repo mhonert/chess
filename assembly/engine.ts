@@ -68,6 +68,11 @@ const QS_PRUNE_MARGIN: i32 = 950;
 const PRIMARY_KILLER_SCORE_BONUS: i32 = 2048;
 const SECONDARY_KILLER_SCORE_BONUS: i32 = 1024;
 
+export const TIMEEXT_MULTIPLIER: i32 = 4;
+const TIMEEXT_SCORE_CHANGE_THRESHOLD: i32 = 80;
+const TIMEEXT_SCORE_FLUCTUATION_THRESHOLD: i32 = 130;
+const TIMEEXT_SCORE_FLUCTUATION_REDUCTIONS = 90; // reduction percentage per search iteration
+
 export class Engine {
 
   private transpositionTable: TranspositionTable = new TranspositionTable();
@@ -127,7 +132,7 @@ export class Engine {
   }
 
   // Find the best possible move in response to the current board position.
-  findBestMove(playerColor: i32, minimumDepth: i32, timeLimitMillis: i64): i32 {
+  findBestMove(playerColor: i32, minimumDepth: i32, timeLimitMillis: i64, isStrictTimeLimit: bool): i32 {
     let alpha: i32 = MIN_SCORE;
     let beta: i32 = MAX_SCORE;
 
@@ -157,10 +162,19 @@ export class Engine {
       }
     }
 
-    let bestScoredMove: i32 = 0;
+    let currentBestScoredMove: i32 = 0;
 
     this.isCancelPossible = false;
     this.nodeCount = 0;
+
+    let alreadyExtendedTimeLimit = false;
+    let iterationDuration: i64 = 0;
+
+    let previousBestMove: i32 = 0;
+    let previousBestScore: i32 = 0;
+
+    let fluctuationCount: i32 = 0;
+    let scoreFluctuations: i32 = 0;
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
     for (let depth: i32 = 2; depth < TRANSPOSITION_MAX_DEPTH; depth++) {
@@ -178,6 +192,7 @@ export class Engine {
 
       let evaluatedMoveCount = 0;
 
+      let iterationCancelled = false;
       for (let i: i32 = 0; i < moves.length; i++) {
         const scoredMove = unchecked(moves[i]);
 
@@ -195,23 +210,42 @@ export class Engine {
         // Use principal variation search
         let result = this.recFindBestMove(a, -alpha, -playerColor, depth - 1, 1, false, true, givesCheck);
         if (result == CANCEL_SEARCH) {
-          this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
-          break;
+          iterationCancelled = true;
         }
 
         // Repeat search if it falls outside the window
         if (-result > alpha && -result < beta) {
           result = this.recFindBestMove(-beta, -alpha, -playerColor, depth - 1, 1, false, true, givesCheck);
           if (result == CANCEL_SEARCH) {
-            this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
-            break;
+            iterationCancelled = true;
           }
         }
 
-        const score = -result;
-
         this.board.undoMove(previousPiece, moveStart, moveEnd, removedPieceId);
 
+        if (iterationCancelled) {
+          if (bestMove != 0 && previousBestMove != 0) {
+            scoreFluctuations = scoreFluctuations * 100 / TIMEEXT_SCORE_FLUCTUATION_REDUCTIONS;
+            scoreFluctuations += abs(bestScore - previousBestScore);
+
+            if (abs(bestScore) >= (BLACK_MATE_SCORE - TRANSPOSITION_MAX_DEPTH)) {
+              // Reset score fluctuation statistic, if a check mate is found
+              scoreFluctuations = 0;
+            }
+          }
+
+          if (!isStrictTimeLimit && !alreadyExtendedTimeLimit && shouldExtendTimeLimit(bestMove, bestScore, previousBestMove, previousBestScore, scoreFluctuations, fluctuationCount))  {
+
+            alreadyExtendedTimeLimit = true;
+            this.timeLimitMillis += (iterationDuration * TIMEEXT_MULTIPLIER);
+
+            iterationCancelled = false;
+            continue;
+          }
+          break;
+        }
+
+        const score = -result;
         if (score > bestScore) {
           bestScore = score;
           bestMove = move;
@@ -224,41 +258,52 @@ export class Engine {
         unchecked(moves[i] = encodeScoredMove(move, score));
         scoredMoves++;
 
-        if (this.isCancelPossible && clock.currentMillis() - this.startTime >= timeLimitMillis) {
-          break;
-        }
-
       }
 
       const currentTime = clock.currentMillis();
-      const iterationDuration = currentTime - iterationStartTime;
+      iterationDuration = currentTime - iterationStartTime;
       const totalDuration = currentTime - this.startTime;
       const remainingTime = timeLimitMillis - totalDuration;
 
-      if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2))) {
-        if (bestMove != 0) {
-          bestScoredMove = encodeScoredMove(bestMove, bestScore);
-          break;
+      if (!iterationCancelled) {
+        const depthInfo = "depth " + depth.toString();
+        const scoreInfo = " score cp " + bestScore.toString();
+        const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
+        const nodesPerSecond = totalDuration > 0 ? this.nodeCount * 1000 / totalDuration : 0;
 
-        } else {
-          // Last search is incomplete => use result of previous iteration
-          break;
+        const nodesInfo = " nodes " + this.nodeCount.toString();
+        const npsInfo = nodesPerSecond > 0 ? " nps " + nodesPerSecond.toString() : "";
+
+        const timeInfo = " time " + totalDuration.toString();
+
+        stdio.writeLine("info " + depthInfo + scoreInfo + nodesInfo + npsInfo + timeInfo + pvInfo);
+
+        if (previousBestMove != 0) {
+          scoreFluctuations = scoreFluctuations * 100 / TIMEEXT_SCORE_FLUCTUATION_REDUCTIONS;
+          scoreFluctuations += abs(bestScore - previousBestScore);
+          fluctuationCount++;
+        }
+
+        if (this.isCancelPossible && (remainingTime < (iterationDuration * 2))) {
+          // Not enough time left for another iteration
+
+          if (isStrictTimeLimit || alreadyExtendedTimeLimit || !shouldExtendTimeLimit(bestMove, bestScore, previousBestMove, previousBestScore, scoreFluctuations, fluctuationCount)) {
+            iterationCancelled = true;
+          }
 
         }
       }
 
-      bestScoredMove = encodeScoredMove(bestMove, bestScore);
-      const depthInfo = "depth " + depth.toString();
-      const scoreInfo = " score cp " + bestScore.toString();
-      const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
-      const nodesPerSecond = totalDuration > 0 ? this.nodeCount * 1000 / totalDuration : 0;
+      if (iterationCancelled) {
+        if (bestMove != 0) {
+          currentBestScoredMove = encodeScoredMove(bestMove, bestScore);
+        }
+        break;
+      }
 
-      const nodesInfo = " nodes " + this.nodeCount.toString();
-      const npsInfo = nodesPerSecond > 0 ? " nps " + nodesPerSecond.toString() : "";
-
-      const timeInfo = " time " + totalDuration.toString();
-
-      stdio.writeLine("info " + depthInfo + scoreInfo + nodesInfo + npsInfo + timeInfo + pvInfo);
+      currentBestScoredMove = encodeScoredMove(bestMove, bestScore);
+      previousBestMove = bestMove;
+      previousBestScore = bestScore;
 
       sortByScoreDescending(moves);
 
@@ -267,7 +312,7 @@ export class Engine {
       this.isCancelPossible = depth >= minimumDepth;
     }
 
-    return bestScoredMove;
+    return currentBestScoredMove;
   };
 
   private extractPV(move: i32, depth: i32): string {
@@ -299,11 +344,15 @@ export class Engine {
   // find the best possible move in response to the current board position.
   private recFindBestMove(alpha: i32, beta: i32, playerColor: i32, depth: i32, ply: i32, nullMovePerformed: bool, nullMoveVerification: bool, isInCheck: bool): i32 {
 
-    this.nodeCount++;
+    if (this.isCancelPossible && (this.nodeCount & 1023) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
+      // Cancel search if the time limit has been reached or exceeded
+      return CANCEL_SEARCH;
+    }
 
     const isPV: bool = (alpha + 1) < beta; // in a principal variation search, non-PV nodes are searched with a zero-window
 
     if (this.board.isEngineDraw()) {
+      this.nodeCount++;
       return 0;
     }
 
@@ -326,6 +375,8 @@ export class Engine {
       }
       return score;
     }
+
+    this.nodeCount++;
 
     if (depth > 4 && (ply & 3) == 3) {
       this.board.updateEndGameStatus();
@@ -535,11 +586,6 @@ export class Engine {
         }
       }
 
-      if (this.isCancelPossible && (this.nodeCount & 15) == 0 && clock.currentMillis() - this.startTime >= this.timeLimitMillis) {
-        // Cancel search
-        return CANCEL_SEARCH;
-      }
-
       if (moves == null) {
         moves = this.sortMovesByScore(generateMoves(this.board, playerColor), playerColor, primaryKillerMove, secondaryKillerMove);
 
@@ -725,6 +771,16 @@ export class Engine {
   }
 }
 
+function shouldExtendTimeLimit(newMove: i32, newScore: i32, previousMove: i32, previousScore: i32, scoreFluctuations: i32, fluctuationCount: i32): bool {
+  if (previousMove == 0 || newMove == 0) {
+    return false;
+  }
+
+  const avgFluctuations = fluctuationCount > 0 ? scoreFluctuations / fluctuationCount : 0;
+
+  return newMove != previousMove || abs(newScore - previousScore) >= TIMEEXT_SCORE_CHANGE_THRESHOLD || avgFluctuations >= TIMEEXT_SCORE_FLUCTUATION_THRESHOLD;
+}
+
 
 class EngineControl {
   private board: Board;
@@ -758,9 +814,10 @@ class EngineControl {
    *
    * @param minimumDepth Minimum search depth
    * @param timeLimitMillis Time limit for the search in milliseconds
+   * @param isStrictTimeLimit Flag to indicate that the time limit is strict and cannot be extended
    */
-  findBestMove(minimumDepth: i32, timeLimitMillis: u64): i32 {
-    const result = this.engine.findBestMove(this.board.getActivePlayer(), minimumDepth, timeLimitMillis);
+  findBestMove(minimumDepth: i32, timeLimitMillis: u64, isStrictTimeLimit: bool): i32 {
+    const result = this.engine.findBestMove(this.board.getActivePlayer(), minimumDepth, timeLimitMillis, isStrictTimeLimit);
 
     return decodeMove(result);
   }

@@ -46,7 +46,7 @@ describe('Engine performance', () => {
 function measureEnginePerformance(fen: string, depth: i32): u64 {
   EngineControl.reset();
   EngineControl.setBoard(fromFEN(fen));
-  const move = EngineControl.findBestMove(depth, 0);
+  const move = EngineControl.findBestMove(depth, 0, true);
 
   return EngineControl.getNodeCount();
 }
