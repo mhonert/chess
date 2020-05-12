@@ -15,7 +15,7 @@ to run all calculations in the background without blocking the main thread for t
 ## Features
 - Chess engine implemented in [AssemblyScript](https://github.com/AssemblyScript/assemblyscript)
 - Basic UCI protocol support (standalone engine)
-- Computer opponent with 5 difficulty levels
+- Computer opponent with 6 difficulty levels
 - Opening Database for varied gameplay
 - Move history to undo player moves
 - Drag'n'Drop support to move chess pieces

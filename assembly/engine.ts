@@ -68,7 +68,7 @@ const QS_PRUNE_MARGIN: i32 = 950;
 const PRIMARY_KILLER_SCORE_BONUS: i32 = 2048;
 const SECONDARY_KILLER_SCORE_BONUS: i32 = 1024;
 
-export const TIMEEXT_MULTIPLIER: i32 = 4;
+export const TIMEEXT_MULTIPLIER: i32 = 5;
 const TIMEEXT_SCORE_CHANGE_THRESHOLD: i32 = 80;
 const TIMEEXT_SCORE_FLUCTUATION_THRESHOLD: i32 = 130;
 const TIMEEXT_SCORE_FLUCTUATION_REDUCTIONS = 90; // reduction percentage per search iteration
@@ -177,7 +177,7 @@ export class Engine {
     let scoreFluctuations: i32 = 0;
 
     // Use iterative deepening, i.e. increase the search depth after each iteration
-    for (let depth: i32 = 2; depth < TRANSPOSITION_MAX_DEPTH; depth++) {
+    for (let depth: i32 = min(minimumDepth, 2); depth < TRANSPOSITION_MAX_DEPTH; depth++) {
       let bestScore: i32 = MIN_SCORE;
       let scoredMoves = 0;
 
@@ -237,7 +237,7 @@ export class Engine {
           if (!isStrictTimeLimit && !alreadyExtendedTimeLimit && shouldExtendTimeLimit(bestMove, bestScore, previousBestMove, previousBestScore, scoreFluctuations, fluctuationCount))  {
 
             alreadyExtendedTimeLimit = true;
-            this.timeLimitMillis += (iterationDuration * TIMEEXT_MULTIPLIER);
+            this.timeLimitMillis *= TIMEEXT_MULTIPLIER;
 
             iterationCancelled = false;
             continue;
@@ -284,7 +284,8 @@ export class Engine {
           fluctuationCount++;
         }
 
-        if (this.isCancelPossible && (remainingTime < (iterationDuration * 2))) {
+        this.isCancelPossible = depth >= minimumDepth;
+        if (this.isCancelPossible && (remainingTime <= (iterationDuration * 2))) {
           // Not enough time left for another iteration
 
           if (isStrictTimeLimit || alreadyExtendedTimeLimit || !shouldExtendTimeLimit(bestMove, bestScore, previousBestMove, previousBestScore, scoreFluctuations, fluctuationCount)) {
@@ -309,7 +310,6 @@ export class Engine {
 
       alpha = previousAlpha;
       beta = previousBeta;
-      this.isCancelPossible = depth >= minimumDepth;
     }
 
     return currentBestScoredMove;

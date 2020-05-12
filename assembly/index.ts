@@ -26,11 +26,12 @@ import { BLACK, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
+  [1, 0, 0],
   [3, 0, 0],
   [5, 0, 0],
-  [7, 0, 100],
-  [9, 0, 200],
-  [10, 900, 1500]
+  [7, 0, 0],
+  [9, 0, 0],
+  [11, 1000, 1500]
 ]
 
 export const INT32ARRAY_ID = idof<Int32Array>();
@@ -77,7 +78,7 @@ export function calculateMove(difficultyLevel: i32): i32 {
   const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[2] : levelSettings[1];
   const minimumSearchDepth = levelSettings[0];
 
-  return EngineControl.findBestMove(minimumSearchDepth, maxTime, false);
+  return EngineControl.findBestMove(minimumSearchDepth, maxTime, maxTime === 0);
 }
 
 // Applies the given move to the current board and returns the encoded game state

@@ -48,7 +48,7 @@ const Game = () => {
   const [availableMoves, setAvailableMoves] = useState([]);
   const [currentPieceMoves, setCurrentPieceMoves] = useState(new Set());
   const [winningPlayer, setWinningPlayer] = useState();
-  const [difficultyLevel, setDifficultyLevel] = useState(3);
+  const [difficultyLevel, setDifficultyLevel] = useState(6);
   const [moveHistory, setMoveHistory] = useState([]);
   const [promotion, setPromotion] = useState(undefined);
   const [inCheck, setInCheck] = useState(0);
@@ -101,15 +101,13 @@ const Game = () => {
     );
   }, [availableMoves]);
 
+  const asyncDelay = (millis) => new Promise(resolve => setTimeout(resolve, millis));
+
   const calculateAIMove = useCallback(async () => {
     clearAvailableMoves();
     setAiTurn(true);
 
-    if (difficultyLevel < 5) { // add small delay for all, but the highest difficulty level
-      await new Promise(resolve => setTimeout(resolve, 75));
-    }
-
-    const move = await engine.calculateMove(difficultyLevel);
+    const [move] = await Promise.all([engine.calculateMove(difficultyLevel), asyncDelay(150)]);
 
     const gameState = await engine.performMove(move);
     setAiTurn(false);

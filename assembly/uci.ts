@@ -91,7 +91,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.1.6");
+  stdio.writeLine("id name Wasabi 1.1.7");
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
@@ -232,25 +232,6 @@ function setOption(params: Array<string>): void {
       transpositionTableSizeChanged = true;
 
     }
-
-    // } else if (name == 'PassedPawnBonus') {
-  //   PASSED_PAWN_BONUS = I32.parseInt(params[3]);
-  //
-  // } else if (name == 'DoubledPawnPenalty') {
-  //   DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
-  //
-  // } else if (name == 'KingShieldBonus') {
-  //   KING_SHIELD_BONUS = I32.parseInt(params[3]);
-  // } else if (name == 'QuiescenceSEEThreshold') {
-  //   QS_SEE_THRESHOLD = I32.parseInt(params[3]) * 10;
-  // } else if (name == 'PawnlessDrawScoreLowThreshold') {
-  //   PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = I32.parseInt(params[3]);
-  //
-  // } else if (name == 'PawnlessDrawScoreHighThreshold') {
-  //   PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = I32.parseInt(params[3]);
-  //
-  // } else if (name == 'PawnLessDrawClockThreshold') {
-  //   PAWNLESS_DRAW_CLOCK_THRESHOLD = I32.parseInt(params[3]);
 
   } else if (name == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();

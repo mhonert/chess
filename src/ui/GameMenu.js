@@ -25,6 +25,7 @@ import {
   faDiceFive,
   faDiceFour,
   faDiceOne,
+  faDiceSix,
   faDiceThree,
   faDiceTwo,
   faExchangeAlt,
@@ -39,8 +40,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 const MenuBar = styled.div`
   display: flex;
   flex-direction: column;
-  margin-top: 1rem;
-  margin-left: 1.5rem;
+  margin-top: 0.7rem;
+  margin-left: 1rem;
   text-align: center;
   align-items: center;
 
@@ -55,7 +56,7 @@ const MenuBar = styled.div`
 const MenuItem = styled.div`
   position: relative;
   display: ${props => (props.hidden ? 'none' : 'flex')};
-  padding-bottom: 0.5rem;
+  padding-bottom: 0.2rem;
   flex-direction: column;
   
   @media (max-aspect-ratio: 100/99) {
@@ -71,9 +72,9 @@ const GameButton = styled.button`
   border-radius: 0.3rem;
   font-size: 1rem;
   font-weight: bold;
-  padding: 0.5rem 0.4rem;
+  padding: 0.5rem 0.3rem;
   width: 2.5rem;
-  margin: 0.3rem;
+  margin: 0.2rem;
   box-shadow: 1px 1px 1px #073642;
   
   &[disabled] {
@@ -111,7 +112,7 @@ const IconRadioInput = styled.input`
 
 const IconRadioLabel = styled.label`
   color: #073642;
-  margin: 0.2rem;
+  margin: 0.06rem 0.2rem;
   opacity: 0.2;
   
   & :hover {
@@ -181,7 +182,8 @@ const GameMenu = ({
                           {value: 2, description: "Difficulty level 2", icon: faDiceTwo},
                           {value: 3, description: "Difficulty level 3", icon: faDiceThree},
                           {value: 4, description: "Difficulty level 4", icon: faDiceFour},
-                          {value: 5, description: "Difficulty level 5 (hard)", icon: faDiceFive},
+                          {value: 5, description: "Difficulty level 5", icon: faDiceFive},
+                          {value: 6, description: "Difficulty level 6 (hard)", icon: faDiceSix},
                         ]} />
     </MenuItem>
 
