@@ -1,6 +1,6 @@
 {
   "name": "wasabi-chess",
-  "version": "1.1.7",
+  "version": "1.1.8",
   "private": true,
   "homepage": "https://mhonert.github.io/chess",
   "license": "GPL-3.0-or-later",
@@ -17,8 +17,8 @@
     "styled-components": "^5.0.1"
   },
   "scripts": {
-    "asbuild": "asc assembly/index.ts --validate -O3 --use IS_WASI=0 -b public/as-api.wasm",
-    "build:engine": "asc assembly/uci.ts --runtime half --validate -O2 --runPasses flatten,simplify-globals-optimizing,local-cse,simplify-locals-notee-nostructure,licm,vacuum --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
+    "asbuild": "asc assembly/index.ts --runtime full -O3 --use IS_WASI=0 -b public/as-api.wasm",
+    "build:engine": "asc assembly/uci.ts --runtime half -O2 --runPasses flatten,simplify-globals-optimizing,local-cse,simplify-locals-notee-nostructure,licm,vacuum --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
     "asbuild:debug": "asc assembly/index.ts --debug --use IS_WASI=0 -b public/as-api.wasm",
     "build": "npm run asbuild && npm run jsbuild",
     "jsbuild": "react-scripts build",
@@ -49,8 +49,8 @@
     ]
   },
   "devDependencies": {
-    "@as-pect/cli": "^3.1.4",
-    "assemblyscript": "0.9.4-nightly.20200314",
+    "@as-pect/cli": "^3.2.0",
+    "assemblyscript": "0.10.0",
     "babel-plugin-macros": "^2.8.0",
     "gh-pages": "^2.2.0",
     "workerize-loader": "^1.1.0"

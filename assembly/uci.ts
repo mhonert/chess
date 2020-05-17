@@ -30,9 +30,11 @@ import { randomizeOpeningBookMoves } from './opening-book';
 
 export { _abort } from './io/wasi/abort';
 
+const VERSION = "1.1.8";
+
 // Option names
-const HASH_OPTION = "Hash";
-const OWNBOOK_OPTION = "OwnBook"
+const HASH_OPTION = "hash";
+const OWNBOOK_OPTION = "ownbook"
 
 // Options
 let transpositionTableSizeChanged: bool = false;
@@ -44,6 +46,8 @@ export function _start(): void {
   let isPositionSet: bool = false;
 
   EngineControl.setUseOpeningBook(false);
+
+  stdio.writeLine("Wasabi " + VERSION + " by mhonert");
 
   do {
     const line: string = stdio.readLine();
@@ -68,11 +72,19 @@ export function _start(): void {
         isPositionSet = position(tokens.slice(i + 1));
         break;
 
-      } else if (isPositionSet && command == "go" && (i + 1) < tokens.length) {
+      } else if (command == "go" && (i + 1) < tokens.length) {
+        if (!isPositionSet) {
+          stdio.writeError("No position was set!");
+          break;
+        }
         go(tokens.slice(i + 1));
         break;
 
-      } else if (isPositionSet && command == "perft" && (i + 1) < tokens.length) {
+      } else if (command == "perft" && (i + 1) < tokens.length) {
+        if (!isPositionSet) {
+          stdio.writeError("No position was set!");
+          break;
+        }
         perft(tokens[i + 1]);
         break;
 
@@ -83,6 +95,9 @@ export function _start(): void {
       } else if (command == 'quit') {
         isRunning = false;
         break;
+
+      } else {
+        stdio.writeError("Unknown command: " + line);
       }
 
     }
@@ -91,7 +106,7 @@ export function _start(): void {
 }
 
 function uci(): void {
-  stdio.writeLine("id name Wasabi 1.1.7");
+  stdio.writeLine("id name Wasabi " + VERSION);
   stdio.writeLine("id author mhonert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
@@ -225,7 +240,7 @@ function setOption(params: Array<string>): void {
     return;
   }
 
-  if (name == HASH_OPTION) {
+  if (name.toLowerCase() == HASH_OPTION) {
     const sizeInMB = I32.parseInt(params[3]);
     if (sizeInMB >= 1 && sizeInMB != transpositionTableSizeInMB) {
       transpositionTableSizeInMB = min(sizeInMB, MAX_HASH_SIZE_MB);
@@ -233,12 +248,15 @@ function setOption(params: Array<string>): void {
 
     }
 
-  } else if (name == OWNBOOK_OPTION) {
+  } else if (name.toLowerCase() == OWNBOOK_OPTION) {
     const useBook = "true" == params[3].toLowerCase();
     EngineControl.setUseOpeningBook(useBook);
     if (useBook) {
       randomizeOpeningBookMoves();
     }
+
+  } else {
+    stdio.writeError("Unknown option name: " + name);
   }
 }
 

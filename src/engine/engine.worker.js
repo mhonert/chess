@@ -27,7 +27,8 @@ export async function init() {
   if (engine) {
     return; // already initialized
   }
-  engine = await instantiate(fetch("./as-api.wasm"));
+  const result = await instantiate(fetch("./as-api.wasm"));
+  engine = result.exports;
   console.log("Engine initialized");
 };
 

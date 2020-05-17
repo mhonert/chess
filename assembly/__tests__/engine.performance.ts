@@ -34,10 +34,12 @@ describe('Engine performance', () => {
     nodeCount += measureEnginePerformance("r2q1r1k/pb1nbppB/2p1p2p/4P3/1p1P4/5N2/PPQ2PPP/R1B2RK1 w - - 0 1", 12); // bm Be4
 
     const duration = Date.now() - start;
-    trace("Duration (ms)   : " + duration.toString());
+    trace("-------------------------------------------------------");
     trace("Total nodes     : " + nodeCount.toString());
+    trace("Duration (ms)   : " + duration.toString());
     const nodesPerSecond = duration > 0 ? nodeCount * 1000 / duration : 0;
     trace("Nodes per second: " + nodesPerSecond.toString());
+
   });
 
 });
