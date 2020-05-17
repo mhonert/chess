@@ -17,33 +17,33 @@
  */
 
 import { Board } from './board';
-import { openingBookData } from './opening-book-data';
 import { Random } from './random';
 import { clock } from './io';
+import { getOpeningBookI32, getOpeningBookU32 } from './opening-book-data';
 
 const rnd = new Random();
 
 // Returns an encoded opening move the current position or 0 if none exists
 export function findOpeningMove(board: Board): i32 {
   const ply = board.getHalfMoveCount();
-  const maxPly = i32(unchecked(openingBookData[0]));
+  const maxPly = getOpeningBookPlyLimit();
   if (ply >= maxPly) {
     return 0;
   }
 
-  const startIndex = i32(unchecked(openingBookData[ply + 1]));
-  let entriesLeft = i32(unchecked(openingBookData[startIndex]));
+  const startIndex = getOpeningBookU32(ply + 1);
+  let entriesLeft = getOpeningBookI32(startIndex);
 
   const boardLowHash = board.getHash() & 0xFFFFFFFF;
   const boardHighHash = board.getHash() >> 32;
 
   let index = startIndex + 1;
   do {
-    const moveCount = i32(unchecked(openingBookData[index + 2]));
+    const moveCount = getOpeningBookU32(index + 2);
 
-    if (boardLowHash == unchecked(openingBookData[index]) && boardHighHash == unchecked(openingBookData[index + 1])) {
+    if (boardLowHash == getOpeningBookU32(index) && boardHighHash == getOpeningBookU32(index + 1)) {
       const selectedMoveNum = rnd.rand32() % moveCount;
-      return i32(openingBookData[index + 3 + selectedMoveNum]);
+      return getOpeningBookI32(index + 3 + selectedMoveNum);
     }
 
     index += moveCount + 3;
@@ -52,6 +52,10 @@ export function findOpeningMove(board: Board): i32 {
 
   // No move found
   return 0;
+}
+
+export function getOpeningBookPlyLimit(): i32 {
+  return getOpeningBookI32(0);
 }
 
 export function randomizeOpeningBookMoves(): void {

@@ -38,14 +38,13 @@ import {
   TRANSPOSITION_MAX_DEPTH,
   TranspositionTable
 } from './transposition-table';
-import { fromFEN, STARTPOS, toFEN } from './fen';
+import { fromFEN, STARTPOS } from './fen';
 import { PositionHistory } from './history';
 import { HistoryHeuristics } from './history-heuristics';
 import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
 import { perft } from './perft';
-import { openingBookData } from './opening-book-data';
-import { findOpeningMove } from './opening-book';
+import { findOpeningMove, getOpeningBookPlyLimit } from './opening-book';
 import { getCaptureOrderScore, sortByScoreAscending, sortByScoreDescending } from './move-ordering';
 
 export const MIN_SCORE = -16383;
@@ -85,7 +84,7 @@ export class Engine {
   private isEndGame: bool = false;
   private isCancelPossible: bool = false;
   private useOpeningBook: bool = false;
-  private openingBookPlyLimit: i32 = i32(openingBookData[0]);
+  private openingBookPlyLimit: i32 = getOpeningBookPlyLimit();
 
   constructor() {
     this.board = fromFEN(STARTPOS);

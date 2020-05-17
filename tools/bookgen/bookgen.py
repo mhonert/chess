@@ -209,7 +209,18 @@ out.write(" *      - Number of moves for this position\n")
 out.write(" *        For each move:\n")
 out.write(" *         - Encoded move\n*/\n\n")
 
-out.write("export const openingBookData: Array<u32> = [ ")
+
+out.write("@inline\n")
+out.write("export function getOpeningBookU32(index: u32): u32 {\n")
+out.write("  return load<u32>(openingBookData + index * 4);\n")
+out.write("}\n\n")
+
+out.write("@inline\n")
+out.write("export function getOpeningBookI32(index: u32): i32 {\n")
+out.write("  return load<i32>(openingBookData + index * 4);\n")
+out.write("}\n\n")
+
+out.write("const openingBookData = memory.data<u32>([ ")
 
 charsWritten = 0
 for idx, entry in enumerate(book):
@@ -229,7 +240,7 @@ for idx, entry in enumerate(book):
     out.write(text_entry)
     charsWritten += len(text_entry)
 
-out.write("\n];\n")
+out.write("\n]);\n")
 out.close()
 print("Success!")
 

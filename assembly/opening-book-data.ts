@@ -33,7 +33,17 @@
  *         - Encoded move
 */
 
-export const openingBookData: Array<u32> = [ 16, 
+@inline
+export function getOpeningBookU32(index: u32): u32 {
+  return load<u32>(openingBookData + index * 4);
+}
+
+@inline
+export function getOpeningBookI32(index: u32): i32 {
+  return load<i32>(openingBookData + index * 4);
+}
+
+const openingBookData = memory.data<u32>([ 16, 
   17, 27, 93, 336, 892, 1811, 3098, 4890, 7004, 9836, 12961, 16958, 21159, 26262, 31225, 37063, 1, 
   0xf2dd1188, 0xab1e9c93, 6, 37281, 42377, 35217, 46578, 47537, 36249, 8, 0xc43b59e7, 0x16995670, 8, 27737, 
   20577, 28769, 26705, 18513, 21554, 22641, 19545, 0x9f0074da, 0x6f7c394c, 7, 28769, 20577, 29801, 26705, 
@@ -3634,4 +3644,4 @@ export const openingBookData: Array<u32> = [ 16,
   0x3895819e, 0x13a85711, 1, 43275, 0xa0f366b, 0x55b2e2de, 1, 27809, 0x95887e8e, 0xdc6da0a7, 1, 21609, 
   0xf1356d6e, 0x3f145bf1, 1, 36065, 0x1d6c2136, 0x32397bb4, 1, 19545, 0xc31c614c, 0xb584ce62, 1, 17437, 
   0x4a3e122e, 0x747294ac, 1, 21609, 0x3383f7d7, 0x586c9eab, 1, 27677
-];
+]);

@@ -5,7 +5,7 @@ module.exports = {
     "--use": ["IS_WASI=0"],
     "--optimizeLevel": "2",
     "--shrinkLevel": "0",
-    "--runPasses": ["flatten", "simplify-globals-optimizing","local-cse","simplify-locals-notee-nostructure","licm","vacuum"],
+    "--converge": [],
   },
 
   disclude: [/node_modules/],
