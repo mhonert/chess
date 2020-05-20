@@ -24,6 +24,8 @@ import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
 import { BLACK, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
+import { stdio } from './io';
+import { VERSION } from '../version';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [1, 0, 0],
@@ -36,7 +38,7 @@ const DIFFICULTY_LEVELS: Array<Array<i32>> = [
 
 export const INT32ARRAY_ID = idof<Int32Array>();
 
-const GAME_ENDED = 1
+const GAME_ENDED = 1;
 const CHECK_MATE = 2;
 const STALE_MATE = 4;
 const THREEFOLD_REPETITION_DRAW = 8;
@@ -53,6 +55,8 @@ export function newGame(): void {
   EngineControl.reset();
 
   if (!isInitialized) {
+    stdio.writeLine("Wasabi " + VERSION);
+
     EngineControl.resizeTranspositionTable(64);
     EngineControl.setUseOpeningBook(true);
     randomizeOpeningBookMoves();

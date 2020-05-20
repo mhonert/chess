@@ -377,10 +377,6 @@ export class Engine {
 
     this.nodeCount++;
 
-    if (depth > 4 && (ply & 3) == 3) {
-      this.board.updateEndGameStatus();
-    }
-
     // Check transposition table
     const ttHash = this.board.getHash();
     let ttEntry = this.transpositionTable.getEntry(ttHash);

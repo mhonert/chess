@@ -211,14 +211,12 @@ export class Board {
     const whiteQueens = this.getBitBoard(QUEEN);
     const blackQueens = this.getBitBoard(-QUEEN);
 
-    if (!this.isEndGame()) {
-      // Add bonus for pawns which form a shield in front of the king
-      const whiteFrontKingShield = i32(popcnt(whitePawns & unchecked(WHITE_KING_SHIELD_PATTERNS[this.whiteKingIndex])));
-      const blackFrontKingShield = i32(popcnt(blackPawns & unchecked(BLACK_KING_SHIELD_PATTERNS[this.blackKingIndex])));
+    // Add bonus for pawns which form a shield in front of the king
+    const whiteFrontKingShield = i32(popcnt(whitePawns & unchecked(WHITE_KING_SHIELD_PATTERNS[this.whiteKingIndex])));
+    const blackFrontKingShield = i32(popcnt(blackPawns & unchecked(BLACK_KING_SHIELD_PATTERNS[this.blackKingIndex])));
 
-      score += whiteFrontKingShield * KING_SHIELD_BONUS;
-      score -= blackFrontKingShield * KING_SHIELD_BONUS;
-    }
+    score += whiteFrontKingShield * KING_SHIELD_BONUS;
+    score -= blackFrontKingShield * KING_SHIELD_BONUS;
 
     // Interpolate between opening/mid-game score and the end game score for a smooth transition
     const phase: i32 = i32(popcnt(whitePawns | blackPawns)) + (whiteQueens > 0 ? 1 : 0) * 4 + (blackQueens > 0 ? 1 : 0) * 4;
@@ -598,28 +596,6 @@ export class Board {
   @inline
   isKnightAttacked(opponentColor: i32, pos: i32): bool {
     return (unchecked(this.bitBoardPieces[KNIGHT * opponentColor + 6]) & unchecked(KNIGHT_PATTERNS[pos])) != 0;
-  }
-
-  @inline
-  calculateScore(pos: i32, color: i32, pieceId: i32): i32 {
-    if (color == WHITE) {
-      if (this.isEndGame()) {
-        return i32(unpackSecondScore(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
-
-      } else {
-        return i32(unpackFirstScore(unchecked(WHITE_POSITION_SCORES[pieceId * 64 + pos])));
-
-      }
-
-    } else {
-      if (this.isEndGame()) {
-        return i32(unpackSecondScore(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
-
-      } else {
-        return i32(unpackFirstScore(unchecked(BLACK_POSITION_SCORES[pieceId * 64 + pos])));
-
-      }
-    }
   }
 
   @inline

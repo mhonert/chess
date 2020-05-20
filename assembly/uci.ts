@@ -27,10 +27,9 @@ import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import { WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
+import { VERSION } from '../version';
 
 export { _abort } from './io/wasi/abort';
-
-const VERSION = "1.1.8";
 
 // Option names
 const HASH_OPTION = "hash";
