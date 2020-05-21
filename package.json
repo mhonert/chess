@@ -29,7 +29,8 @@
     "perft": "asp --verbose --nortrace -c as-pect-perft.config.js --file=perft.performance.ts",
     "perft:engine": "asp --verbose --nortrace -c as-pect-perft.config.js --file=engine.performance.ts",
     "predeploy": "npm run build:web",
-    "deploy": "gh-pages -d build"
+    "deploy": "gh-pages -d build",
+    "version": "node tools/gen_version_ts.js && git add version.ts"
   },
   "eslintConfig": {
     "extends": "react-app"
