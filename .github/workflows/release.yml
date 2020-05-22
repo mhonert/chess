@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-#    tags: "v*"
+    tags: "v*"
 
 jobs:
   release:
@@ -74,12 +74,12 @@ jobs:
         run: |
           ./artifacts/linux/wasabi < ./artifacts/engine_selftest.txt
 
-#      - name: Create Release
-#          env:
-#            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-#        run: |
-#          pushd artifacts
-#          tag_name="${GITHUB_REF##*/}"
-#          echo "$tag_name\n" > release_description.txt
-#          cat release_notes.md >> release_description.txt
-#          hub release create -a "checksums.txt#Checksums" -a "wasabi-linux.tar.gz#Wasabi Chess for Linux 64-bit" -a "wasabi-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt
+      - name: Create Release
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          pushd artifacts
+          tag_name="${GITHUB_REF##*/}"
+          echo "$tag_name\n" > release_description.txt
+          cat release_notes.md >> release_description.txt
+          hub release create -a "checksums.txt#Checksums" -a "wasabi-linux.tar.gz#Wasabi Chess for Linux 64-bit" -a "wasabi-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt
