@@ -1,2 +1,2 @@
 // Auto-generated file: to update the version use 'npm version ...'
-export const VERSION="1.2.0";
+export const VERSION="1.2.1";
