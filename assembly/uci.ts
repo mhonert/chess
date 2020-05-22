@@ -28,6 +28,7 @@ import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './tr
 import { WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { VERSION } from '../version';
+import { isValidMove } from './move-generation';
 
 export { _abort } from './io/wasi/abort';
 
@@ -95,8 +96,17 @@ export function _start(): void {
         isRunning = false;
         break;
 
+      } else if (command == "test") {
+        test();
+        isRunning = false;
+        break;
+
+      } else if (command == "stop") {
+        // No op
+        break;
+
       } else {
-        stdio.writeError("Unknown command: " + line);
+        stdio.writeLine("Unknown command: " + line);
       }
 
     }
@@ -257,6 +267,17 @@ function setOption(params: Array<string>): void {
   } else {
     stdio.writeError("Unknown option name: " + name);
   }
+}
+
+function test(): void {
+  uci();
+  isReady();
+  EngineControl.setPosition(STARTPOS);
+  const move = EngineControl.findBestMove(3, 0, true);
+  if (!isValidMove(EngineControl.getBoard(), EngineControl.getBoard().getActivePlayer(), move)) {
+    throw new Error("Self test failed: generated invalid move: " + move.toString());
+  }
+  stdio.writeLine("debug Self test completed");
 }
 
 // Helper functions

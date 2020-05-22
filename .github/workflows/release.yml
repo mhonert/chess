@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+#    tags: "v*"
+
+jobs:
+  release:
+    if: github.repository == 'mhonert/chess'
+    name: Publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Setup node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '14.x'
+
+      - name: Build UCI engine
+        env:
+          CI: true
+        run: |
+          npm ci
+          npm test
+          npm run build:uci
+          cp build/engine.wasm artifacts/linux
+          cp build/engine.wasm artifacts/windows
+          cp LICENSE artifacts/linux
+          cp LICENSE artifacts/windows
+
+      - name: Get WAVM
+        env:
+          WAVM_VERSION: "2020-05-13"
+        run: |
+          mkdir -p artifacts/linux/wavm
+          curl -L -o artifacts/wavm-linux.tar.gz  https://github.com/WAVM/WAVM/releases/download/nightly%2F${WAVM_VERSION}/wavm-0.0.0-prerelease-linux.tar.gz
+
+          mkdir -p artifacts/windows/wavm
+          curl -L -o artifacts/wavm-windows.zip  https://github.com/WAVM/WAVM/releases/download/nightly%2F${WAVM_VERSION}/wavm-0.0.0-prerelease-windows.zip
+
+          sha256sum -c artifacts/wavm_checksums.txt
+
+          tar xf artifacts/wavm-linux.tar.gz -C artifacts/linux/wavm
+          rm -rf artifacts/linux/wavm/examples
+          rm -rf artifacts/linux/wavm/include
+          rm -rf artifacts/linux/wavm/lib
+          rm artifacts/wavm-linux.tar.gz
+
+          unzip artifacts/wavm-windows.zip -d artifacts/windows/wavm
+          rm -rf artifacts/windows/wavm/examples
+          rm -rf artifacts/windows/wavm/include
+          rm -rf artifacts/windows/wavm/lib
+          rm artifacts/wavm-windows.zip
+          cp artifacts/windows/wavm/LICENSE.txt artifacts/linux/wavm
+
+      - name: Package artifacts
+        run: |
+          pushd artifacts/linux
+          tar czvf ../wasabi-linux.tar.gz *
+          popd
+
+          pushd artifacts/windows
+          zip -r ../wasabi-windows.zip *
+          popd
+
+          pushd artifacts
+          sha256sum wasabi* > checksums.txt
+          popd
+
+      - name: Test linux executable
+        timeout-minutes: 1
+        run: |
+          ./artifacts/linux/wasabi < ./artifacts/engine_selftest.txt
+
+#      - name: Create Release
+#          env:
+#            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#        run: |
+#          pushd artifacts
+#          tag_name="${GITHUB_REF##*/}"
+#          echo "$tag_name\n" > release_description.txt
+#          cat release_notes.md >> release_description.txt
+#          hub release create -a "checksums.txt#Checksums" -a "wasabi-linux.tar.gz#Wasabi Chess for Linux 64-bit" -a "wasabi-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt

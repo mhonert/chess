@@ -1,0 +1,2 @@
+a0542e95d378a86ae73609acfe0208ef2ef70bd3d5645946b73b8b18a9be6e84  ./artifacts/wavm-windows.zip
+10cec94139b2ebf18792ae8b0e8e8780be63f938f188332ef96367c20f9a74e6  ./artifacts/wavm-linux.tar.gz

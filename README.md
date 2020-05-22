@@ -21,6 +21,23 @@ to compute the AI moves in the background without blocking the main thread for t
 - Drag'n'Drop support to move chess pieces
 - Touch support for mobile devices
 
+### UCI Engine
+
+Wasabi Chess can be downloaded from the [Releases](https://github.com/mhonert/chess/releases/latest) page as a standalone UCI Engine.
+
+The engine was tested with **cutechess-cli** and **PyChess** on Linux and **Arena** on Windows, but should also
+work with other UCI compatible clients.
+
+> Please note that the UCI engine currently has the following limitations:
+> - no support for *pondering* during opponent turns
+> - no multi-threading support
+> - ongoing searches cannot be cancelled
+
+In order to run the engine outside a Browser environment, a WebAssembly Runtime like for example [WAVM](https://github.com/WAVM/WAVM)
+or [Wasmer](https://github.com/wasmerio/wasmer) is required.
+The assets on the [Releases](https://github.com/mhonert/chess/releases/latest) page already bundle the very fast **WAVM** runtime.
+
+
 ### Built With
 * [AssemblyScript](https://github.com/AssemblyScript/assemblyscript) - for the engine
 * [as-pect](https://github.com/jtenner/as-pect) - to test the engine
