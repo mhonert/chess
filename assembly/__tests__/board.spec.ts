@@ -273,6 +273,28 @@ describe("Board state", () => {
 
     expect(board.getCastlingStateBits()).toBe(0);
   });
+
+
+  it("updates state for castling move", () => {
+    const board: Board = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      +R,  0,  0,  0, +K,  0,  0,  0,
+      0, 0, ALL_CASTLING_RIGHTS
+    ]);
+
+    expect(board.hasWhiteCastled()).toBeFalsy("Before castling move");
+    board.performMove(K, 60, 58);
+    expect(board.hasWhiteCastled()).toBeTruthy("After castling move");
+
+    board.undoMove(K, 60, 58, 0);
+    expect(board.hasWhiteCastled()).toBeFalsy("After castling move is undone");
+  });
 });
 
 

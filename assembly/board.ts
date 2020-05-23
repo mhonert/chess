@@ -20,9 +20,10 @@ import {
   BISHOP,
   BLACK_ENPASSANT_LINE_END,
   BLACK_ENPASSANT_LINE_START,
-  BLACK_QUEEN_SIDE_ROOK_START,
-  BLACK_PAWNS_BASELINE_START,
   BLACK_KING_SIDE_ROOK_START,
+  BLACK_PAWNS_BASELINE_START,
+  BLACK_QUEEN_SIDE_ROOK_START,
+  EG_PIECE_VALUES,
   KING,
   KNIGHT,
   PAWN,
@@ -31,22 +32,30 @@ import {
   ROOK,
   WHITE_ENPASSANT_LINE_END,
   WHITE_ENPASSANT_LINE_START,
-  WHITE_QUEEN_SIDE_ROOK_START,
+  WHITE_KING_SIDE_ROOK_START,
   WHITE_PAWNS_BASELINE_START,
-  WHITE_KING_SIDE_ROOK_START, EG_PIECE_VALUES
+  WHITE_QUEEN_SIDE_ROOK_START
 } from './pieces';
 import { packScores, sign, unpackFirstScore, unpackSecondScore } from './util';
 import { decodeEndIndex, decodePiece, decodeStartIndex } from './move-generation';
 import { CASTLING_RNG_NUMBERS, EN_PASSANT_RNG_NUMBERS, PIECE_RNG_NUMBERS, PLAYER_RNG_NUMBER } from './zobrist';
 import { PositionHistory } from './history';
 import {
-  antiDiagonalAttacks, BLACK_KING_SHIELD_PATTERNS, BLACK_PAWN_FREEPATH_PATTERNS, blackLeftPawnAttacks,
-  blackRightPawnAttacks, DARK_COLORED_FIELD_PATTERN,
+  antiDiagonalAttacks,
+  BLACK_KING_SHIELD_PATTERNS,
+  BLACK_PAWN_FREEPATH_PATTERNS,
+  blackLeftPawnAttacks,
+  blackRightPawnAttacks,
+  DARK_COLORED_FIELD_PATTERN,
   diagonalAttacks,
   horizontalAttacks,
   KING_PATTERNS,
-  KNIGHT_PATTERNS, LIGHT_COLORED_FIELD_PATTERN,
-  verticalAttacks, WHITE_KING_SHIELD_PATTERNS, WHITE_PAWN_FREEPATH_PATTERNS, whiteLeftPawnAttacks,
+  KNIGHT_PATTERNS,
+  LIGHT_COLORED_FIELD_PATTERN,
+  verticalAttacks,
+  WHITE_KING_SHIELD_PATTERNS,
+  WHITE_PAWN_FREEPATH_PATTERNS,
+  whiteLeftPawnAttacks,
   whiteRightPawnAttacks
 } from './bitboard';
 
@@ -73,6 +82,10 @@ const KING_SHIELD_BONUS: i32 = 4;
 const PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = 100;
 const PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = 400;
 const PAWNLESS_DRAW_CLOCK_THRESHOLD = 64;
+
+const CASTLING_BONUS: i32 = 28;
+const LOST_QUEENSIDE_CASTLING_PENALTY: i32 = 18;
+const LOST_KINGSIDE_CASTLING_PENALTY: i32 = 21;
 
 export class Board {
   private items: StaticArray<i32>;
@@ -217,6 +230,31 @@ export class Board {
 
     score += whiteFrontKingShield * KING_SHIELD_BONUS;
     score -= blackFrontKingShield * KING_SHIELD_BONUS;
+
+    // Castling
+    if (this.hasWhiteCastled()) {
+      score += CASTLING_BONUS;
+    } else {
+      if (!this.canWhiteCastleQueenSide()) {
+        score -= LOST_QUEENSIDE_CASTLING_PENALTY;
+      }
+
+      if (!this.canWhiteCastleKingSide()) {
+        score -= LOST_KINGSIDE_CASTLING_PENALTY;
+      }
+    }
+
+    if (this.hasBlackCastled()) {
+      score -= CASTLING_BONUS;
+    } else {
+      if (!this.canBlackCastleQueenSide()) {
+        score += LOST_KINGSIDE_CASTLING_PENALTY;
+      }
+
+      if (!this.canBlackCastleKingSide()) {
+        score += LOST_QUEENSIDE_CASTLING_PENALTY;
+      }
+    }
 
     // Interpolate between opening/mid-game score and the end game score for a smooth transition
     const phase: i32 = i32(popcnt(whitePawns | blackPawns)) + (whiteQueens > 0 ? 1 : 0) * 4 + (blackQueens > 0 ? 1 : 0) * 4;
@@ -504,10 +542,12 @@ export class Board {
       if (start - end == -2) {
         this.removePiece(WHITE_KING_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, WHITE_KING_START + 1);
+        this.setStateBit(WHITE_HAS_CASTLED);
 
       } else if (start - end == 2) {
         this.removePiece(WHITE_QUEEN_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, WHITE_KING_START - 1);
+        this.setStateBit(WHITE_HAS_CASTLED);
 
       }
 
@@ -518,10 +558,12 @@ export class Board {
       if (start - end == -2) {
         this.removePiece(BLACK_KING_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, BLACK_KING_START + 1);
+        this.setStateBit(BLACK_HAS_CASTLED);
 
       } else if (start - end == 2) {
         this.removePiece(BLACK_QUEEN_SIDE_ROOK_START);
         this.addPiece(pieceColor, ROOK, BLACK_KING_START - 1);
+        this.setStateBit(BLACK_HAS_CASTLED);
       }
     }
 
@@ -703,6 +745,11 @@ export class Board {
   }
 
   @inline
+  hasWhiteCastled(): bool {
+    return (this.getState() & WHITE_HAS_CASTLED) != 0;
+  }
+
+  @inline
   canWhiteCastleKingSide(): bool {
     return (this.getState() & WHITE_KING_SIDE_CASTLING) != 0;
   }
@@ -715,6 +762,11 @@ export class Board {
   @inline
   canWhiteCastleQueenSide(): bool {
     return (this.getState() & WHITE_QUEEN_SIDE_CASTLING) != 0;
+  }
+
+  @inline
+  hasBlackCastled(): bool {
+    return (this.getState() & BLACK_HAS_CASTLED) != 0;
   }
 
   @inline
@@ -1066,6 +1118,8 @@ export const WHITE_KING_SIDE_CASTLING: i32 = 1 << 7;
 export const BLACK_KING_SIDE_CASTLING: i32 = 1 << 8;
 export const WHITE_QUEEN_SIDE_CASTLING: i32 = 1 << 9;
 export const BLACK_QUEEN_SIDE_CASTLING: i32 = 1 << 10;
+export const WHITE_HAS_CASTLED: i32 = 1 << 11;
+export const BLACK_HAS_CASTLED: i32 = 1 << 12;
 
 const CASTLING_BITSTART = 7;
 
@@ -1140,14 +1194,14 @@ const QUEEN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
 ]);
 
 const KING_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -6, -8, -8, -10, -10, -8, -8, -6,
-  -6, -8, -8, -10, -10, -8, -8, -6,
-  -6, -8, -8, -10, -10, -8, -8, -6,
-  -6, -8, -8, -10, -10, -8, -8, -6,
-  -4, -6, -6,  -8,  -8, -6, -6, -4,
-  -2, -4, -4,  -4,  -4, -4, -4, -2,
-   4,  4,  0,   0,   0,  0,  4,  4,
-   4,  6,  2,   0,   0,  2,  6,  4
+  -5, -5, -5, -5, -5, -5, -5, -5,
+  -5, -5, -5, -5, -5, -5, -5, -5,
+  -5, -5, -5, -5, -5, -5, -5, -5,
+  -5, -5, -5, -5, -5, -5, -5, -5,
+  -5, -5, -5, -5, -5, -5, -5, -5,
+  -5, -5, -5, -5, -5, -5, -5, -5,
+   2,  2,  0,  0,  0,  0,  2,  2,
+   3,  2,  2,  0,  0,  2,  2,  3
 ]);
 
 const KING_ENDGAME_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
