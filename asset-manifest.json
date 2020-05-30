@@ -1,19 +1,19 @@
 {
   "files": {
     "main.css": "/chess/static/css/main.de9a035c.chunk.css",
-    "main.js": "/chess/static/js/main.bc2a2e8f.chunk.js",
-    "main.js.map": "/chess/static/js/main.bc2a2e8f.chunk.js.map",
+    "main.js": "/chess/static/js/main.a1eee451.chunk.js",
+    "main.js.map": "/chess/static/js/main.a1eee451.chunk.js.map",
     "runtime-main.js": "/chess/static/js/runtime-main.39f79b86.js",
     "runtime-main.js.map": "/chess/static/js/runtime-main.39f79b86.js.map",
-    "static/js/2.4be9936f.chunk.js": "/chess/static/js/2.4be9936f.chunk.js",
-    "static/js/2.4be9936f.chunk.js.map": "/chess/static/js/2.4be9936f.chunk.js.map",
-    "174bbacf4b8cd7ee9227.worker.js": "/chess/174bbacf4b8cd7ee9227.worker.js",
-    "174bbacf4b8cd7ee9227.worker.js.map": "/chess/174bbacf4b8cd7ee9227.worker.js.map",
+    "static/js/2.ad8bf907.chunk.js": "/chess/static/js/2.ad8bf907.chunk.js",
+    "static/js/2.ad8bf907.chunk.js.map": "/chess/static/js/2.ad8bf907.chunk.js.map",
+    "f98ee41fb5446f89cd70.worker.js": "/chess/f98ee41fb5446f89cd70.worker.js",
+    "f98ee41fb5446f89cd70.worker.js.map": "/chess/f98ee41fb5446f89cd70.worker.js.map",
     "index.html": "/chess/index.html",
-    "precache-manifest.985cb5e3a0723d066cd5363c5a158255.js": "/chess/precache-manifest.985cb5e3a0723d066cd5363c5a158255.js",
+    "precache-manifest.a0022e02a195a2eec8713fba9fada3ce.js": "/chess/precache-manifest.a0022e02a195a2eec8713fba9fada3ce.js",
     "service-worker.js": "/chess/service-worker.js",
     "static/css/main.de9a035c.chunk.css.map": "/chess/static/css/main.de9a035c.chunk.css.map",
-    "static/js/2.4be9936f.chunk.js.LICENSE.txt": "/chess/static/js/2.4be9936f.chunk.js.LICENSE.txt",
+    "static/js/2.ad8bf907.chunk.js.LICENSE.txt": "/chess/static/js/2.ad8bf907.chunk.js.LICENSE.txt",
     "static/media/black_bishop.svg": "/chess/static/media/black_bishop.341337f4.svg",
     "static/media/black_king.svg": "/chess/static/media/black_king.12ae1430.svg",
     "static/media/black_knight.svg": "/chess/static/media/black_knight.f3636380.svg",
@@ -29,8 +29,8 @@
   },
   "entrypoints": [
     "static/js/runtime-main.39f79b86.js",
-    "static/js/2.4be9936f.chunk.js",
+    "static/js/2.ad8bf907.chunk.js",
     "static/css/main.de9a035c.chunk.css",
-    "static/js/main.bc2a2e8f.chunk.js"
+    "static/js/main.a1eee451.chunk.js"
   ]
 }
