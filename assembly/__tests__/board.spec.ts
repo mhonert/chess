@@ -26,6 +26,7 @@ import {
 } from '../board';
 import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, QUEEN, R, ROOK } from '../pieces';
 import { moveKing } from '../util';
+import { fromFEN } from '../fen';
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {
@@ -581,6 +582,15 @@ describe('Evaluate position', () => {
     ];
 
     expect(new Board(board).getScore()).toBeGreaterThan(0);
+  });
+});
+
+describe('King threats', () => {
+  it('Evaluates severe king threat with huge penalty', () => {
+    const board: Board = fromFEN("2kr4/ppp5/2n5/5p2/1Pb1P3/P4P2/1BP1RKrq/R7 w - - 0 28")
+
+    board.getMaterialScore()
+    expect(board.getMaterialScore() - board.getScore()).toBeGreaterThan(100, "King threat penalty is not high enough")
   });
 });
 

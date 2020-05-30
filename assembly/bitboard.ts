@@ -31,6 +31,8 @@ export const BLACK_QUEEN_SIDE_CASTLING_BIT_PATTERN: u64 = 0b00000000_00000000_00
 export const LIGHT_COLORED_FIELD_PATTERN: u64 = 0b01010101_01010101_01010101_01010101_01010101_01010101_01010101_01010101;
 export const DARK_COLORED_FIELD_PATTERN: u64 = 0b10101010_10101010_10101010_10101010_10101010_10101010_10101010_10101010;
 
+const KING_DANGER_ZONE_SIZE: i32 = 3;
+
 function isBorder(boardPos: i32): bool {
   if (boardPos < 21 || boardPos > 98) {
     return true;
@@ -228,7 +230,40 @@ function createKingShieldPatterns(direction: i32): StaticArray<u64> {
       }
     }
 
-    patterns[pos] = pattern;
+    unchecked(patterns[pos] = pattern);
+  }
+
+  return patterns;
+}
+
+
+export const KING_DANGER_ZONE_PATTERNS = createKingDangerZonePatterns();
+
+function createKingDangerZonePatterns(): StaticArray<u64> {
+  const patterns = new StaticArray<u64>(64);
+
+  for (let pos: u32 = 0; pos < 64; pos++) {
+    const row = pos / 8;
+    const col = pos & 7;
+
+    let pattern: u64 = 0;
+    for (let rowOffset = -KING_DANGER_ZONE_SIZE; rowOffset <= KING_DANGER_ZONE_SIZE; rowOffset++) {
+      const zoneRow = row + rowOffset;
+      if (zoneRow < 0 || zoneRow > 7) { // Outside the board
+        continue;
+      }
+      for (let colOffset = -KING_DANGER_ZONE_SIZE; colOffset <= KING_DANGER_ZONE_SIZE; colOffset++) {
+        const zoneCol = col + colOffset;
+        if (zoneCol < 0 || zoneCol > 7) { // Outside the board
+          continue;
+        }
+
+        const patternPos = zoneRow * 8 + zoneCol;
+        pattern |= (1 << patternPos);
+      }
+    }
+
+    unchecked(patterns[pos] = pattern);
   }
 
   return patterns;
@@ -252,7 +287,7 @@ function createPawnFreePathPatterns(direction: i32): StaticArray<u64> {
       pattern |= u64(1) << (row * 8 + col);
     }
 
-    patterns[pos] = pattern;
+    unchecked(patterns[pos] = pattern);
   }
 
   return patterns;

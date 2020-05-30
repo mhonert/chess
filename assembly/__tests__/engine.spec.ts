@@ -180,7 +180,7 @@ describe('Finds moves', () => {
     expect(move).toBe(encodeMove(1, 54, 47), "Using the pawn for the capture lets the game proceed");
   });
 
-  it('Finds mate in 3 moves (bug reproduction)', () => {
+  it('Finds mate in 3 moves', () => {
     // prettier-ignore
     const board: Board = new Board([
       0,  0,  0,  0,  0,  0, -K,  0,
@@ -195,7 +195,7 @@ describe('Finds moves', () => {
     ]);
     board.increaseHalfMoveCount();
 
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 7, 0)); // bug only occured with search depth 7
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 9, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 5, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));

@@ -48,7 +48,7 @@ import {
   blackRightPawnAttacks,
   DARK_COLORED_FIELD_PATTERN,
   diagonalAttacks,
-  horizontalAttacks,
+  horizontalAttacks, KING_DANGER_ZONE_PATTERNS,
   KING_PATTERNS,
   KNIGHT_PATTERNS,
   LIGHT_COLORED_FIELD_PATTERN,
@@ -86,6 +86,9 @@ const PAWNLESS_DRAW_CLOCK_THRESHOLD = 64;
 const CASTLING_BONUS: i32 = 28;
 const LOST_QUEENSIDE_CASTLING_PENALTY: i32 = 18;
 const LOST_KINGSIDE_CASTLING_PENALTY: i32 = 21;
+
+const KING_DANGER_THRESHOLD: i32 = 1;
+const KING_DANGER_PIECE_PENALTY: i32 = 20;
 
 export class Board {
   private items: StaticArray<i32>;
@@ -314,6 +317,26 @@ export class Board {
           const reversedDistance = 5 - distanceToPromotion;
           interpolatedScore -= (PASSED_PAWN_BONUS_1 * reversedDistance);
         }
+      }
+    }
+
+    // King threat
+    {
+      const whiteKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.whiteKingIndex]);
+      const opponentPiecesInKingDangerZone = i32(popcnt((blackPieces & ~blackPawns) & whiteKingDangerZone));
+      if (opponentPiecesInKingDangerZone >= KING_DANGER_THRESHOLD) {
+        const queensInKingDangerZone = i32(popcnt(blackQueens & whiteKingDangerZone));
+        const dangerScore = KING_DANGER_PIECE_PENALTY << (opponentPiecesInKingDangerZone + queensInKingDangerZone - KING_DANGER_THRESHOLD);
+        interpolatedScore -= min(dangerScore, 500);
+      }
+    }
+    {
+      const blackKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.blackKingIndex]);
+      const opponentPiecesInKingDangerZone = i32(popcnt((whitePieces & ~whitePawns) & blackKingDangerZone));
+      if (opponentPiecesInKingDangerZone >= KING_DANGER_THRESHOLD) {
+        const queensInKingDangerZone = i32(popcnt(whiteQueens & blackKingDangerZone));
+        const dangerScore = KING_DANGER_PIECE_PENALTY << (opponentPiecesInKingDangerZone + queensInKingDangerZone - KING_DANGER_THRESHOLD);
+        interpolatedScore += min(dangerScore, 500);
       }
     }
 
