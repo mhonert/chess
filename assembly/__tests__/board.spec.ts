@@ -19,7 +19,7 @@
 import {
   ALL_CASTLING_RIGHTS,
   BLACK,
-  Board, DOUBLED_PAWN_PENALTY,
+  Board, calculatePieceSquareTables, DOUBLED_PAWN_PENALTY,
   mirrored, NO_CASTLING_RIGHTS,
   PAWN_POSITION_SCORES,
   WHITE
@@ -27,6 +27,10 @@ import {
 import { B, BISHOP, BISHOP_DIRECTIONS, K, KNIGHT, KNIGHT_DIRECTIONS, N, P, Q, QUEEN, R, ROOK } from '../pieces';
 import { moveKing } from '../util';
 import { fromFEN } from '../fen';
+
+beforeAll(() => {
+  calculatePieceSquareTables();
+});
 
 describe('Mirrored function', () => {
   it('mirrors score tables correctly', () => {

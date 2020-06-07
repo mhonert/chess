@@ -25,10 +25,19 @@ import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
-import { WHITE } from './board';
+import { calculatePieceSquareTables, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { VERSION } from '../version';
 import { isValidMove } from './move-generation';
+import {
+  BISHOP_VALUE,
+  EG_BISHOP_VALUE, EG_KNIGHT_VALUE, EG_PAWN_VALUE,
+  EG_QUEEN_VALUE,
+  EG_ROOK_VALUE, KNIGHT_VALUE, PAWN_VALUE,
+  QUEEN_VALUE,
+  resetPieceValues,
+  ROOK_VALUE
+} from './pieces';
 
 export { _abort } from './io/wasi/abort';
 
@@ -39,6 +48,7 @@ const OWNBOOK_OPTION = "ownbook"
 // Options
 let transpositionTableSizeChanged: bool = false;
 let transpositionTableSizeInMB: u32 = 1;
+let pieceValuesChanged: bool = false;
 
 // Entry point for the standalone engine
 export function _start(): void {
@@ -121,6 +131,8 @@ function uci(): void {
   stdio.writeLine("option name OwnBook type check default false");
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)");
 
+  calculatePieceSquareTables();
+
   stdio.writeLine("uciok");
 }
 
@@ -129,6 +141,13 @@ function isReady(): void {
     EngineControl.resizeTranspositionTable(transpositionTableSizeInMB);
     transpositionTableSizeChanged = false;
   }
+
+  if (pieceValuesChanged) {
+    pieceValuesChanged = false;
+    resetPieceValues();
+    calculatePieceSquareTables();
+  }
+
   stdio.writeLine("readyok");
 }
 
@@ -170,12 +189,18 @@ function position(parameters: Array<string>): bool {
 }
 
 function go(parameters: Array<string>): void {
+  const depth = extractIntegerValue(parameters, "depth", 3);
   const wtime = extractIntegerValue(parameters, "wtime", 0);
   const btime = extractIntegerValue(parameters, "btime", 0);
   const winc = extractIntegerValue(parameters, "winc", 0);
   const binc = extractIntegerValue(parameters, "binc", 0);
   const movetime = extractIntegerValue(parameters, "movetime", 0);
   const movesToGo = extractIntegerValue(parameters, "movestogo", 40);
+
+  if (depth <= 0) {
+    stdio.writeLine("invalid depth: " + depth.toString())
+    return
+  }
 
   const timeLimitMillis: i32 = (EngineControl.getBoard().getActivePlayer() == WHITE)
     ? calculateTimeLimit(movetime, wtime, winc, movesToGo)
@@ -185,10 +210,10 @@ function go(parameters: Array<string>): void {
     ? wtime
     : btime;
 
-  // Use strict time limit if a fixed move time is set or
+  // Use strict time limit if a fixed move time is set
   const isStrictTimeLimit = movetime != 0 || (timeLeft - (TIMEEXT_MULTIPLIER * timeLimitMillis) <= 10);
 
-  const move = EngineControl.findBestMove(3, timeLimitMillis, isStrictTimeLimit);
+  const move = EngineControl.findBestMove(depth, timeLimitMillis, isStrictTimeLimit);
   stdio.writeLine("bestmove " + UCIMove.fromEncodedMove(EngineControl.getBoard(), move).toUCINotation());
 }
 
@@ -263,6 +288,46 @@ function setOption(params: Array<string>): void {
     if (useBook) {
       randomizeOpeningBookMoves();
     }
+
+  } else if (name.toLowerCase() == "queenvalue") {
+    QUEEN_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "egqueenvalue") {
+    EG_QUEEN_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "rookvalue") {
+    ROOK_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "egrookvalue") {
+    EG_ROOK_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "bishopvalue") {
+    BISHOP_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "egbishopvalue") {
+    EG_BISHOP_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "knightvalue") {
+    KNIGHT_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "egknightvalue") {
+    EG_KNIGHT_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "pawnvalue") {
+    PAWN_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "egpawnvalue") {
+    EG_PAWN_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
 
   } else {
     stdio.writeError("Unknown option name: " + name);

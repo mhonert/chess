@@ -22,10 +22,11 @@
 
 import EngineControl from './engine';
 import { isCheckMate as isCheckMateFn } from './move-generation';
-import { BLACK, WHITE } from './board';
+import { BLACK, calculatePieceSquareTables, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { stdio } from './io';
 import { VERSION } from '../version';
+import { resetPieceValues } from './pieces';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
   [1, 0, 0],
@@ -56,6 +57,7 @@ export function newGame(): void {
 
   if (!isInitialized) {
     stdio.writeLine("Wasabi " + VERSION);
+    calculatePieceSquareTables();
 
     EngineControl.resizeTranspositionTable(64);
     EngineControl.setUseOpeningBook(true);

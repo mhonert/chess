@@ -75,9 +75,9 @@ export const EN_PASSANT_BIT = 1 << 31;
 // Evaluation constants
 export const DOUBLED_PAWN_PENALTY: i32 = 6;
 
-const PASSED_PAWN_BONUS_1: i32 = 4;
+const PASSED_PAWN_BONUS_1: i32 = 25;
 
-const KING_SHIELD_BONUS: i32 = 4;
+const KING_SHIELD_BONUS: i32 = 16;
 
 const PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = 100;
 const PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = 400;
@@ -1238,29 +1238,33 @@ const KING_ENDGAME_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
   -10, -6, -6, -6, -6, -6, -6, -10
 ]);
 
-function combineScores(color: i32, midgameScores: StaticArray<i32>[], endgameScores: StaticArray<i32>[]): StaticArray<u32> {
-  const result = new StaticArray<u32>(64 * 7);
+const WHITE_POSITION_SCORES: StaticArray<u32> = new StaticArray<u32>(64 * 7);
+const BLACK_POSITION_SCORES: StaticArray<u32> = new StaticArray<u32>(64 * 7);
+
+export function calculatePieceSquareTables(): void {
+  combineScores(WHITE_POSITION_SCORES, WHITE,
+    [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES],
+    [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES]);
+
+  combineScores(BLACK_POSITION_SCORES, BLACK,
+    [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)],
+    [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
+}
+
+function combineScores(result: StaticArray<u32>, color: i32, midgameScores: StaticArray<i32>[], endgameScores: StaticArray<i32>[]): StaticArray<u32> {
   let index = 64;
   for (let pieceId = PAWN; pieceId <= KING; pieceId++) {
-    const pieceValue = i16(PIECE_VALUES[pieceId] * color);
-    const egPieceValue = i16(EG_PIECE_VALUES[pieceId] * color);
+    const pieceValue = i16(unchecked(PIECE_VALUES[pieceId]) * color);
+    const egPieceValue = i16(unchecked(EG_PIECE_VALUES[pieceId]) * color);
 
     for (let pos = 0; pos < 64; pos++) {
-      const posScore = pieceValue + i16(midgameScores[pieceId - 1][pos] * 5 * color);
-      const egPosScore = egPieceValue + i16(endgameScores[pieceId - 1][pos] * 5 * color);
-      result[index++] = packScores(posScore, egPosScore);
+      const posScore = pieceValue + i16(unchecked(midgameScores[pieceId - 1][pos]) * 5 * color);
+      const egPosScore = egPieceValue + i16(unchecked(endgameScores[pieceId - 1][pos]) * 5 * color);
+      unchecked(result[index++] = packScores(posScore, egPosScore));
     }
   }
   return result;
 }
-
-const WHITE_POSITION_SCORES: StaticArray<u32> = combineScores(WHITE,
-  [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES],
-  [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES]);
-
-const BLACK_POSITION_SCORES: StaticArray<u32> = combineScores(BLACK,
-  [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)],
-  [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
 
 export function mirrored(input: StaticArray<i32>): StaticArray<i32> {
   let output = StaticArray.slice(input);

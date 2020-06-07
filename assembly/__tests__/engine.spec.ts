@@ -21,11 +21,14 @@ import { B, K, N, P, Q, QUEEN, R } from '../pieces';
 import EngineControl from '../engine';
 import {
   BLACK,
-  Board, NO_CASTLING_RIGHTS,
+  Board, calculatePieceSquareTables, NO_CASTLING_RIGHTS,
   WHITE
 } from '../board';
 import { decodeMove, decodeScore, encodeMove, encodeScoredMove, isCheckMate } from '../move-generation';
 
+beforeAll(() => {
+  calculatePieceSquareTables();
+});
 
 describe('Encode and decode scored moves', () => {
   it('Zero score', () => {

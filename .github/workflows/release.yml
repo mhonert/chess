@@ -57,13 +57,17 @@ jobs:
 
       - name: Package artifacts
         run: |
+          tag_name="${GITHUB_REF##*/}"
+
           pushd artifacts/linux
-          tar czvf ../wasabi-linux.tar.gz *
+          tar czvf ../wasabi-${tag_name}-linux.tar.gz *
           popd
 
           pushd artifacts/windows
-          zip -r ../wasabi-windows.zip *
+          zip -r ../wasabi-${tag_name}-windows.zip *
           popd
+
+          cp artifacts/linux/engine.wasm artifacts/wasabi-${tag_name}-engine.wasm
 
           pushd artifacts
           sha256sum wasabi* > checksums.txt
@@ -82,4 +86,6 @@ jobs:
           tag_name="${GITHUB_REF##*/}"
           echo "$tag_name\n" > release_description.txt
           cat release_notes.md >> release_description.txt
-          hub release create -a "checksums.txt#Checksums" -a "wasabi-linux.tar.gz#Wasabi Chess for Linux 64-bit" -a "wasabi-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt "$tag_name"
+          hub release create -a "checksums.txt#Checksums" -a "wasabi-${tag_name}-linux.tar.gz#Wasabi Chess for Linux 64-bit" \
+                             -a "wasabi-${tag_name}-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt "$tag_name" \
+                             -a "wasabi-${tag_name}-engine.wasm#Standalone engine.wasm" -F release_description.txt "$tag_name"
