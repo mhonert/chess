@@ -84,7 +84,7 @@ jobs:
         run: |
           pushd artifacts
           tag_name="${GITHUB_REF##*/}"
-          echo "$tag_name\n" > release_description.txt
+          echo "$tag_name" > release_description.txt
           cat release_notes.md >> release_description.txt
           hub release create -a "checksums.txt#Checksums" -a "wasabi-${tag_name}-linux.tar.gz#Wasabi Chess for Linux 64-bit" \
                              -a "wasabi-${tag_name}-windows.zip#Wasabi Chess for Windows 64-bit" -F release_description.txt "$tag_name" \
