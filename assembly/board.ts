@@ -73,7 +73,7 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 export const EN_PASSANT_BIT = 1 << 31;
 
 // Evaluation constants
-export const DOUBLED_PAWN_PENALTY: i32 = 6;
+export let DOUBLED_PAWN_PENALTY: i32 = 6;
 
 const PASSED_PAWN_BONUS_1: i32 = 25;
 

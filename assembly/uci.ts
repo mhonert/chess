@@ -25,7 +25,7 @@ import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
-import { calculatePieceSquareTables, WHITE } from './board';
+import { calculatePieceSquareTables, DOUBLED_PAWN_PENALTY, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { VERSION } from '../version';
 import { isValidMove } from './move-generation';
@@ -288,6 +288,9 @@ function setOption(params: Array<string>): void {
     if (useBook) {
       randomizeOpeningBookMoves();
     }
+
+  } else if (name.toLowerCase() == "doubledpawnpenalty") {
+    DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
 
   } else if (name.toLowerCase() == "queenvalue") {
     QUEEN_VALUE = I32.parseInt(params[3]);
