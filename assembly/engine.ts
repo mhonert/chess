@@ -58,6 +58,8 @@ const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 const LMR_THRESHOLD: i32 = 3;
 const LMR_REDUCTIONS: i32 = 2;
 
+const FUTILITY_MARGIN_MULTIPLIER: i32 = 51;
+
 const FUTILE_MOVE_REDUCTIONS: i32 = 2;
 const LOSING_MOVE_REDUCTIONS: i32 = 2;
 
@@ -469,9 +471,8 @@ export class Engine {
     // Futile move pruning
     let allowFutileMovePruning: bool = false;
     let pruneLowScore: i32 = 0;
-    const ownMovesLeft = (depth + 1) / 2;
-    if (!isPV && ownMovesLeft <= 2) {
-      pruneLowScore = this.board.getScore() * playerColor + ownMovesLeft * 60 + (ownMovesLeft - 1) * 40;
+    if (!isPV && depth <= 4) {
+      pruneLowScore = this.board.getScore() * playerColor + this.getFutilityPruneMargin(depth);
       allowFutileMovePruning = pruneLowScore <= alpha;
     }
 
@@ -496,6 +497,7 @@ export class Engine {
         givesCheck = this.board.isInCheck(-playerColor);
         if (removedPieceId == EMPTY) {
           const hasNegativeHistory = this.historyHeuristics.hasNegativeHistory(playerColor, depth, moveStart, moveEnd);
+          const ownMovesLeft = (depth + 1) / 2;
           if (!givesCheck && allowReductions && evaluatedMoveCount > LMR_THRESHOLD && !this.board.isPawnMoveCloseToPromotion(previousPiece, moveEnd, ownMovesLeft - 1)) {
             // Reduce search depth for late moves (i.e. after trying the most promising moves)
             reductions = LMR_REDUCTIONS;
@@ -629,6 +631,11 @@ export class Engine {
 
     return bestScore;
   };
+
+  @inline
+  getFutilityPruneMargin(depth: i32): i32 {
+    return depth * FUTILITY_MARGIN_MULTIPLIER;
+  }
 
   quiescenceSearch(activePlayer: i32, alpha: i32, beta: i32, ply: i32): i32 {
     this.nodeCount++;
