@@ -268,7 +268,7 @@ export class Engine {
 
       if (!iterationCancelled) {
         const depthInfo = "depth " + depth.toString();
-        const scoreInfo = " score cp " + bestScore.toString();
+        const scoreInfo = this.getScoreInfo(bestScore);
         const pvInfo = " pv " + this.extractPV(bestMove, depth - 1);
         const nodesPerSecond = totalDuration > 0 ? this.nodeCount * 1000 / totalDuration : 0;
 
@@ -315,6 +315,16 @@ export class Engine {
 
     return currentBestScoredMove;
   };
+
+  private getScoreInfo(score: i32): string {
+    if (score <= WHITE_MATE_SCORE + TRANSPOSITION_MAX_DEPTH) {
+      return " score mate " + ((WHITE_MATE_SCORE - score - 1) / 2).toString();
+    } else if (score >= BLACK_MATE_SCORE - TRANSPOSITION_MAX_DEPTH) {
+      return " score mate " + ((BLACK_MATE_SCORE - score + 1) / 2).toString();
+    }
+
+    return " score cp " + score.toString();
+  }
 
   private extractPV(move: i32, depth: i32): string {
     const uciMove = UCIMove.fromEncodedMove(this.board, move).toUCINotation();
