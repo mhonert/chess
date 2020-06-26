@@ -25,7 +25,7 @@ import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
-import { calculatePieceSquareTables, DOUBLED_PAWN_PENALTY, WHITE } from './board';
+import { calculatePieceSquareTables, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { VERSION } from '../version';
 import { isValidMove } from './move-generation';
@@ -57,7 +57,7 @@ export function _start(): void {
 
   EngineControl.setUseOpeningBook(false);
 
-  stdio.writeLine("Wasabi " + VERSION + " by mhonert");
+  stdio.writeLine("Wasabi " + VERSION + " by Martin Honert");
 
   do {
     const line: string = stdio.readLine();
@@ -126,7 +126,7 @@ export function _start(): void {
 
 function uci(): void {
   stdio.writeLine("id name Wasabi " + VERSION);
-  stdio.writeLine("id author mhonert");
+  stdio.writeLine("id author Martin Honert");
   stdio.writeLine("option name Hash type spin default " + DEFAULT_SIZE_MB.toString() + " min 1 max " + MAX_HASH_SIZE_MB.toString());
   stdio.writeLine("option name OwnBook type check default false");
   stdio.writeLine("option name UCI_EngineAbout type string default Wasabi Chess Engine (https://github.com/mhonert/chess)");
@@ -288,9 +288,6 @@ function setOption(params: Array<string>): void {
     if (useBook) {
       randomizeOpeningBookMoves();
     }
-
-  } else if (name.toLowerCase() == "doubledpawnpenalty") {
-    DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
 
   } else if (name.toLowerCase() == "queenvalue") {
     QUEEN_VALUE = I32.parseInt(params[3]);

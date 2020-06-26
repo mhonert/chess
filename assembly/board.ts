@@ -73,11 +73,11 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 export const EN_PASSANT_BIT = 1 << 31;
 
 // Evaluation constants
-export let DOUBLED_PAWN_PENALTY: i32 = 6;
+export const DOUBLED_PAWN_PENALTY: i32 = 6;
 
-const PASSED_PAWN_BONUS_1: i32 = 25;
+const PASSED_PAWN_BONUS: i32 = 25;
 
-const KING_SHIELD_BONUS: i32 = 16;
+const KING_SHIELD_BONUS: i32 = 21;
 
 const PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = 100;
 const PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = 400;
@@ -88,7 +88,9 @@ const LOST_QUEENSIDE_CASTLING_PENALTY: i32 = 18;
 const LOST_KINGSIDE_CASTLING_PENALTY: i32 = 21;
 
 const KING_DANGER_THRESHOLD: i32 = 1;
-const KING_DANGER_PIECE_PENALTY: i32 = 20;
+const KING_DANGER_PIECE_PENALTY: i32 = 19;
+
+const PAWN_COVER_BONUS: i32 = 14;
 
 export class Board {
   private items: StaticArray<i32>;
@@ -259,6 +261,9 @@ export class Board {
       }
     }
 
+    const whitePieces = this.getAllPieceBitBoard(WHITE);
+    const blackPieces = this.getAllPieceBitBoard(BLACK);
+
     // Interpolate between opening/mid-game score and the end game score for a smooth transition
     const phase: i32 = i32(popcnt(whitePawns | blackPawns)) + (whiteQueens > 0 ? 1 : 0) * 4 + (blackQueens > 0 ? 1 : 0) * 4;
     const egPhase: i32 = 24 - phase;
@@ -267,12 +272,18 @@ export class Board {
 
     // Perform evaluations which apply to all game phases
 
+    // Pawn cover bonus
+    const whitePawnAttacks = whiteLeftPawnAttacks(whitePawns) | whiteRightPawnAttacks(whitePawns);
+    const whitePawnsAndKnights = whitePieces | this.getBitBoard(KNIGHT);
+    interpolatedScore += i32(popcnt(whitePawnsAndKnights & whitePawnAttacks)) * PAWN_COVER_BONUS;
+
+    const blackPawnAttacks = blackLeftPawnAttacks(blackPawns) | blackRightPawnAttacks(blackPawns);
+    const blackPawnsAndKnights = blackPieces | this.getBitBoard(-KNIGHT);
+    interpolatedScore -= i32(popcnt(blackPawnsAndKnights & blackPawnAttacks)) * PAWN_COVER_BONUS;
+
     // Doubled pawn penalty
     interpolatedScore -= this.calcDoubledPawnPenalty(whitePawns);
     interpolatedScore += this.calcDoubledPawnPenalty(blackPawns);
-
-    const whitePieces = this.getAllPieceBitBoard(WHITE);
-    const blackPieces = this.getAllPieceBitBoard(BLACK);
 
     // Passed white pawns bonus
     let pawns = whitePawns
@@ -284,7 +295,7 @@ export class Board {
         const col = pos & 7;
         if (col == 0 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos - 1]) & blackPawns) == 0) {
           const reversedDistance = 5 - distanceToPromotion;
-          interpolatedScore += (PASSED_PAWN_BONUS_1 * reversedDistance);
+          interpolatedScore += (PASSED_PAWN_BONUS * reversedDistance);
 
           if (col == 7 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos + 1]) & blackPawns) == 0) {
             interpolatedScore += ((1 << reversedDistance) + reversedDistance);
@@ -292,7 +303,7 @@ export class Board {
           }
         } else if (col == 7 || (unchecked(WHITE_PAWN_FREEPATH_PATTERNS[pos + 1]) & blackPawns) == 0) {
           const reversedDistance = 5 - distanceToPromotion;
-          interpolatedScore += (PASSED_PAWN_BONUS_1 * reversedDistance);
+          interpolatedScore += (PASSED_PAWN_BONUS * reversedDistance);
         }
       }
     }
@@ -307,7 +318,7 @@ export class Board {
         const col = pos & 7;
         if (col == 0 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos - 1]) & whitePawns) == 0) {
           const reversedDistance = 5 - distanceToPromotion;
-          interpolatedScore -= (PASSED_PAWN_BONUS_1 * reversedDistance);
+          interpolatedScore -= (PASSED_PAWN_BONUS * reversedDistance);
 
           if (col == 7 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos + 1]) & whitePawns) == 0) {
             interpolatedScore -= ((1 << reversedDistance) + reversedDistance);
@@ -315,7 +326,7 @@ export class Board {
           }
         } else if (col == 7 || (unchecked(BLACK_PAWN_FREEPATH_PATTERNS[pos + 1]) & whitePawns) == 0) {
           const reversedDistance = 5 - distanceToPromotion;
-          interpolatedScore -= (PASSED_PAWN_BONUS_1 * reversedDistance);
+          interpolatedScore -= (PASSED_PAWN_BONUS * reversedDistance);
         }
       }
     }
