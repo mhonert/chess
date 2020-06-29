@@ -30,9 +30,9 @@ export let ROOK_VALUE = 492;
 export let EG_ROOK_VALUE = 569;
 export let BISHOP_VALUE = 351;
 export let EG_BISHOP_VALUE = 354;
-export let KNIGHT_VALUE = 318;
+export let KNIGHT_VALUE = 325;
 export let EG_KNIGHT_VALUE = 283;
-export let PAWN_VALUE = 89;
+export let PAWN_VALUE = 83;
 export let EG_PAWN_VALUE = 105;
 
 export const PIECE_VALUES: StaticArray<i32> = StaticArray.fromArray([0, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE, KING_VALUE]);
