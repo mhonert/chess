@@ -66,8 +66,8 @@ const LOSING_MOVE_REDUCTIONS: i32 = 2;
 const QS_SEE_THRESHOLD: i32 = 104;
 const QS_PRUNE_MARGIN: i32 = 989;
 
-const PRIMARY_KILLER_SCORE_BONUS: i32 = 966;
-const SECONDARY_KILLER_SCORE_BONUS: i32 = 1013;
+const PRIMARY_KILLER_SCORE_BONUS: i32 = -2267;
+const SECONDARY_KILLER_SCORE_BONUS: i32 = -3350;
 
 export const TIMEEXT_MULTIPLIER: i32 = 5;
 const TIMEEXT_SCORE_CHANGE_THRESHOLD: i32 = 80;
@@ -142,7 +142,7 @@ export class Engine {
     this.timeLimitMillis = timeLimitMillis;
     this.startTime = clock.currentMillis();
 
-    const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor, 0, 0);
+    const moves = this.sortMovesByScore(generateFilteredMoves(this.board, playerColor), playerColor);
 
     if (moves.length == 1) {
       const score = decodeScore(unchecked(moves[0]));
@@ -673,7 +673,7 @@ export class Engine {
       alpha = positionScore;
     }
 
-    const moves = this.sortMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer, ply, 0);
+    const moves = this.sortCaptureMovesByScore(generateCaptureMoves(this.board, activePlayer), activePlayer);
 
     let threshold = alpha - positionScore - QS_SEE_THRESHOLD;
 
@@ -735,6 +735,18 @@ export class Engine {
     }
   };
 
+  @inline
+  evaluateCaptureMoveScore(activePlayer: i32, encodedMove: i32): i32 {
+    const moveStart = decodeStartIndex(encodedMove);
+    const moveEnd = decodeEndIndex(encodedMove);
+
+    const capturedPiece = this.board.getItem(moveEnd);
+
+    const ownOriginalPieceId = activePlayer * this.board.getItem(moveStart); // might be different in case of pawn promotions
+    const capturedPieceId = abs(capturedPiece);
+
+    return activePlayer * getCaptureOrderScore(ownOriginalPieceId, capturedPieceId);
+  };
 
   // Evaluates and sorts all given moves.
   // The moves will be sorted in descending order starting with the best scored moved for the given player color.
@@ -742,16 +754,36 @@ export class Engine {
   // The score will be encoded in the same 32-Bit integer value that encodes the move (see encodeScoreMove), so
   // the moves array can be modified and sorted in-place.
   @inline
-  sortMovesByScore(moves: StaticArray<i32>, playerColor: i32, primaryKillerMove: i32, secondaryKillerMove: i32): StaticArray<i32> {
+  sortMovesByScore(moves: StaticArray<i32>, playerColor: i32, primaryKillerMove: i32 = 0, secondaryKillerMove: i32 = 0): StaticArray<i32> {
     for (let i: i32 = 0; i < moves.length; i++) {
       const move = unchecked(moves[i]);
-      let score: i32 = this.evaluateMoveScore(playerColor, move);
+      let score: i32;
 
       if (move == primaryKillerMove) {
-        score += PRIMARY_KILLER_SCORE_BONUS * playerColor;
+        score = PRIMARY_KILLER_SCORE_BONUS * playerColor;
       } else if (move == secondaryKillerMove) {
-        score += SECONDARY_KILLER_SCORE_BONUS * playerColor;
+        score = SECONDARY_KILLER_SCORE_BONUS * playerColor;
+      } else {
+        score = this.evaluateMoveScore(playerColor, move);
       }
+
+      unchecked(moves[i] = encodeScoredMove(move, score));
+    }
+
+    if (playerColor == WHITE) {
+      sortByScoreDescending(moves);
+    } else {
+      sortByScoreAscending(moves);
+    }
+
+    return moves;
+  };
+
+  @inline
+  sortCaptureMovesByScore(moves: StaticArray<i32>, playerColor: i32): StaticArray<i32> {
+    for (let i: i32 = 0; i < moves.length; i++) {
+      const move = unchecked(moves[i]);
+      const score: i32 = this.evaluateCaptureMoveScore(playerColor, move);
 
       unchecked(moves[i] = encodeScoredMove(move, score));
     }
