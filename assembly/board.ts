@@ -253,11 +253,11 @@ export class Board {
       score -= CASTLING_BONUS;
     } else {
       if (!this.canBlackCastleQueenSide()) {
-        score += LOST_KINGSIDE_CASTLING_PENALTY;
+        score += LOST_QUEENSIDE_CASTLING_PENALTY;
       }
 
       if (!this.canBlackCastleKingSide()) {
-        score += LOST_QUEENSIDE_CASTLING_PENALTY;
+        score += LOST_KINGSIDE_CASTLING_PENALTY;
       }
     }
 
@@ -274,11 +274,11 @@ export class Board {
 
     // Pawn cover bonus
     const whitePawnAttacks = whiteLeftPawnAttacks(whitePawns) | whiteRightPawnAttacks(whitePawns);
-    const whitePawnsAndKnights = whitePieces | this.getBitBoard(KNIGHT);
+    const whitePawnsAndKnights = whitePawns | this.getBitBoard(KNIGHT);
     interpolatedScore += i32(popcnt(whitePawnsAndKnights & whitePawnAttacks)) * PAWN_COVER_BONUS;
 
     const blackPawnAttacks = blackLeftPawnAttacks(blackPawns) | blackRightPawnAttacks(blackPawns);
-    const blackPawnsAndKnights = blackPieces | this.getBitBoard(-KNIGHT);
+    const blackPawnsAndKnights = blackPawns | this.getBitBoard(-KNIGHT);
     interpolatedScore -= i32(popcnt(blackPawnsAndKnights & blackPawnAttacks)) * PAWN_COVER_BONUS;
 
     // Doubled pawn penalty
