@@ -55,7 +55,7 @@ export const BLACK_MATE_SCORE: i32 = 16000;
 
 const CANCEL_SEARCH = i32.MAX_VALUE - 1;
 
-const LMR_THRESHOLD: i32 = 3;
+const LMR_THRESHOLD: i32 = 4;
 const LMR_REDUCTIONS: i32 = 2;
 
 const FUTILITY_MARGIN_MULTIPLIER: i32 = 51;
