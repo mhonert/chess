@@ -17,6 +17,10 @@
  */
 
 import { BLACK, Board, EMPTY, EN_PASSANT_BIT, WHITE } from './board';
+import { fromFEN, STARTPOS } from './fen';
+import { PositionHistory } from './history';
+import { HistoryHeuristics } from './history-heuristics';
+import { clock, stdio } from './io';
 import {
   decodeEndIndex,
   decodeMove,
@@ -30,6 +34,9 @@ import {
   isCheckMate,
   isValidMove
 } from './move-generation';
+import { getCaptureOrderScore, sortByScoreAscending, sortByScoreDescending } from './move-ordering';
+import { findOpeningMove, getOpeningBookPlyLimit } from './opening-book';
+import { perft } from './perft';
 import {
   getDepth,
   getScoredMove,
@@ -38,14 +45,7 @@ import {
   TRANSPOSITION_MAX_DEPTH,
   TranspositionTable
 } from './transposition-table';
-import { fromFEN, STARTPOS } from './fen';
-import { PositionHistory } from './history';
-import { HistoryHeuristics } from './history-heuristics';
-import { clock, stdio } from './io';
 import { UCIMove } from './uci-move-notation';
-import { perft } from './perft';
-import { findOpeningMove, getOpeningBookPlyLimit } from './opening-book';
-import { getCaptureOrderScore, sortByScoreAscending, sortByScoreDescending } from './move-ordering';
 
 export const MIN_SCORE = -16383;
 export const MAX_SCORE = 16383;
@@ -73,6 +73,8 @@ export const TIMEEXT_MULTIPLIER: i32 = 5;
 const TIMEEXT_SCORE_CHANGE_THRESHOLD: i32 = 80;
 const TIMEEXT_SCORE_FLUCTUATION_THRESHOLD: i32 = 130;
 const TIMEEXT_SCORE_FLUCTUATION_REDUCTIONS = 90; // reduction percentage per search iteration
+
+const RAZOR_MARGIN: i32 = 130;
 
 export class Engine {
 
@@ -367,13 +369,17 @@ export class Engine {
       return 0;
     }
 
-    // Extend search when in check
     if (isInCheck) {
+      // Extend search when in check
       if (depth < 0) {
         depth = 1;
       } else {
         depth++;
       }
+
+    } else if (depth == 1 && this.board.getScore() * playerColor < alpha - RAZOR_MARGIN) {
+      // Directly jump to quiescence search, if current position score is below a certain threshold
+      depth = 0;
     }
 
     // Quiescence search

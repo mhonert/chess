@@ -1,11 +1,13 @@
 
-This release mainly focussed on improving king safety evaluations :crown:
 > The Web App version of **Wasabi Chess** can be played [**here**](https://mhonert.github.io/chess).
 
 ## Changes
-- Improved castling evaluation
-- Improved king safety evaluation
-- Tuned some evaluation parameters
+- UCI: output mate distance as score when a mate was found
+- Evaluation: provide bonus for pawns covering pawns and knights
+- Adjust piece and move ordering values
+- Slightly increase LMR threshold
+- Simplify and tune futility margin calculation
+- Directly jump to quiescence search for futile positions at depth 1
 
 ## Installation
 - Download and unpack the archive for your platform (Linux or Windows 8/10)

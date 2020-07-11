@@ -118,7 +118,7 @@ describe('Finds moves', () => {
       0, 0, NO_CASTLING_RIGHTS
     ]);
 
-    board.performEncodedMove(findBestMove(board, WHITE, 3));
+    board.performEncodedMove(findBestMove(board, WHITE, 5));
     board.performEncodedMove(findBestMove(board, BLACK, 2));
     board.performEncodedMove(findBestMove(board, WHITE, 1));
 
@@ -198,11 +198,11 @@ describe('Finds moves', () => {
     ]);
     board.increaseHalfMoveCount();
 
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 9, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 11, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 5, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 3, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 1, 0));
 
     expect(isCheckMate(board, WHITE)).toBe(true);
   });
