@@ -19,10 +19,17 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
+import { POSITION_SCORE_MULTIPLIERS } from './board';
 import EngineControl from './engine';
 import { TIMEEXT_MULTIPLIER } from './engine';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
+import { KING } from './pieces';
+import { QUEEN } from './pieces';
+import { ROOK } from './pieces';
+import { BISHOP } from './pieces';
+import { KNIGHT } from './pieces';
+import { PAWN } from './pieces';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import { calculatePieceSquareTables, WHITE } from './board';
@@ -289,12 +296,24 @@ function setOption(params: Array<string>): void {
       randomizeOpeningBookMoves();
     }
 
+  } else if (name.toLowerCase() == "kingmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[KING] = I32.parseInt(params[3]));
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "queenmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[QUEEN] = I32.parseInt(params[3]));
+    pieceValuesChanged = true;
+
   } else if (name.toLowerCase() == "queenvalue") {
     QUEEN_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "egqueenvalue") {
     EG_QUEEN_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "rookmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[ROOK] = I32.parseInt(params[3]));
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "rookvalue") {
@@ -305,6 +324,10 @@ function setOption(params: Array<string>): void {
     EG_ROOK_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
+  } else if (name.toLowerCase() == "bishopmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[BISHOP] = I32.parseInt(params[3]));
+    pieceValuesChanged = true;
+
   } else if (name.toLowerCase() == "bishopvalue") {
     BISHOP_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
@@ -313,12 +336,20 @@ function setOption(params: Array<string>): void {
     EG_BISHOP_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
+  } else if (name.toLowerCase() == "knightmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[KNIGHT] = I32.parseInt(params[3]));
+    pieceValuesChanged = true;
+
   } else if (name.toLowerCase() == "knightvalue") {
     KNIGHT_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "egknightvalue") {
     EG_KNIGHT_VALUE = I32.parseInt(params[3]);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase() == "pawnmultiplier") {
+    unchecked(POSITION_SCORE_MULTIPLIERS[PAWN] = I32.parseInt(params[3]));
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "pawnvalue") {

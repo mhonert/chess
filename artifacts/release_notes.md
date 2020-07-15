@@ -1,7 +1,9 @@
 
+This release contains many small improvements, but the largest ELO gain came from the new mobility evaluation :cartwheeling:
 > The Web App version of **Wasabi Chess** can be played [**here**](https://mhonert.github.io/chess).
 
 ## Changes
+- Add mobility evaluation
 - UCI: output mate distance as score when a mate was found
 - Evaluation: provide bonus for pawns covering pawns and knights
 - Adjust piece and move ordering values
