@@ -485,14 +485,25 @@ describe('Evaluate position', () => {
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  P,  0,  0,  0,  0,
+      0,  P,  0,  0,  0,  0,  0,  0,
       0,  0,  0,  P,  0,  0,  0,  0,
       0,  0,  0,  0,  0,  0,  0,  0,
       0,  0,  0, +K,  0,  0,  0,  0,
       0, 0, 0
     ]);
 
-    expect(board.getScore()).toBeLessThan(board.getMaterialScore());
+    const doubledPawnBoard = new Board([
+      0,  0,  0, -K,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0,  P,  0,  0,  0,  0,
+      0,  0,  0,  P,  0,  0,  0,  0,
+      0,  0,  0,  0,  0,  0,  0,  0,
+      0,  0,  0, +K,  0,  0,  0,  0,
+      0, 0, 0
+    ]);
+    expect(doubledPawnBoard.getScore()).toBeLessThan(board.getScore());
   });
 
   it('Calculates lower score for doubled pawns on all squares', () => {

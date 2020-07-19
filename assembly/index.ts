@@ -26,15 +26,14 @@ import { BLACK, calculatePieceSquareTables, WHITE } from './board';
 import { randomizeOpeningBookMoves } from './opening-book';
 import { stdio } from './io';
 import { VERSION } from '../version';
-import { resetPieceValues } from './pieces';
 
 const DIFFICULTY_LEVELS: Array<Array<i32>> = [
-  [1, 0, 0],
-  [3, 0, 0],
-  [5, 0, 0],
-  [7, 0, 0],
-  [9, 0, 0],
-  [11, 1000, 1500]
+  [1, 0],
+  [3, 0],
+  [5, 0],
+  [7, 0],
+  [9, 0],
+  [11, 1250]
 ]
 
 export const INT32ARRAY_ID = idof<Int32Array>();
@@ -81,7 +80,7 @@ export function setPosition(fen: string, moves: Int32Array): Int32Array {
 export function calculateMove(difficultyLevel: i32): i32 {
   const levelSettings = DIFFICULTY_LEVELS[difficultyLevel - 1];
 
-  const maxTime = EngineControl.getBoard().isEndGame() ? levelSettings[2] : levelSettings[1];
+  const maxTime = levelSettings[1];
   const minimumSearchDepth = levelSettings[0];
 
   return EngineControl.findBestMove(minimumSearchDepth, maxTime, maxTime === 0);

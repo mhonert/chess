@@ -85,7 +85,6 @@ export class Engine {
   private startTime: i64 = 0;
   private nodeCount: u64 = 0;
   private timeLimitMillis: i64;
-  private isEndGame: bool = false;
   private isCancelPossible: bool = false;
   private useOpeningBook: bool = false;
   private openingBookPlyLimit: i32 = getOpeningBookPlyLimit();
@@ -115,8 +114,6 @@ export class Engine {
     this.history.clear();
 
     this.board.setHistory(this.history);
-
-    this.isEndGame = board.isEndGame();
   }
 
   setUseOpeningBook(use: bool): void {
@@ -131,7 +128,6 @@ export class Engine {
     if (this.board.getHalfMoveClock() == 0) {
       this.history.clear();
     }
-    this.isEndGame = this.board.isEndGame();
   }
 
   // Find the best possible move in response to the current board position.
@@ -842,13 +838,11 @@ class EngineControl {
 
   setBoard(board: Board): void {
     this.board = board;
-    this.board.updateEndGameStatus();
     this.engine.setBoard(board);
   }
 
   performMove(move: i32, increaseTTableAge: bool = true): void {
     this.board.performEncodedMove(move);
-    this.board.updateEndGameStatus();
     this.engine.refreshStateAfterMove(increaseTTableAge);
   }
 

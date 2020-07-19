@@ -97,6 +97,13 @@ const BISHOP_MOB_BONUS: i32 = 5;
 const ROOK_MOB_BONUS: i32 = 5;
 const QUEEN_MOB_BONUS: i32 = 5;
 
+
+const BASE_PIECE_PHASE_VALUE: i32 = 2;
+const PAWN_PHASE_VALUE: i32 = -1; // relative to the base piece value
+const QUEEN_PHASE_VALUE: i32 = 4; // relative to the base piece value
+
+const MAX_PHASE: i32 = 16 * PAWN_PHASE_VALUE + 30 * BASE_PIECE_PHASE_VALUE + 2 * QUEEN_PHASE_VALUE;
+
 export class Board {
   private items: StaticArray<i32>;
   private whiteKingIndex: i32;
@@ -116,8 +123,6 @@ export class Board {
   private halfMoveClockHistory: StaticArray<i16> = new StaticArray<i16>(MAX_GAME_HALFMOVES);
 
   private positionHistory: PositionHistory = new PositionHistory();
-
-  private endgame: i32;
 
   /* items Array:
      Index 0 - 63: Board representation (8 columns * 8 rows)
@@ -152,8 +157,6 @@ export class Board {
     unchecked(this.items[STATE_INDEX] = items[STATE_INDEX]);
     this.halfMoveClock = i16(items[HALFMOVE_CLOCK_INDEX]);
     this.halfMoveCount = i16(items[HALFMOVE_COUNT_INDEX]);
-
-    this.updateEndGameStatus();
   }
 
   @inline
@@ -220,7 +223,7 @@ export class Board {
 
   @inline
   getMaterialScore(): i32 {
-    return this.isEndGame() ? this.egScore : this.score;
+    return this.score;
   }
 
   @inline
@@ -263,15 +266,22 @@ export class Board {
       }
     }
 
+    const whitePieces = this.getAllPieceBitBoard(WHITE);
+    const blackPieces = this.getAllPieceBitBoard(BLACK);
+
+    // Interpolate between opening/mid-game score and end game score for a smooth eval score transition
+    const pawnCount: i32 = i32(popcnt(whitePawns | blackPawns));
+    const piecesExceptKingCount: i32 = i32(popcnt((whitePieces | blackPieces))) - 2; // -2 for two kings
+
     const whiteQueens = this.getBitBoard(QUEEN);
     const blackQueens = this.getBitBoard(-QUEEN);
 
+    const queenPhaseScore: i32 = (whiteQueens > 0 ? QUEEN_PHASE_VALUE : 0) + (blackQueens > 0 ? QUEEN_PHASE_VALUE : 0);
 
-    // Interpolate between opening/mid-game score and the end game score for a smooth transition
-    const phase: i32 = i32(popcnt(whitePawns | blackPawns)) + (whiteQueens > 0 ? 1 : 0) * 4 + (blackQueens > 0 ? 1 : 0) * 4;
-    const egPhase: i32 = 24 - phase;
+    const phase: i32 = pawnCount * PAWN_PHASE_VALUE + piecesExceptKingCount * BASE_PIECE_PHASE_VALUE + queenPhaseScore;
+    const egPhase: i32 = MAX_PHASE - phase;
 
-    let interpolatedScore = ((score * phase) + (egScore * egPhase)) / 24;
+    let interpolatedScore = ((score * phase) + (egScore * egPhase)) / MAX_PHASE;
 
     // Perform evaluations which apply to all game phases
 
@@ -289,9 +299,6 @@ export class Board {
     // Doubled pawn penalty
     interpolatedScore -= this.calcDoubledPawnPenalty(whitePawns);
     interpolatedScore += this.calcDoubledPawnPenalty(blackPawns);
-
-    const whitePieces = this.getAllPieceBitBoard(WHITE);
-    const blackPieces = this.getAllPieceBitBoard(BLACK);
 
     interpolatedScore += this.mobilityScore(whitePawnAttacks, blackPawnAttacks, whitePieces, blackPieces);
 
@@ -1214,27 +1221,6 @@ export class Board {
         return false;
     }
   }
-
-  @inline
-  isEndGame(): bool {
-    return this.endgame != 0;
-  }
-
-  @inline
-  updateEndGameStatus(): void {
-    const pawnCount = popcnt(this.getBitBoard(PAWN)) + popcnt(this.getBitBoard(-PAWN));
-    if (pawnCount <= 3) {
-      this.endgame = 1;
-      return;
-    }
-    const otherPieceCount = popcnt(this.getBitBoard(KNIGHT)) + popcnt(this.getBitBoard(-KNIGHT)) +
-      popcnt(this.getBitBoard(BISHOP)) + popcnt(this.getBitBoard(-BISHOP)) +
-      popcnt(this.getBitBoard(ROOK)) + popcnt(this.getBitBoard(-ROOK)) +
-      popcnt(this.getBitBoard(QUEEN)) + popcnt(this.getBitBoard(-QUEEN));
-
-    this.endgame = otherPieceCount <= 3 ? 1 : 0;
-  }
-
 
   @inline
   isPawnMoveCloseToPromotion(piece: i32, moveEnd: i32, movesLeft: i32): bool {
