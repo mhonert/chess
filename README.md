@@ -55,3 +55,4 @@ This project is licensed under the GNU General Public License - see the [LICENSE
 ### Attributions
 * Images for the chess pieces come from [Wikimedia Commons](https://commons.wikimedia.org/wiki/Category:SVG_chess_pieces)
 * The opening book was generated from a selection of chess games from the [FICS Games Database](https://www.ficsgames.org)
+* A set of 725000 [test positions](https://bitbucket.org/zurichess/tuner/downloads/) collected by the author of Zurichess was used to tune all evaluation parameters 

@@ -1,0 +1,31 @@
+engine:
+  cmd: /absolutePath/to/chess-engine
+
+options:
+  debug_log: false
+  test_positions_file: fen/quiet.fen
+  concurrency: 8
+
+tuning:
+  - name: QueenValue
+    value: 950
+
+  - name: RookValue
+    value: 500
+
+  - name: BishopValue
+    value: 350
+
+  - name: KnightValue
+    value: 350
+
+  - name: PawnValue
+    value: 100
+
+  # Options with list values will be send to the engine as:
+  # set option KnightMobBonus0 value 0
+  # set option KnightMobBonus1 value 0
+  # set option KnightMobBonus2 value 0
+  # ...
+  - name: KnightMobBonus
+    value: [ 0, 0, 0, 0, 0, 0, 0, 0, 0 ]

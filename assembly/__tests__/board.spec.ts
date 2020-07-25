@@ -605,7 +605,7 @@ describe('King threats', () => {
     const board: Board = fromFEN("2kr4/ppp5/2n5/5p2/1Pb1P3/P4P2/1BP1RKrq/R7 w - - 0 28")
 
     board.getMaterialScore()
-    expect(board.getMaterialScore() - board.getScore()).toBeGreaterThan(90, "King threat penalty is not high enough")
+    expect(board.getMaterialScore() - board.getScore()).toBeGreaterThan(70, "King threat penalty is not high enough")
   });
 });
 

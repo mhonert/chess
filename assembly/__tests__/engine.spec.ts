@@ -198,9 +198,9 @@ describe('Finds moves', () => {
     ]);
     board.increaseHalfMoveCount();
 
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 11, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 5, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 13, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 5, 0));
+    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 9, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
     board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 1, 0));
 

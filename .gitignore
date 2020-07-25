@@ -36,3 +36,6 @@ public/as-api.wasm.map
 
 # PGN files
 **/pgn/*
+
+# FEN files
+**/fen/*

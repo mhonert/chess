@@ -19,17 +19,32 @@
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.d.ts" />
 /// <reference path="../node_modules/@as-pect/core/types/as-pect.portable.d.ts" />
 
-import { POSITION_SCORE_MULTIPLIERS } from './board';
+import { EG_QUEEN_MOB_BONUS } from './board';
+import { EG_ROOK_MOB_BONUS } from './board';
+import { EG_BISHOP_MOB_BONUS } from './board';
+import { EG_KNIGHT_MOB_BONUS } from './board';
+import { EG_QUEEN_POSITION_SCORES } from './board';
+import { QUEEN_POSITION_SCORES } from './board';
+import { EG_ROOK_POSITION_SCORES } from './board';
+import { ROOK_POSITION_SCORES } from './board';
+import { EG_BISHOP_POSITION_SCORES } from './board';
+import { BISHOP_POSITION_SCORES } from './board';
+import { EG_KNIGHT_POSITION_SCORES } from './board';
+import { KNIGHT_POSITION_SCORES } from './board';
+import { EG_PAWN_POSITION_SCORES } from './board';
+import { EG_KING_POSITION_SCORES } from './board';
+import { KING_POSITION_SCORES } from './board';
+import { PAWN_POSITION_SCORES } from './board';
+import { QUEEN_MOB_BONUS } from './board';
+import { ROOK_MOB_BONUS } from './board';
+import { BISHOP_MOB_BONUS } from './board';
+import { KNIGHT_MOB_BONUS } from './board';
+import { KING_DANGER_PIECE_PENALTY } from './board';
 import EngineControl from './engine';
 import { TIMEEXT_MULTIPLIER } from './engine';
+import { fromFEN } from './fen';
 import { clock, stdio } from './io';
 import { STARTPOS } from './fen';
-import { KING } from './pieces';
-import { QUEEN } from './pieces';
-import { ROOK } from './pieces';
-import { BISHOP } from './pieces';
-import { KNIGHT } from './pieces';
-import { PAWN } from './pieces';
 import { UCIMove } from './uci-move-notation';
 import { DEFAULT_SIZE_MB, MAX_HASH_SIZE_MB, TRANSPOSITION_MAX_DEPTH } from './transposition-table';
 import { calculatePieceSquareTables, WHITE } from './board';
@@ -116,6 +131,10 @@ export function _start(): void {
       } else if (command == "test") {
         test();
         isRunning = false;
+        break;
+
+      } else if (command == "eval" && (i + 1) < tokens.length) {
+        evalPositions(tokens.slice(i + 1));
         break;
 
       } else if (command == "stop") {
@@ -264,6 +283,16 @@ function perft(depthStr: string): void {
   }
 }
 
+function setArrayOptionValue(name: string, key: string, optionValue: string, targetArray: StaticArray<i32>): void {
+  const index = I32.parseInt(name.substring(key.length));
+  if (index < 0 || index > targetArray.length) {
+    stdio.writeError("Index outside target array: " + key)
+    return;
+  }
+  const value = I32.parseInt(optionValue);
+  targetArray[index] = value;
+}
+
 function setOption(params: Array<string>): void {
   if (params.length < 4) {
     stdio.writeLine("Missing parameters for setoption");
@@ -295,14 +324,115 @@ function setOption(params: Array<string>): void {
     if (useBook) {
       randomizeOpeningBookMoves();
     }
+  // *** Engine/Search Parameters
+  // } else if (name.toLowerCase() == "futilitymarginmultiplier") {
+  //   FUTILITY_MARGIN_MULTIPLIER = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "qsseethreshold") {
+  //   QS_SEE_THRESHOLD = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "qsprunemargin") {
+  //   QS_PRUNE_MARGIN = I32.parseInt(params[3]) * 25;
+  //
+  // } else if (name.toLowerCase() == "razormargin") {
+  //   RAZOR_MARGIN = I32.parseInt(params[3]);
 
-  } else if (name.toLowerCase() == "kingmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[KING] = I32.parseInt(params[3]));
+    // *** Eval Parameters
+  } else if (name.toLowerCase().startsWith("kingdangerpenalty")) {
+    setArrayOptionValue(name, "kingdangerpenalty", params[3], KING_DANGER_PIECE_PENALTY);
+
+  } else if (name.toLowerCase().startsWith("knightmobbonus")) {
+    setArrayOptionValue(name, "knightmobbonus", params[3], KNIGHT_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("bishopmobbonus")) {
+    setArrayOptionValue(name, "bishopmobbonus", params[3], BISHOP_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("rookmobbonus")) {
+    setArrayOptionValue(name, "rookmobbonus", params[3], ROOK_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("queenmobbonus")) {
+    setArrayOptionValue(name, "queenmobbonus", params[3], QUEEN_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("egknightmobbonus")) {
+    setArrayOptionValue(name, "egknightmobbonus", params[3], EG_KNIGHT_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("egbishopmobbonus")) {
+    setArrayOptionValue(name, "egbishopmobbonus", params[3], EG_BISHOP_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("egrookmobbonus")) {
+    setArrayOptionValue(name, "egrookmobbonus", params[3], EG_ROOK_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("egqueenmobbonus")) {
+    setArrayOptionValue(name, "egqueenmobbonus", params[3], EG_QUEEN_MOB_BONUS);
+
+  } else if (name.toLowerCase().startsWith("pawnpst")) {
+    setArrayOptionValue(name, "pawnpst", params[3], PAWN_POSITION_SCORES);
     pieceValuesChanged = true;
 
-  } else if (name.toLowerCase() == "queenmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[QUEEN] = I32.parseInt(params[3]));
+  } else if (name.toLowerCase().startsWith("egpawnpst")) {
+    setArrayOptionValue(name, "egpawnpst", params[3], EG_PAWN_POSITION_SCORES);
     pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("knightpst")) {
+    setArrayOptionValue(name, "knightpst", params[3], KNIGHT_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("egknightpst")) {
+    setArrayOptionValue(name, "egknightpst", params[3], EG_KNIGHT_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("bishoppst")) {
+    setArrayOptionValue(name, "bishoppst", params[3], BISHOP_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("egbishoppst")) {
+    setArrayOptionValue(name, "egbishoppst", params[3], EG_BISHOP_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("rookpst")) {
+    setArrayOptionValue(name, "rookpst", params[3], ROOK_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("egrookpst")) {
+    setArrayOptionValue(name, "egrookpst", params[3], EG_ROOK_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("queenpst")) {
+    setArrayOptionValue(name, "queenpst", params[3], QUEEN_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("egqueenpst")) {
+    setArrayOptionValue(name, "egqueenpst", params[3], EG_QUEEN_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("kingpst")) {
+    setArrayOptionValue(name, "kingpst", params[3], KING_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  } else if (name.toLowerCase().startsWith("egkingpst")) {
+    setArrayOptionValue(name, "egkingpst", params[3], EG_KING_POSITION_SCORES);
+    pieceValuesChanged = true;
+
+  // } else if (name.toLowerCase() == "doubledpawnpenalty") {
+  //   DOUBLED_PAWN_PENALTY = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "passedpawnbonus") {
+  //   PASSED_PAWN_BONUS = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "kingshieldbonus") {
+  //   KING_SHIELD_BONUS = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "castlingbonus") {
+  //   CASTLING_BONUS = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "lostkingsidecastlingpenalty") {
+  //   LOST_KINGSIDE_CASTLING_PENALTY = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "lostqueensidecastlingpenalty") {
+  //   LOST_QUEENSIDE_CASTLING_PENALTY = I32.parseInt(params[3]);
+  //
+  // } else if (name.toLowerCase() == "pawncoverbonus") {
+  //   PAWN_COVER_BONUS = I32.parseInt(params[3]);
 
   } else if (name.toLowerCase() == "queenvalue") {
     QUEEN_VALUE = I32.parseInt(params[3]);
@@ -310,10 +440,6 @@ function setOption(params: Array<string>): void {
 
   } else if (name.toLowerCase() == "egqueenvalue") {
     EG_QUEEN_VALUE = I32.parseInt(params[3]);
-    pieceValuesChanged = true;
-
-  } else if (name.toLowerCase() == "rookmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[ROOK] = I32.parseInt(params[3]));
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "rookvalue") {
@@ -324,10 +450,6 @@ function setOption(params: Array<string>): void {
     EG_ROOK_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
-  } else if (name.toLowerCase() == "bishopmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[BISHOP] = I32.parseInt(params[3]));
-    pieceValuesChanged = true;
-
   } else if (name.toLowerCase() == "bishopvalue") {
     BISHOP_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
@@ -336,20 +458,12 @@ function setOption(params: Array<string>): void {
     EG_BISHOP_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
-  } else if (name.toLowerCase() == "knightmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[KNIGHT] = I32.parseInt(params[3]));
-    pieceValuesChanged = true;
-
   } else if (name.toLowerCase() == "knightvalue") {
     KNIGHT_VALUE = I32.parseInt(params[3]);
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "egknightvalue") {
     EG_KNIGHT_VALUE = I32.parseInt(params[3]);
-    pieceValuesChanged = true;
-
-  } else if (name.toLowerCase() == "pawnmultiplier") {
-    unchecked(POSITION_SCORE_MULTIPLIERS[PAWN] = I32.parseInt(params[3]));
     pieceValuesChanged = true;
 
   } else if (name.toLowerCase() == "pawnvalue") {
@@ -374,6 +488,22 @@ function test(): void {
     throw new Error("Self test failed: generated invalid move: " + move.toString());
   }
   stdio.writeLine("debug Self test completed");
+}
+
+function evalPositions(tokens: Array<String>): void {
+  const fens = tokens.join(" ").split(";")
+
+  let scores = "scores ";
+  for (let i = 0; i < fens.length; i++) {
+    const fen = fens[i];
+    const score = fromFEN(fen).getScore();
+    if (i > 0) {
+      scores += ';'
+    }
+    scores += score.toString();
+  }
+
+  stdio.writeLine(scores);
 }
 
 // Helper functions

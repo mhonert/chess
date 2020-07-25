@@ -73,30 +73,33 @@ const MAX_GAME_HALFMOVES = 5898 * 2;
 export const EN_PASSANT_BIT = 1 << 31;
 
 // Evaluation constants
-export const DOUBLED_PAWN_PENALTY: i32 = 6;
+export const DOUBLED_PAWN_PENALTY: i32 = 17;
 
-const PASSED_PAWN_BONUS: i32 = 25;
+const PASSED_PAWN_BONUS: i32 = 22;
 
-const KING_SHIELD_BONUS: i32 = 21;
+const KING_SHIELD_BONUS: i32 = 20;
 
 const PAWNLESS_DRAW_SCORE_LOW_THRESHOLD = 100;
 const PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD = 400;
 const PAWNLESS_DRAW_CLOCK_THRESHOLD = 64;
 
 const CASTLING_BONUS: i32 = 28;
-const LOST_QUEENSIDE_CASTLING_PENALTY: i32 = 18;
-const LOST_KINGSIDE_CASTLING_PENALTY: i32 = 21;
+const LOST_QUEENSIDE_CASTLING_PENALTY: i32 = 24;
+const LOST_KINGSIDE_CASTLING_PENALTY: i32 = 39;
 
-const KING_DANGER_THRESHOLD: i32 = 1;
-const KING_DANGER_PIECE_PENALTY: i32 = 21;
+export const KING_DANGER_PIECE_PENALTY: StaticArray<i32> = StaticArray.fromArray([ 0, -3, -3, 8, 25, 52, 95, 168, 258, 320, 1200, 1200, 1200, 1200, 1200, 1200 ]);
 
-const PAWN_COVER_BONUS: i32 = 14;
+const PAWN_COVER_BONUS: i32 = 12;
 
-const KNIGHT_MOB_BONUS: i32 = 5;
-const BISHOP_MOB_BONUS: i32 = 5;
-const ROOK_MOB_BONUS: i32 = 5;
-const QUEEN_MOB_BONUS: i32 = 5;
+export const KNIGHT_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -9, 3, 10, 11, 20, 22, 29, 29, 55 ]);
+export const BISHOP_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -2, 6, 14, 19, 22, 24, 29, 30, 35, 32, 49, 105, 73, 56 ]);
+export const ROOK_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -13, -10, -6, -1, 2, 9, 14, 23, 29, 36, 59, 64, 52, 62, 57 ]);
+export const QUEEN_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -2, -6, 0, 3, 11, 13, 15, 17, 20, 28, 28, 35, 51, 42, 50, 62, 99, 105, 102, 159, 100, 122, 131, 131, 115, 64, 75, 61 ]);
 
+export const EG_KNIGHT_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -65, -27, -2, 9, 13, 23, 20, 25, 4 ]);
+export const EG_BISHOP_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -46, -16, 1, 9, 16, 24, 27, 25, 30, 29, 20, 11, 35, 22 ]);
+export const EG_ROOK_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -72, -31, -8, 2, 15, 25, 28, 31, 35, 37, 36, 41, 50, 48, 45 ]);
+export const EG_QUEEN_MOB_BONUS: StaticArray<i32> = StaticArray.fromArray([ -77, -7, -18, 11, 4, 35, 42, 61, 70, 66, 85, 87, 85, 100, 108, 109, 98, 86, 109, 95, 123, 121, 118, 129, 127, 128, 159, 123 ]);
 
 const BASE_PIECE_PHASE_VALUE: i32 = 2;
 const PAWN_PHASE_VALUE: i32 = -1; // relative to the base piece value
@@ -269,12 +272,179 @@ export class Board {
     const whitePieces = this.getAllPieceBitBoard(WHITE);
     const blackPieces = this.getAllPieceBitBoard(BLACK);
 
+    // Mobility evaluation
+    const emptyBoard = ~whitePieces & ~blackPieces;
+    const emptyOrBlackPiece = emptyBoard | blackPieces;
+
+    const blackPawnAttacks = blackLeftPawnAttacks(blackPawns) | blackRightPawnAttacks(blackPawns);
+    let whiteSafeTargets = emptyOrBlackPiece & ~blackPawnAttacks;
+
+    let whiteKingThreat: i32 = 0;
+    let blackKingThreat: i32 = 0;
+
+    const blackKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.blackKingIndex]);
+    const whiteKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.whiteKingIndex]);
+
+    // Knights
+    let whiteKnightAttacks: u64 = 0;
+    let whiteKnights = this.getBitBoard(KNIGHT);
+    {
+      let knights = whiteKnights;
+      while (knights != 0) {
+        const pos: i32 = i32(ctz(knights));
+        knights ^= 1 << pos; // unset bit
+
+        const possibleMoves = unchecked(KNIGHT_PATTERNS[pos]);
+        whiteKnightAttacks |= possibleMoves;
+        const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
+        score += unchecked(KNIGHT_MOB_BONUS[moveCount]);
+        egScore += unchecked(EG_KNIGHT_MOB_BONUS[moveCount]);
+
+        if (possibleMoves & blackKingDangerZone) {
+          blackKingThreat++;
+        }
+      }
+    }
+
+    const emptyOrWhitePiece = emptyBoard | whitePieces;
+    const whitePawnAttacks = whiteLeftPawnAttacks(whitePawns) | whiteRightPawnAttacks(whitePawns);
+    let blackSafeTargets = emptyOrWhitePiece & ~whitePawnAttacks;
+
+    let blackKnightAttacks: u64 = 0;
+    let blackKnights = this.getBitBoard(-KNIGHT);
+    {
+      let knights = blackKnights;
+      while (knights != 0) {
+        const pos: i32 = i32(ctz(knights));
+        knights ^= 1 << pos; // unset bit
+
+        const possibleMoves = unchecked(KNIGHT_PATTERNS[pos]);
+        blackKnightAttacks |= possibleMoves;
+        const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
+        score -= unchecked(KNIGHT_MOB_BONUS[moveCount]);
+        egScore -= unchecked(EG_KNIGHT_MOB_BONUS[moveCount]);
+
+        if (possibleMoves & whiteKingDangerZone) {
+          whiteKingThreat++;
+        }
+      }
+    }
+
+    whiteSafeTargets &= ~blackKnightAttacks;
+    blackSafeTargets &= ~whiteKnightAttacks;
+
+    // Bishops
+    const occupied = ~emptyBoard;
+
+    let whiteBishops = this.getBitBoard(BISHOP);
+    let whiteBishopAttacks: u64 = 0;
+    while (whiteBishops != 0) {
+      const pos: i32 = i32(ctz(whiteBishops));
+      whiteBishops ^= 1 << pos; // unset bit
+      const possibleMoves = diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
+      whiteBishopAttacks |= possibleMoves;
+      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
+      score += unchecked(BISHOP_MOB_BONUS[moveCount]);
+      egScore += unchecked(EG_BISHOP_MOB_BONUS[moveCount]);
+
+      if (possibleMoves & blackKingDangerZone) {
+        blackKingThreat++;
+      }
+    }
+
+    let blackBishops = this.getBitBoard(-BISHOP);
+    let blackBishopAttacks: u64 = 0;
+    while (blackBishops != 0) {
+      const pos: i32 = i32(ctz(blackBishops));
+      blackBishops ^= 1 << pos; // unset bit
+      const possibleMoves = diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
+      blackBishopAttacks |= possibleMoves;
+      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
+      score -= unchecked(BISHOP_MOB_BONUS[moveCount]);
+      egScore -= unchecked(EG_BISHOP_MOB_BONUS[moveCount]);
+
+      if (possibleMoves & whiteKingDangerZone) {
+        whiteKingThreat++;
+      }
+    }
+
+    whiteSafeTargets &= ~blackBishopAttacks;
+    blackSafeTargets &= ~whiteBishopAttacks;
+
+    // Rooks
+    let whiteRooks = this.getBitBoard(ROOK);
+    let whiteRookAttacks: u64 = 0;
+    while (whiteRooks != 0) {
+      const pos: i32 = i32(ctz(whiteRooks));
+      whiteRooks ^= 1 << pos; // unset bit
+      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos);
+      whiteRookAttacks |= possibleMoves;
+      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
+      score += unchecked(ROOK_MOB_BONUS[moveCount]);
+      egScore += unchecked(EG_ROOK_MOB_BONUS[moveCount]);
+
+      if (possibleMoves & blackKingDangerZone) {
+        blackKingThreat++;
+      }
+    }
+
+    let blackRooks = this.getBitBoard(-ROOK);
+    let blackRookAttacks: u64 = 0;
+    while (blackRooks != 0) {
+      const pos: i32 = i32(ctz(blackRooks));
+      blackRooks ^= 1 << pos; // unset bit
+      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos);
+      blackRookAttacks |= possibleMoves;
+      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
+      score -= unchecked(ROOK_MOB_BONUS[moveCount]);
+      egScore -= unchecked(EG_ROOK_MOB_BONUS[moveCount]);
+
+      if (possibleMoves & whiteKingDangerZone) {
+        whiteKingThreat++;
+      }
+    }
+
+    whiteSafeTargets &= ~blackRookAttacks;
+    blackSafeTargets &= ~whiteRookAttacks;
+
+    // Queens
+    const whiteQueens = this.getBitBoard(QUEEN);
+    {
+      let queens = whiteQueens;
+      while (queens != 0) {
+        const pos: i32 = i32(ctz(queens));
+        queens ^= 1 << pos; // unset bit
+        const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos) | diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
+        const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
+        score += unchecked(QUEEN_MOB_BONUS[moveCount]);
+        egScore += unchecked(EG_QUEEN_MOB_BONUS[moveCount]);
+
+        if (possibleMoves & blackKingDangerZone) {
+          blackKingThreat++;
+        }
+      }
+    }
+
+    const blackQueens = this.getBitBoard(-QUEEN);
+    {
+      let queens = blackQueens;
+      while (queens != 0) {
+        const pos: i32 = i32(ctz(queens));
+        queens ^= 1 << pos; // unset bit
+        const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos) | diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
+        const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
+        score -= unchecked(QUEEN_MOB_BONUS[moveCount]);
+        egScore -= unchecked(EG_QUEEN_MOB_BONUS[moveCount]);
+
+        if (possibleMoves & whiteKingDangerZone) {
+          whiteKingThreat++;
+        }
+      }
+    }
+
     // Interpolate between opening/mid-game score and end game score for a smooth eval score transition
     const pawnCount: i32 = i32(popcnt(whitePawns | blackPawns));
     const piecesExceptKingCount: i32 = i32(popcnt((whitePieces | blackPieces))) - 2; // -2 for two kings
-
-    const whiteQueens = this.getBitBoard(QUEEN);
-    const blackQueens = this.getBitBoard(-QUEEN);
 
     const queenPhaseScore: i32 = (whiteQueens > 0 ? QUEEN_PHASE_VALUE : 0) + (blackQueens > 0 ? QUEEN_PHASE_VALUE : 0);
 
@@ -286,25 +456,32 @@ export class Board {
     // Perform evaluations which apply to all game phases
 
     // Pawn cover bonus
-    const whitePawnAttacks = whiteLeftPawnAttacks(whitePawns) | whiteRightPawnAttacks(whitePawns);
-    let whiteKnights = this.getBitBoard(KNIGHT);
     const whitePawnsAndKnights = whitePawns | whiteKnights;
     interpolatedScore += i32(popcnt(whitePawnsAndKnights & whitePawnAttacks)) * PAWN_COVER_BONUS;
 
-    const blackPawnAttacks = blackLeftPawnAttacks(blackPawns) | blackRightPawnAttacks(blackPawns);
-    let blackKnights = this.getBitBoard(-KNIGHT);
     const blackPawnsAndKnights = blackPawns | blackKnights;
     interpolatedScore -= i32(popcnt(blackPawnsAndKnights & blackPawnAttacks)) * PAWN_COVER_BONUS;
+
+    blackKingThreat += i32(popcnt(whitePawnAttacks & blackKingDangerZone)) / 2;
+    whiteKingThreat += i32(popcnt(blackPawnAttacks & whiteKingDangerZone)) / 2;
 
     // Doubled pawn penalty
     interpolatedScore -= this.calcDoubledPawnPenalty(whitePawns);
     interpolatedScore += this.calcDoubledPawnPenalty(blackPawns);
 
-    interpolatedScore += this.mobilityScore(whitePawnAttacks, blackPawnAttacks, whitePieces, blackPieces);
+    // King threat (uses king threat values from mobility evaluation)
+    if (whiteQueens & blackKingDangerZone) {
+      blackKingThreat += 3;
+    }
+    interpolatedScore += unchecked(KING_DANGER_PIECE_PENALTY[blackKingThreat]);
 
+    if (blackQueens & whiteKingDangerZone) {
+      whiteKingThreat += 3;
+    }
+    interpolatedScore -= unchecked(KING_DANGER_PIECE_PENALTY[whiteKingThreat]);
 
     // Passed white pawns bonus
-    let pawns = whitePawns
+    let pawns = whitePawns;
     while (pawns != 0) {
       const pos: i32 = i32(ctz(pawns));
       pawns ^= 1 << pos; // unset bit
@@ -349,26 +526,6 @@ export class Board {
       }
     }
 
-    // King threat
-    {
-      const whiteKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.whiteKingIndex]);
-      const opponentPiecesInKingDangerZone = i32(popcnt((blackPieces & ~blackPawns) & whiteKingDangerZone));
-      if (opponentPiecesInKingDangerZone >= KING_DANGER_THRESHOLD) {
-        const queensInKingDangerZone = i32(popcnt(blackQueens & whiteKingDangerZone));
-        const dangerScore = KING_DANGER_PIECE_PENALTY << (opponentPiecesInKingDangerZone + queensInKingDangerZone - KING_DANGER_THRESHOLD);
-        interpolatedScore -= min(dangerScore, 500);
-      }
-    }
-    {
-      const blackKingDangerZone = unchecked(KING_DANGER_ZONE_PATTERNS[this.blackKingIndex]);
-      const opponentPiecesInKingDangerZone = i32(popcnt((whitePieces & ~whitePawns) & blackKingDangerZone));
-      if (opponentPiecesInKingDangerZone >= KING_DANGER_THRESHOLD) {
-        const queensInKingDangerZone = i32(popcnt(whiteQueens & blackKingDangerZone));
-        const dangerScore = KING_DANGER_PIECE_PENALTY << (opponentPiecesInKingDangerZone + queensInKingDangerZone - KING_DANGER_THRESHOLD);
-        interpolatedScore += min(dangerScore, 500);
-      }
-    }
-
     // Adjust score for positions, which are very likely to end in a draw
     if ((blackPawns == 0 && interpolatedScore < -PAWNLESS_DRAW_SCORE_LOW_THRESHOLD && interpolatedScore > -PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD)
       || (whitePawns == 0 && interpolatedScore > PAWNLESS_DRAW_SCORE_LOW_THRESHOLD && interpolatedScore < PAWNLESS_DRAW_SCORE_HIGH_THRESHOLD)) {
@@ -381,122 +538,6 @@ export class Board {
     }
 
     return interpolatedScore;
-  }
-
-  @inline
-  mobilityScore(whitePawnAttacks: u64, blackPawnAttacks: u64, whitePieces: u64, blackPieces: u64): i32 {
-    const emptyBoard = ~whitePieces & ~blackPieces;
-    const emptyOrBlackPiece = emptyBoard | blackPieces;
-
-    let whiteSafeTargets = emptyOrBlackPiece & ~blackPawnAttacks;
-
-    let score: i32 = 0;
-
-    // Knights
-    let whiteKnights = this.getBitBoard(KNIGHT);
-    let whiteKnightAttacks: u64 = 0;
-    while (whiteKnights != 0) {
-      const pos: i32 = i32(ctz(whiteKnights));
-      whiteKnights ^= 1 << pos; // unset bit
-
-      const possibleMoves = unchecked(KNIGHT_PATTERNS[pos]);
-      whiteKnightAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
-      score += moveCount * KNIGHT_MOB_BONUS;
-    }
-
-    const emptyOrWhitePiece = emptyBoard | whitePieces;
-    let blackSafeTargets = emptyOrWhitePiece & ~whitePawnAttacks;
-
-    let blackKnights = this.getBitBoard(-KNIGHT);
-    let blackKnightAttacks: u64 = 0;
-    while (blackKnights != 0) {
-      const pos: i32 = i32(ctz(blackKnights));
-      blackKnights ^= 1 << pos; // unset bit
-
-      const possibleMoves = unchecked(KNIGHT_PATTERNS[pos]);
-      blackKnightAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
-      score -= moveCount * KNIGHT_MOB_BONUS;
-    }
-
-    whiteSafeTargets &= ~blackKnightAttacks;
-    blackSafeTargets &= ~whiteKnightAttacks;
-
-    // Bishops
-    const occupied = ~emptyBoard;
-
-    let whiteBishops = this.getBitBoard(BISHOP);
-    let whiteBishopAttacks: u64 = 0;
-    while (whiteBishops != 0) {
-      const pos: i32 = i32(ctz(whiteBishops));
-      whiteBishops ^= 1 << pos; // unset bit
-      const possibleMoves = diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
-      whiteBishopAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
-      score += moveCount * BISHOP_MOB_BONUS;
-    }
-
-    let blackBishops = this.getBitBoard(-BISHOP);
-    let blackBishopAttacks: u64 = 0;
-    while (blackBishops != 0) {
-      const pos: i32 = i32(ctz(blackBishops));
-      blackBishops ^= 1 << pos; // unset bit
-      const possibleMoves = diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
-      blackBishopAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
-      score -= moveCount * BISHOP_MOB_BONUS;
-    }
-
-    whiteSafeTargets &= ~blackBishopAttacks;
-    blackSafeTargets &= ~whiteBishopAttacks;
-
-    // Rooks
-    let whiteRooks = this.getBitBoard(ROOK);
-    let whiteRookAttacks: u64 = 0;
-    while (whiteRooks != 0) {
-      const pos: i32 = i32(ctz(whiteRooks));
-      whiteRooks ^= 1 << pos; // unset bit
-      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos);
-      whiteRookAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
-      score += moveCount * ROOK_MOB_BONUS;
-    }
-
-    let blackRooks = this.getBitBoard(-ROOK);
-    let blackRookAttacks: u64 = 0;
-    while (blackRooks != 0) {
-      const pos: i32 = i32(ctz(blackRooks));
-      blackRooks ^= 1 << pos; // unset bit
-      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos);
-      blackRookAttacks |= possibleMoves;
-      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
-      score -= moveCount * ROOK_MOB_BONUS;
-    }
-
-    whiteSafeTargets &= ~blackRookAttacks;
-    blackSafeTargets &= ~whiteRookAttacks;
-
-    // Queens
-    let whiteQueens = this.getBitBoard(QUEEN);
-    while (whiteQueens != 0) {
-      const pos: i32 = i32(ctz(whiteQueens));
-      whiteQueens ^= 1 << pos; // unset bit
-      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos) | diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
-      const moveCount = i32(popcnt(possibleMoves & whiteSafeTargets));
-      score += moveCount * QUEEN_MOB_BONUS;
-    }
-
-    let blackQueens = this.getBitBoard(-QUEEN);
-    while (blackQueens != 0) {
-      const pos: i32 = i32(ctz(blackQueens));
-      blackQueens ^= 1 << pos; // unset bit
-      const possibleMoves = horizontalAttacks(occupied, pos) | verticalAttacks(occupied, pos) | diagonalAttacks(occupied, pos) | antiDiagonalAttacks(occupied, pos);
-      const moveCount = i32(popcnt(possibleMoves & blackSafeTargets));
-      score -= moveCount * QUEEN_MOB_BONUS;
-    }
-
-    return score;
   }
 
   @inline
@@ -1286,107 +1327,161 @@ function calculateEnPassantBitMask(bit: i32, index: i32, array: Array<i32>): i32
 }
 
 export const PAWN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  0,  0,  0,  0,  0,  0,  0,  0,
-  10, 10, 10, 10, 10, 10, 10, 10,
-  6,  6,  7,  8,  8,  7,  6,  6,
-  2,  2,  3,  5,  5,  3,  2,  2,
-  0,  0,  0,  4,  4,  0,  0,  0,
-  1, -1, -2,  0,  0, -2, -1,  1,
-  1,  2,  2, -4, -4,  2,  2,  1,
-  0,  0,  0,  0,  0,  0,  0,  0,
+  0, 0, 0, 0, 0, 0, 0, 0, 
+  98, 94, 33, 98, 70, 123,
+  50, 2, -6, -13, 23, 22, 69,
+  87, 33, -9, -19, 13, 3, 29,
+  31, 23, 17, -17, -22, -9, -3,
+  18, 24, 10, 9, -28, -25, -10,
+  -12, -22, -10, -17, 24, -24, -24,
+  0, -12, -19, -15, 18, 34, -18,
+  0, 0, 0, 0, 0, 0, 0, 0
 ]);
 
-const KNIGHT_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -10, -8, -6, -6, -6, -6, -8,-10,
-  -8, -4,  0,  0,  0,  0, -4, -8,
-  -6,  0,  2,  3,  3,  2,  0, -6,
-  -6,  1,  3,  4,  4,  3,  1, -6,
-  -6,  0,  3,  4,  4,  3,  0, -6,
-  -6,  1,  2,  3,  3,  2,  1, -6,
-  -8, -4,  0,  1,  1,  0, -4, -8,
-  -10, -8, -6, -6, -6, -6, -8,-10,
+export const EG_PAWN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  0, 0, 0, 0, 0, 0, 0, 0,
+  134, 127, 110, 68, 92, 66, 120, 145,
+  81, 92, 56, 28, 6, 15, 60, 64,
+  26, 7, -6, -30, -30, -15, 3, 7,
+  5, 3, -16, -35, -32, -23, -8, -9,
+  -1, 3, -9, 0, -1, 0, -14, -13,
+  14, 11, 10, 12, 24, 3, 2, -12,
+  0, 0, 0, 0, 0, 0, 0, 0
 ]);
 
-const BISHOP_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -4, -2, -2, -2, -2, -2, -2, -4,
-  -2,  0,  0,  0,  0,  0,  0, -2,
-  -2,  0,  1,  2,  2,  1,  0, -2,
-  -2,  1,  1,  2,  2,  1,  1, -2,
-  -2,  0,  2,  2,  2,  2,  0, -2,
-  -2,  2,  2,  2,  2,  2,  2, -2,
-  -2,  1,  0,  0,  0,  0,  1, -2,
-  -4, -2, -2, -2, -2, -2, -2, -4
+export const KNIGHT_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -178, -109, -69, -41, 99, -101, -14, -118,
+  -116, -57, 89, 31, -4, 60, 9, -40,
+  -67, 31, 10, 31, 101, 121, 46, 42,
+  -21, 7, 1, 48, 22, 65, 14, 31,
+  -5, 7, 7, 12, 24, 17, 24, -2,
+  -28, -9, 8, 11, 27, 12, 24, -23,
+  -10, -38, 4, 22, 18, 33, 3, 8,
+  -98, -4, -41, -24, 12, -3, -7, 5
 ]);
 
-const ROOK_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-   0,  0,  0,  0,  0,  0,  0,  0,
-   1,  2,  2,  2,  2,  2,  2,  1,
-  -1,  0,  0,  0,  0,  0,  0, -1,
-  -1,  0,  0,  0,  0,  0,  0, -1,
-  -1,  0,  0,  0,  0,  0,  0, -1,
-  -1,  0,  0,  0,  0,  0,  0, -1,
-  -1,  0,  0,  0,  0,  0,  0, -1,
-   0,  0,  0,  1,  1,  0,  0,  0
+export const EG_KNIGHT_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  17, 14, 35, 2, -27, 8, -42, -44,
+  38, 32, -27, 16, 15, -10, 1, -10,
+  18, 0, 29, 28, -9, -6, -1, -16,
+  30, 29, 42, 36, 47, 27, 34, 2,
+  8, 11, 38, 35, 33, 34, 26, 16,
+  16, 15, 10, 32, 21, 15, -3, 26,
+  -20, 16, 8, 2, 26, -6, 3, -17,
+  28, -9, 22, 38, 14, 15, 9, -35
 ]);
 
-const QUEEN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -4, -2, -2, -1, -1, -2, -2, -4,
-  -2,  0,  0,  0,  0,  0,  0, -2,
-  -2,  0,  1,  1,  1,  1,  0, -2,
-  -1,  0,  1,  1,  1,  1,  0, -1,
-   0,  0,  1,  1,  1,  1,  0, -1,
-  -2,  1,  1,  1,  1,  1,  0, -2,
-  -2,  0,  1,  0,  0,  0,  0, -2,
-  -4, -2, -2, -1, -1, -2, -2, -4
+export const BISHOP_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -54, -14, -99, -66, -13, -24, -34, -13,
+  -58, 1, -26, -30, 44, 78, 27, -68,
+  -33, 13, 46, 28, 37, 57, 28, -2,
+  -23, 17, 26, 63, 39, 40, 19, 1,
+  4, 28, 17, 40, 61, 15, 19, 18,
+  7, 38, 29, 27, 23, 53, 29, 10,
+  35, 31, 39, 21, 33, 44, 51, 16,
+  -13, 20, 13, -3, 18, 11, -10, -12
 ]);
 
-const KING_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -5, -5, -5, -5, -5, -5, -5, -5,
-  -5, -5, -5, -5, -5, -5, -5, -5,
-  -5, -5, -5, -5, -5, -5, -5, -5,
-  -5, -5, -5, -5, -5, -5, -5, -5,
-  -5, -5, -5, -5, -5, -5, -5, -5,
-  -5, -5, -5, -5, -5, -5, -5, -5,
-   2,  2,  0,  0,  0,  0,  2,  2,
-   3,  2,  2,  0,  0,  2,  2,  3
+export const EG_BISHOP_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -12, -46, -17, -25, -29, -36, -32, -33,
+  -12, -30, -21, -38, -46, -57, -40, -18,
+  -10, -33, -44, -38, -41, -34, -31, -18,
+  -13, -29, -26, -35, -28, -25, -34, -23,
+  -39, -36, -16, -22, -45, -26, -42, -34,
+  -35, -39, -28, -27, -16, -43, -36, -30,
+  -57, -43, -47, -35, -30, -48, -39, -55,
+  -44, -36, -29, -19, -33, -31, -36, -36
 ]);
 
-const KING_ENDGAME_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
-  -10, -8, -6, -4, -4, -6, -8, -10,
-  -6, -4, -2,  0,  0, -2, -4, -6,
-  -6, -2,  4,  6,  6,  4, -2, -6,
-  -6, -2,  6,  8,  8,  6, -2, -6,
-  -6, -2,  6,  8,  8,  6, -2, -6,
-  -6, -2,  4,  6,  6,  4, -2, -6,
-  -6, -6,  0,  0,  0,  0, -6, -6,
-  -10, -6, -6, -6, -6, -6, -6, -10
+export const ROOK_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  23, 20, 31, 72, 69, 8, 5, 5,
+  18, 40, 86, 92, 82, 97, 53, 47,
+  -15, 39, 42, 43, 23, 73, 85, 22,
+  -13, -7, 21, 30, 16, 34, 14, 1,
+  -33, -15, 6, 15, 18, 1, 46, -5,
+  -43, -11, -4, -11, 1, 2, 17, -11,
+  -39, -9, -7, 7, 7, 10, 13, -46,
+  -21, -1, 18, 18, 18, 3, -1, -8
+]);
+
+export const EG_ROOK_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  18, 18, 14, 3, 9, 17, 18, 15,
+  18, 13, 1, -2, -6, -2, 8, 8,
+  21, 11, 7, 11, 9, 0, 0, 5,
+  16, 16, 20, 14, 15, 19, 8, 12,
+  21, 17, 17, 8, 6, 6, -9, 2,
+  13, 11, 4, 8, 6, 3, -2, -8,
+  8, 4, 8, 6, 2, 1, -5, 8,
+  5, 5, 2, 5, 4, 15, 1, -26
+]);
+
+export const QUEEN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -25, 3, 47, 48, 62, 44, 40, 38,
+  -31, -49, -3, 20, -23, 53, 7, 19,
+  8, -2, 16, -3, 12, 40, 1, 23,
+  -39, -33, -33, -27, -21, 7, -24, -9,
+  0, -32, -10, -16, -3, 3, -5, 4,
+  -11, 10, -10, 0, -5, 2, 16, 16,
+  -25, -9, 22, 13, 25, 34, 14, 32,
+  4, 2, 11, 28, 2, -18, -23, -52
+]);
+
+export const EG_QUEEN_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  44, 77, 50, 44, 56, 51, 58, 88,
+  45, 75, 60, 73, 73, 36, 81, 81,
+  21, 52, 35, 98, 86, 64, 89, 83,
+  84, 89, 80, 96, 124, 91, 147, 132,
+  32, 89, 68, 101, 78, 84, 123, 104,
+  58, 26, 67, 53, 65, 78, 86, 85,
+  40, 37, 18, 24, 25, 14, 10, 11,
+  29, 18, 20, 7, 51, 38, 58, 34
+]);
+
+export const KING_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -6, 293, 247, 145, 35, -28, 41, 55,
+  159, 114, 203, 245, 153, 108, -49, 16,
+  69, 223, 180, 232, 238, 227, 225, 16,
+  46, 120, 136, 155, 180, 102, 54, -47,
+  -119, 75, 66, 56, 78, 38, 5, -83,
+  -19, -3, 11, -21, -19, 8, -10, -52,
+  -2, 9, -31, -97, -76, -40, 2, 12,
+  -27, 20, 8, -69, -54, -55, 36, 30
+  ]
+);
+
+export const EG_KING_POSITION_SCORES: StaticArray<i32> = StaticArray.fromArray([
+  -87, -79, -54, -42, -11, 33, 14, -13,
+  -28, 6, -9, -17, 4, 33, 43, 13,
+  10, -4, 8, -11, -9, 30, 30, 16,
+  -10, 11, 18, 17, 11, 35, 36, 25,
+  11, -7, 28, 33, 33, 38, 24, 14,
+  -12, 9, 23, 42, 47, 33, 23, 9,
+  -31, -10, 24, 47, 48, 26, 3, -23,
+  -66, -47, -23, 3, -7, 5, -47, -77
 ]);
 
 const WHITE_POSITION_SCORES: StaticArray<u32> = new StaticArray<u32>(64 * 7);
 const BLACK_POSITION_SCORES: StaticArray<u32> = new StaticArray<u32>(64 * 7);
 
-export const POSITION_SCORE_MULTIPLIERS: StaticArray<i32> = StaticArray.fromArray([0, 5, 3, 6, 3, 3, 6]);
-
 export function calculatePieceSquareTables(): void {
   combineScores(WHITE_POSITION_SCORES, WHITE,
     [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_POSITION_SCORES],
-    [PAWN_POSITION_SCORES, KNIGHT_POSITION_SCORES, BISHOP_POSITION_SCORES, ROOK_POSITION_SCORES, QUEEN_POSITION_SCORES, KING_ENDGAME_POSITION_SCORES]);
+    [EG_PAWN_POSITION_SCORES, EG_KNIGHT_POSITION_SCORES, EG_BISHOP_POSITION_SCORES, EG_ROOK_POSITION_SCORES, EG_QUEEN_POSITION_SCORES, EG_KING_POSITION_SCORES]);
 
   combineScores(BLACK_POSITION_SCORES, BLACK,
     [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_POSITION_SCORES)],
-    [mirrored(PAWN_POSITION_SCORES), mirrored(KNIGHT_POSITION_SCORES), mirrored(BISHOP_POSITION_SCORES), mirrored(ROOK_POSITION_SCORES), mirrored(QUEEN_POSITION_SCORES), mirrored(KING_ENDGAME_POSITION_SCORES)]);
+    [mirrored(EG_PAWN_POSITION_SCORES), mirrored(EG_KNIGHT_POSITION_SCORES), mirrored(EG_BISHOP_POSITION_SCORES), mirrored(EG_ROOK_POSITION_SCORES), mirrored(EG_QUEEN_POSITION_SCORES), mirrored(EG_KING_POSITION_SCORES)]);
 }
 
 function combineScores(result: StaticArray<u32>, color: i32, midgameScores: StaticArray<i32>[], endgameScores: StaticArray<i32>[]): StaticArray<u32> {
   let index = 64;
   for (let pieceId = PAWN; pieceId <= KING; pieceId++) {
-    const multiplier = unchecked(POSITION_SCORE_MULTIPLIERS[pieceId]) * color;
     const pieceValue = i16(unchecked(PIECE_VALUES[pieceId]) * color);
     const egPieceValue = i16(unchecked(EG_PIECE_VALUES[pieceId]) * color);
 
     for (let pos = 0; pos < 64; pos++) {
-      const posScore = pieceValue + i16(unchecked(midgameScores[pieceId - 1][pos]) * multiplier);
-      const egPosScore = egPieceValue + i16(unchecked(endgameScores[pieceId - 1][pos]) * multiplier);
+      const posScore = pieceValue + i16(unchecked(midgameScores[pieceId - 1][pos]) * color);
+      const egPosScore = egPieceValue + i16(unchecked(endgameScores[pieceId - 1][pos]) * color);
       unchecked(result[index++] = packScores(posScore, egPosScore));
     }
   }

@@ -1,15 +1,14 @@
 
-This release contains many small improvements, but the largest ELO gain came from the new mobility evaluation :cartwheeling:
+This release focussed on tuning the evaluation function :balance_scale:
 > The Web App version of **Wasabi Chess** can be played [**here**](https://mhonert.github.io/chess).
 
 ## Changes
-- Add mobility evaluation
-- UCI: output mate distance as score when a mate was found
-- Evaluation: provide bonus for pawns covering pawns and knights
-- Adjust piece and move ordering values
-- Slightly increase LMR threshold
-- Simplify and tune futility margin calculation
-- Directly jump to quiescence search for futile positions at depth 1
+- New tuning tool
+- Tuned all evaluation parameters
+- Replaced simple mobility score calculation with mobility score table
+- Replaced simple king safety calculation with king threat score table
+- Improved game phase calculation for tapered eval
+- Added endgame piece square tables 
 
 ## Installation
 - Download and unpack the archive for your platform (Linux or Windows 8/10)
