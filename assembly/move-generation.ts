@@ -39,6 +39,7 @@ import {
   WHITE_KING_SIDE_CASTLING_BIT_PATTERN
 } from './bitboard';
 import { sign } from './util';
+import { fromFEN, STARTPOS } from './fen';
 
 
 const MAX_MOVES = 218;
@@ -46,7 +47,7 @@ const MAX_MOVES = 218;
 class MoveGenerator {
   private moves: StaticArray<i32> = new StaticArray<i32>(MAX_MOVES);
   private count: i32;
-  private board: Board;
+  private board: Board = fromFEN(STARTPOS);
   private occupiedBitBoard: u64;
   private emptyBitBoard: u64;
   private opponentBitBoard: u64;
@@ -169,7 +170,6 @@ class MoveGenerator {
     }
   }
 
-  @inline
   getGeneratedMoves(): StaticArray<i32> {
     return StaticArray.slice(this.moves, 0, this.count);
   }
@@ -192,7 +192,6 @@ class MoveGenerator {
   }
 
 
-  @inline
   private generateWhitePawnMoves(): void {
     const pawns = this.board.getBitBoard(PAWN);
 
@@ -202,7 +201,6 @@ class MoveGenerator {
   }
 
 
-  @inline
   private generateWhiteStraightPawnMoves(pawns: u64): void {
     // Single move
     pawns >>= 8;
@@ -218,7 +216,6 @@ class MoveGenerator {
     this.generatePawnMovesWithoutPromotion(bitboard, 16);
   }
 
-  @inline
   private generateWhiteAttackPawnMoves(pawns: u64): void {
     let attackToLeft = pawns & 0xfefefefefefefefe; // mask right column
     attackToLeft >>= 9;
@@ -234,7 +231,6 @@ class MoveGenerator {
   }
 
 
-  @inline
   private generateWhiteEnPassantPawnMoves(pawns: u64): void {
     let enPassant = this.board.getEnPassantStateBits() & 0xff;
 
@@ -257,7 +253,6 @@ class MoveGenerator {
   }
 
 
-  @inline
   private generateBlackPawnMoves(): void {
     const pawns = this.board.getBitBoard(-PAWN);
 

@@ -20,7 +20,7 @@ import styled from 'styled-components/macro';
 import React from 'react';
 
 /* Animated spinner adapted from https://loading.io/css/ */
-const AnimatedSpinner = styled.div`
+const Spinner = styled.div`
   color: #073642;
   display: inline-block;
   position: relative;
@@ -104,8 +104,8 @@ const AnimatedSpinner = styled.div`
   }
 `
 
-export default () => (
-  <AnimatedSpinner>
+export const AnimatedSpinner = () => (
+  <Spinner>
     <div></div>
     <div></div>
     <div></div>
@@ -118,5 +118,7 @@ export default () => (
     <div></div>
     <div></div>
     <div></div>
-  </AnimatedSpinner>
+  </Spinner>
 );
+
+export default AnimatedSpinner;

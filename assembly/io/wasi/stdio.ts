@@ -16,90 +16,22 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-import { errno, fd, fd_write, fd_read } from 'bindings/wasi';
-
-const STDIN = 0;
-const STDOUT = 1;
-const STDERR = 2;
-
-const PTR_SIZE: i32 = sizeof<usize>();
-
-type ptr = usize;
-
-const LINEFEED = 10;
-const CARRIAGE_RETURN = 13;
-
-const LF_STR = String.fromCharCode(LINEFEED);
+import { Console } from "as-wasi";
 
 export function writeLine(str: string): void {
-  write(str, STDOUT);
+  Console.log(str);
 }
 
 export function writeError(str: string): void {
-  write(str, STDERR);
-}
-
-function write(str: string, target: fd): void {
-  const strWithNewLine = str + LF_STR;
-
-  // Prepare write buffer
-  const writeChars = String.UTF8.encode(strWithNewLine);
-  const writeCharsPtr = changetype<ptr>(writeChars);
-  const ioVec = new ArrayBuffer(PTR_SIZE * 2);
-  const ioVecPtr = changetype<ptr>(ioVec);
-  store<ptr>(ioVecPtr, writeCharsPtr);
-  store<ptr>(ioVecPtr + PTR_SIZE, writeChars.byteLength);
-
-  // Prepare 'written' pointer
-  const writtenSizeBuffer = new ArrayBuffer(PTR_SIZE);
-  const writtenSizeBufferPtr = changetype<ptr>(writtenSizeBuffer);
-  fd_write(target, ioVecPtr, 1, writtenSizeBufferPtr);
+  Console.error(str);
 }
 
 // Reads characters one by one until a line feed character occurs or the stream ended
-export function readLine(maxLength: i32 = 16384): string {
-  const readChars = new ArrayBuffer(maxLength);
-  const readCharsPtr = changetype<ptr>(readChars);
+export function readLine(): string {
+  const line = Console.readLine();
+  if (line === null) {
+    return "";
+  }
 
-  // Prepare buffer for exactly one character
-  const singleCharBuffer = new ArrayBuffer(1);
-  const singleCharPtr = changetype<ptr>(singleCharBuffer);
-
-  const ioVec = new ArrayBuffer(PTR_SIZE * 2);
-  const ioVecPtr = changetype<ptr>(ioVec);
-
-  store<ptr>(ioVecPtr, singleCharPtr);
-  store<ptr>(ioVecPtr + PTR_SIZE, 1);
-
-  // Prepare 'read' pointer
-  const readSizeBuffer = new ArrayBuffer(PTR_SIZE);
-  const readSizeBufferPtr = changetype<ptr>(readSizeBuffer);
-
-  let length = 0;
-  do {
-    const result: errno = fd_read(STDIN, ioVecPtr, 1, readSizeBufferPtr);
-    if (result != errno.SUCCESS) {
-      break;
-    }
-
-    const readSize = load<usize>(readSizeBufferPtr);
-    if (readSize == 0) {
-      break;
-    }
-
-    const char = load<u8>(singleCharPtr);
-    if (char == CARRIAGE_RETURN) {
-      // skip carriage return char (for Windows)
-      continue;
-    }
-
-    if (char == LINEFEED) {
-      break;
-    }
-
-    store<u8>(readCharsPtr + length, char);
-    length++;
-  } while (length < maxLength);
-
-  return String.UTF8.decodeUnsafe(readCharsPtr, length);
+  return line as string;
 }

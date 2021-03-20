@@ -1,6 +1,6 @@
 {
   "name": "wasabi-chess",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": true,
   "homepage": "https://mhonert.github.io/chess",
   "license": "GPL-3.0-or-later",
@@ -8,6 +8,7 @@
     "@fortawesome/fontawesome-svg-core": "^1.2.30",
     "@fortawesome/free-solid-svg-icons": "^5.14.0",
     "@fortawesome/react-fontawesome": "^0.1.11",
+    "as-wasi": "^0.4.4",
     "react": "^16.13.1",
     "react-dnd": "^10.0.2",
     "react-dnd-html5-backend": "^10.0.2",
@@ -17,17 +18,14 @@
     "styled-components": "^5.1.1"
   },
   "scripts": {
-    "build:web": "npm run build:web-engine && npm run wasm-opt:web-engine && react-scripts build",
-    "build:web-engine": "asc assembly/index.ts -O2 --converge --use IS_WASI=0 -b public/as-api.wasm",
-    "wasm-opt:web-engine": "wasm-opt -O4 public/as-api.wasm -o public/as-api.wasm",
-    "build:uci": "npm run build:uci-engine && npm run wasm-opt:uci-engine",
-    "build:uci-engine": "asc assembly/uci.ts --runtime half -O2 --converge --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
-    "wasm-opt:uci-engine": "wasm-opt -O4 build/engine.wasm -o build/engine.wasm",
+    "build:web": "npm run build:web-engine && react-scripts build",
+    "build:web-engine": "asc assembly/index.ts -O2 --exportRuntime --use IS_WASI=0 -b public/as-api.wasm",
+    "build:uci": "asc assembly/uci.ts -O2 --use IS_WASI=1 --use abort=_abort -b build/engine.wasm -t build/engine.wast",
     "build": "npm run build:web",
-    "start": "npm run build:web-engine && npm run wasm-opt:web-engine && react-scripts start",
+    "start": "npm run build:web-engine && react-scripts start",
     "test": "asp --verbose",
-    "perft": "asp --verbose --nortrace -c as-pect-perft.config.js --file=perft.performance.ts",
-    "perft:engine": "asp --verbose --nortrace -c as-pect-perft.config.js --file=engine.performance.ts",
+    "perft": "asp --verbose -c as-pect-perft.config.js --file=perft.performance.ts",
+    "perft:engine": "asp --verbose -c as-pect-perft.config.js --file=engine.performance.ts",
     "predeploy": "npm run build:web",
     "deploy": "gh-pages -d build",
     "version": "node tools/gen_version_ts.js && git add version.ts"
@@ -48,8 +46,8 @@
     ]
   },
   "devDependencies": {
-    "@as-pect/cli": "^3.2.7",
-    "assemblyscript": "0.10.0",
+    "@as-pect/cli": "^6.0.0",
+    "assemblyscript": "0.18.15",
     "babel-plugin-macros": "^2.8.0",
     "gh-pages": "^2.2.0",
     "workerize-loader": "^1.3.0"

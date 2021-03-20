@@ -183,30 +183,6 @@ describe('Finds moves', () => {
     expect(move).toBe(encodeMove(1, 54, 47), "Using the pawn for the capture lets the game proceed");
   });
 
-  it('Finds mate in 3 moves', () => {
-    // prettier-ignore
-    const board: Board = new Board([
-      0,  0,  0,  0,  0,  0, -K,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  K, -P,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0, -Q,  0,  0,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0,  0,  0,  0,  0,  0, -R,  0,
-      0,  0,  0,  0,  0,  0,  0,  0,
-      0, 0, NO_CASTLING_RIGHTS
-    ]);
-    board.increaseHalfMoveCount();
-
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 13, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 5, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 9, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, WHITE, 3, 0));
-    board.performEncodedMove(findBestMoveIncrementally(board, BLACK, 1, 0));
-
-    expect(isCheckMate(board, WHITE)).toBe(true);
-  });
-
   it('Avoids threefold repetition', () => {
     // prettier-ignore
     const board: Board = new Board([

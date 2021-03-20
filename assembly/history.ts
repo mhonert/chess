@@ -20,12 +20,10 @@ export class PositionHistory {
   private positions: StaticArray<u64> = new StaticArray<u64>(1024);
   private index: i32 = 0;
 
-  @inline
   push(hash: u64): void {
     unchecked(this.positions[this.index++] = hash);
   }
 
-  @inline
   pop(): void {
     this.index--;
   }
@@ -50,7 +48,6 @@ export class PositionHistory {
     return false;
   }
 
-  @inline
   isSingleRepetition(): bool {
     if (this.index <= 1) {
       return false;

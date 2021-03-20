@@ -829,7 +829,7 @@ function shouldExtendTimeLimit(newMove: i32, newScore: i32, previousMove: i32, p
 
 
 class EngineControl {
-  private board: Board;
+  private board: Board = fromFEN(STARTPOS);
   private engine: Engine = new Engine();
 
   setPosition(fen: string): void {

@@ -47,8 +47,8 @@ const perEntryByteSize = 8 + 4;
 
 export class TranspositionTable {
   private indexMask: u64;
-  private entries: StaticArray<u64>;
-  private moves: StaticArray<i32>;
+  private entries: StaticArray<u64> = new StaticArray<u64>(0);
+  private moves: StaticArray<i32> = new StaticArray<i32>(0);
   private age: i32;
 
   constructor() {
@@ -73,7 +73,6 @@ export class TranspositionTable {
     this.age = (this.age + 1) & i32(AGE_MASK);
   }
 
-  @inline
   writeEntry(hash: u64, depth: i32, scoredMove: i32, type: ScoreType): void {
     const index = this.calculateIndex(hash);
 
@@ -91,7 +90,6 @@ export class TranspositionTable {
     unchecked(this.moves[index] = scoredMove);
   }
 
-  @inline
   getEntry(hash: u64): u64 {
     const index = this.calculateIndex(hash);
 
@@ -105,7 +103,6 @@ export class TranspositionTable {
     return u64(unchecked(this.moves[index])) << 32 | (entry & ~HASHCHECK_MASK);
   }
 
-  @inline
   private calculateIndex(hash: u64): i32 {
     return i32(hash & this.indexMask);
   }
@@ -121,17 +118,14 @@ export class TranspositionTable {
 }
 
 
-@inline
 export function getScoredMove(entry: u64): i32 {
   return i32(entry >> 32);
 }
 
-@inline
 export function getDepth(entry: u64): i32 {
   return i32((entry >> DEPTH_BITSHIFT) & DEPTH_MASK);
 }
 
-@inline
 export function getScoreType(entry: u64): ScoreType {
   return i32((entry >> SCORE_TYPE_BITSHIFT) & SCORE_TYPE_MASK);
 }

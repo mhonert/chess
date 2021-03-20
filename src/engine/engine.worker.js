@@ -43,33 +43,28 @@ export function calculateMove(difficultyLevel) {
   const move = Move.fromEncodedMove(moveEncoded);
 
   console.log('Calculation finished');
-
   return move;
 }
 
 export function performMove(move) {
-  const gameStatePtr = engine.performMove(move.encodedMove);
-
+  const gameStatePtr = engine.__pin(engine.performMove(move.encodedMove));
   const gameState = engine.__getArray(gameStatePtr);
-
-  engine.__release(gameStatePtr);
+  engine.__unpin(gameStatePtr);
 
   return decodeGameState(gameState);
 }
 
 export function setPosition(fen, moves) {
-  const fenStr = engine.__allocString(fen);
-  const fenPtr = engine.__retain(fenStr);
-  const movesArray  = engine.__allocArray(engine.INT32ARRAY_ID, moves.map(move => move.encodedMove));
-  const movesPtr = engine.__retain(movesArray);
+  const fenStr = engine.__pin(engine.__newString(fen));
+  const movesArray  = engine.__pin(engine.__newArray(engine.INT32ARRAY_ID, moves.map(move => move.encodedMove)));
 
-  const gameStatePtr = engine.setPosition(fenPtr, movesPtr);
+  const gameStatePtr = engine.__pin(engine.setPosition(fenStr, movesArray));
+
+  engine.__unpin(movesArray);
+  engine.__unpin(fenStr);
 
   const gameState = engine.__getArray(gameStatePtr);
-
-  engine.__release(fenPtr);
-  engine.__release(movesPtr);
-  engine.__release(gameStatePtr);
+  engine.__unpin(gameStatePtr);
 
   return decodeGameState(gameState);
 }
