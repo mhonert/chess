@@ -1,17 +1,17 @@
 ## :sushi: Wasabi Chess Engine
 
 ![Release](https://img.shields.io/github/v/release/mhonert/chess)
-![Test](https://img.shields.io/github/workflow/status/mhonert/chess/Test?label=Test&logo=github)
+![Test](https://img.shields.io/github/actions/workflow/status/mhonert/chess/test.yml?label=Test&logo=github)
 [![Website mhonert.github.io./chess](https://img.shields.io/website?url=https%3A%2F%2Fmhonert.github.io%2Fchess)](https://mhonert.github.io/chess)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 
 [<img src="screenshots/chess_mobile.png" align="right" alt="Screenshot" width="25%">](screenshots/chess_mobile.png?raw=true)
 
-**Wasabi Chess** runs as a Web App in the browser and is also available as a standalone UCI chess engine.
+**Wasabi Chess** is a web-based chess engine, written in AssemblyScript that runs directly in the Browser.
 
 > [**Play here!**](https://mhonert.github.io/chess)
 
-The Web App embeds the engine using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
+The React web application embeds the engine using [Web Workers](https://developer.mozilla.org/en-US/docs/Web/API/Web_Workers_API)
 to compute the AI moves in the background without blocking the main thread for the UI.
 
 ### Features
